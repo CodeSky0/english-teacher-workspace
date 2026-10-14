@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: etw-postgres
+    environment:
+      POSTGRES_USER: etw
+      POSTGRES_PASSWORD: etw_dev_pass
+      POSTGRES_DB: etw_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - etw-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U etw -d etw_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: etw-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - etw-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  etw-pg-data:
+  etw-redis-data:

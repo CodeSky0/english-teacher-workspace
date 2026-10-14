@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #0e7490;
+    --primary-d: #0c5e75;
+    --primary-l: #e0f2f5;
+    --primary-2: #14b8a6;
+
+    --accent: #2563eb;
+
+    --bg: #f4f6fb;
+    --panel: #ffffff;
+    --line: #e3e8ef;
+    --text: #1a2233;
+    --muted: #6b7689;
+
+    --side-bg: linear-gradient(180deg, #0f1e3d, #142a52 60%, #0f1e3d);
+    --side-active: #14b8a6;
+
+    --c-listen: #2563eb;
+    --c-listen-bg: #dbeafe;
+    --c-grammar: #d97706;
+    --c-grammar-bg: #fef3c7;
+    --c-read: #059669;
+    --c-read-bg: #d1fae5;
+    --c-write: #dc2626;
+    --c-write-bg: #fee2e2;
+    --c-vocab: #475569;
+    --c-vocab-bg: #e2e8f0;
+    --c-speak: #0891b2;
+    --c-speak-bg: #cffafe;
+    --c-exam: #ea580c;
+    --c-exam-bg: #ffedd5;
+    --c-homework: #7c3aed;
+    --c-homework-bg: #ede9fe;
+    --c-other: #94a3b8;
+    --c-other-bg: #f1f5f9;
+
+    --radius: 0.5rem;
+    --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+
+  * {
+    border-color: var(--line);
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--line);
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  .subject-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+}

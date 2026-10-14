@@ -1,0 +1,179 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { useCurrentClass } from "@/hooks/use-classes";
+import { PageHeader } from "@/components/common/page-header";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input, Label } from "@/components/ui/input";
+import { Dialog } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState, LoadingState } from "@/components/ui/states";
+import { Plus, GraduationCap, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
+
+type Exam = { id: string; name: string; classId: string; examDate: string | null; type: string | null; remark: string | null };
+type Score = { id: string; examId: string; studentId: string; listeningScore: string | null; speakingScore: string | null; writtenScore: string | null; totalScore: string | null; totalIsManual: boolean };
+type Student = { id: string; name: string; studentNo: string | null };
+
+function calcTotal(s: Pick<Score, "listeningScore" | "speakingScore" | "writtenScore" | "totalScore" | "totalIsManual">): string | null {
+  if (s.totalIsManual && s.totalScore) return s.totalScore;
+  const l = s.listeningScore ? Number(s.listeningScore) : null;
+  const sp = s.speakingScore ? Number(s.speakingScore) : null;
+  const w = s.writtenScore ? Number(s.writtenScore) : null;
+  if (l != null && sp != null && w != null) return String(l + sp + w);
+  return s.totalScore ?? null;
+}
+
+export default function GradesPage() {
+  const { currentClass, isLoading: classLoading } = useCurrentClass();
+  const qc = useQueryClient();
+  const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
+  const [examDialog, setExamDialog] = useState(false);
+  const [examForm, setExamForm] = useState({ name: "", examDate: "", type: "", remark: "" });
+
+  const { data: examsData, isLoading: examsLoading } = useQuery({
+    queryKey: ["exams", currentClass?.id],
+    queryFn: () => apiClient.get<{ data: Exam[] }>(`/exams${currentClass ? `?classId=${currentClass.id}` : ""}`),
+    enabled: !!currentClass,
+  });
+  const exams = examsData?.data ?? [];
+
+  const { data: studentsData } = useQuery({
+    queryKey: ["students", currentClass?.id],
+    queryFn: () => apiClient.get<{ data: Student[] }>(`/students?classId=${currentClass?.id}`),
+    enabled: !!currentClass && !!selectedExam,
+  });
+  const students = studentsData?.data ?? [];
+
+  const { data: scoresData } = useQuery({
+    queryKey: ["scores", selectedExam?.id],
+    queryFn: () => apiClient.get<{ data: Score[] }>(`/exams/${selectedExam?.id}/scores`),
+    enabled: !!selectedExam,
+  });
+  const scores = scoresData?.data ?? [];
+  const scoreMap = new Map(scores.map((s) => [s.studentId, s]));
+
+  const createExamMut = useMutation({
+    mutationFn: (d: any) => apiClient.post("/exams", { ...d, classId: currentClass?.id }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["exams"] }); toast.success("考试创建成功"); setExamDialog(false); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const saveScoreMut = useMutation({
+    mutationFn: async (params: { studentId: string; listening?: string; speaking?: string; written?: string }) => {
+      const existing = scoreMap.get(params.studentId);
+      if (existing) {
+        return apiClient.patch(`/exams/scores/${existing.id}`, {
+          listeningScore: params.listening ?? null, speakingScore: params.speaking ?? null, writtenScore: params.written ?? null,
+        });
+      }
+      return apiClient.post(`/exams/${selectedExam?.id}/scores`, {
+        studentId: params.studentId,
+        listeningScore: params.listening ?? null, speakingScore: params.speaking ?? null, writtenScore: params.written ?? null,
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["scores"] }),
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const stats = useMemo(() => {
+    const totals = scores.map((s) => calcTotal(s)).filter((t): t is string => t != null).map(Number);
+    if (totals.length === 0) return null;
+    const avg = totals.reduce((a, b) => a + b, 0) / totals.length;
+    return { avg: avg.toFixed(1), max: Math.max(...totals), min: Math.min(...totals), count: totals.length };
+  }, [scores]);
+
+  function handleScoreChange(studentId: string, field: "listening" | "speaking" | "written", value: string) {
+    const existing = scoreMap.get(studentId);
+    const l = field === "listening" ? value : (existing?.listeningScore ?? "");
+    const sp = field === "speaking" ? value : (existing?.speakingScore ?? "");
+    const w = field === "written" ? value : (existing?.writtenScore ?? "");
+    saveScoreMut.mutate({ studentId, listening: l, speaking: sp, written: w });
+  }
+
+  if (classLoading) return <LoadingState />;
+  if (!currentClass) return <div><PageHeader title="学情分析" /><Card><CardContent className="py-12"><EmptyState icon={<GraduationCap className="h-10 w-10" />} title="请先选择班级" /></CardContent></Card></div>;
+
+  return (
+    <div>
+      <PageHeader title="学情分析" description={`${currentClass.name} · 共 ${exams.length} 场考试`}
+        action={<Button onClick={() => setExamDialog(true)} className="gap-1.5"><Plus className="h-4 w-4" />创建考试</Button>} />
+
+      {!selectedExam ? (
+        <Card><CardContent className="p-0">
+          {examsLoading ? <LoadingState /> : exams.length === 0 ? <EmptyState icon={<GraduationCap className="h-10 w-10" />} title="暂无考试" description="点击右上角创建考试" /> :
+            <div className="divide-y divide-line">
+              {exams.map((e) => (
+                <button key={e.id} onClick={() => setSelectedExam(e)} className="flex w-full items-center justify-between p-4 text-left hover:bg-bg/50">
+                  <div><span className="font-medium">{e.name}</span><p className="mt-0.5 text-xs text-muted">{e.examDate || "未定日期"}{e.type ? ` · ${e.type}` : ""}</p></div>
+                  <ChevronRight className="h-4 w-4 text-muted" />
+                </button>
+              ))}
+            </div>}
+        </CardContent></Card>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button onClick={() => setSelectedExam(null)} className="text-sm text-primary hover:underline">← 返回考试列表</button>
+              <span className="text-muted">|</span>
+              <h3 className="font-semibold">{selectedExam.name}</h3>
+            </div>
+          </div>
+          {stats && (
+            <div className="grid grid-cols-4 gap-3">
+              <Card><CardContent className="p-3 text-center"><p className="text-xs text-muted">参评人数</p><p className="text-lg font-bold">{stats.count}</p></CardContent></Card>
+              <Card><CardContent className="p-3 text-center"><p className="text-xs text-muted">平均分</p><p className="text-lg font-bold text-primary">{stats.avg}</p></CardContent></Card>
+              <Card><CardContent className="p-3 text-center"><p className="text-xs text-muted">最高分</p><p className="text-lg font-bold text-green-600">{stats.max}</p></CardContent></Card>
+              <Card><CardContent className="p-3 text-center"><p className="text-xs text-muted">最低分</p><p className="text-lg font-bold text-red-600">{stats.min}</p></CardContent></Card>
+            </div>
+          )}
+          <Card><CardContent className="p-0">
+            {students.length === 0 ? <EmptyState title="暂无学生" /> :
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b border-line text-left text-muted">
+                    <th className="px-4 py-3 font-medium">姓名</th>
+                    <th className="px-4 py-3 font-medium">听力</th>
+                    <th className="px-4 py-3 font-medium">口语</th>
+                    <th className="px-4 py-3 font-medium">笔试</th>
+                    <th className="px-4 py-3 font-medium">总分</th>
+                  </tr></thead>
+                  <tbody>
+                    {students.map((st) => {
+                      const sc = scoreMap.get(st.id);
+                      const total = sc ? calcTotal(sc) : null;
+                      return (
+                        <tr key={st.id} className="border-b border-line/50">
+                          <td className="px-4 py-2 font-medium">{st.name}</td>
+                          <td className="px-4 py-2"><Input className="h-8 w-20" type="number" defaultValue={sc?.listeningScore ?? ""} onBlur={(e) => handleScoreChange(st.id, "listening", e.target.value)} placeholder="—" /></td>
+                          <td className="px-4 py-2"><Input className="h-8 w-20" type="number" defaultValue={sc?.speakingScore ?? ""} onBlur={(e) => handleScoreChange(st.id, "speaking", e.target.value)} placeholder="—" /></td>
+                          <td className="px-4 py-2"><Input className="h-8 w-20" type="number" defaultValue={sc?.writtenScore ?? ""} onBlur={(e) => handleScoreChange(st.id, "written", e.target.value)} placeholder="—" /></td>
+                          <td className="px-4 py-2 font-bold">{total ?? "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>}
+          </CardContent></Card>
+        </div>
+      )}
+
+      <Dialog open={examDialog} onClose={() => setExamDialog(false)} title="创建考试">
+        <div className="space-y-4">
+          <div className="space-y-1.5"><Label>考试名称 *</Label><Input value={examForm.name} onChange={(e) => setExamForm({ ...examForm, name: e.target.value })} placeholder="如期中考试" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label>考试日期</Label><Input type="date" value={examForm.examDate} onChange={(e) => setExamForm({ ...examForm, examDate: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>类型</Label><Input value={examForm.type} onChange={(e) => setExamForm({ ...examForm, type: e.target.value })} placeholder="如 阶段测试" /></div>
+          </div>
+          <div className="space-y-1.5"><Label>备注</Label><Input value={examForm.remark} onChange={(e) => setExamForm({ ...examForm, remark: e.target.value })} /></div>
+          <Button onClick={async () => { if (!examForm.name.trim()) { toast.error("名称不能为空"); return; } await createExamMut.mutateAsync({ ...examForm, examDate: examForm.examDate || null }); }} disabled={createExamMut.isPending} className="w-full">{createExamMut.isPending ? "创建中…" : "创建"}</Button>
+        </div>
+      </Dialog>
+    </div>
+  );
+}
