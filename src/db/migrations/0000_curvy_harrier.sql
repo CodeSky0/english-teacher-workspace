@@ -47,7 +47,7 @@ CREATE TABLE "user" (
 	"display_name" text,
 	"title" text,
 	"timezone" text DEFAULT 'Asia/Shanghai',
-	"default_class_id" text,
+	"default_class_id" uuid,
 	"sample_initialized" boolean DEFAULT false NOT NULL,
 	CONSTRAINT "user_email_unique" UNIQUE("email")
 );
@@ -80,7 +80,7 @@ CREATE TABLE "students" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"class_id" text NOT NULL,
+	"class_id" uuid NOT NULL,
 	"name" text NOT NULL,
 	"en_name" text,
 	"gender" "gender" DEFAULT 'unknown',
@@ -95,7 +95,7 @@ CREATE TABLE "timetable_cells" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"class_id" text NOT NULL,
+	"class_id" uuid NOT NULL,
 	"day_of_week" integer NOT NULL,
 	"period_no" integer NOT NULL,
 	"subject" text,
@@ -120,7 +120,7 @@ CREATE TABLE "lesson_plans" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"class_id" text,
+	"class_id" uuid,
 	"title" text NOT NULL,
 	"textbook_version" text,
 	"grade_level" text,
@@ -159,7 +159,7 @@ CREATE TABLE "homework" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"class_id" text,
+	"class_id" uuid,
 	"title" text NOT NULL,
 	"assign_date" date,
 	"due_date" date,
@@ -167,7 +167,7 @@ CREATE TABLE "homework" (
 	"content" text,
 	"status" "homework_status" DEFAULT 'draft' NOT NULL,
 	"remark" text,
-	"vocab_unit_id" text,
+	"vocab_unit_id" uuid,
 	"is_sample" boolean DEFAULT false NOT NULL
 );
 --> statement-breakpoint
@@ -177,8 +177,8 @@ CREATE TABLE "homework_records" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"homework_id" text NOT NULL,
-	"student_id" text NOT NULL,
+	"homework_id" uuid NOT NULL,
+	"student_id" uuid NOT NULL,
 	"status" "homework_record_status" DEFAULT 'unsubmitted' NOT NULL,
 	"score" text,
 	"remark" text
@@ -190,8 +190,8 @@ CREATE TABLE "exam_scores" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"exam_id" text NOT NULL,
-	"student_id" text NOT NULL,
+	"exam_id" uuid NOT NULL,
+	"student_id" uuid NOT NULL,
 	"listening_score" numeric,
 	"speaking_score" numeric,
 	"written_score" numeric,
@@ -206,7 +206,7 @@ CREATE TABLE "exams" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"class_id" text NOT NULL,
+	"class_id" uuid NOT NULL,
 	"name" text NOT NULL,
 	"exam_date" date,
 	"type" text,
@@ -232,7 +232,7 @@ CREATE TABLE "vocab_words" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"unit_id" text NOT NULL,
+	"unit_id" uuid NOT NULL,
 	"word" text NOT NULL,
 	"meaning" text,
 	"phonetic_us" text,
@@ -248,7 +248,7 @@ CREATE TABLE "dictation_lists" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"class_id" text,
+	"class_id" uuid,
 	"name" text NOT NULL,
 	"dictation_date" date,
 	"is_sample" boolean DEFAULT false NOT NULL
@@ -260,9 +260,9 @@ CREATE TABLE "dictation_results" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"list_id" text NOT NULL,
-	"student_id" text NOT NULL,
-	"word_id" text NOT NULL,
+	"list_id" uuid NOT NULL,
+	"student_id" uuid NOT NULL,
+	"word_id" uuid NOT NULL,
 	"is_correct" boolean
 );
 --> statement-breakpoint
@@ -272,8 +272,8 @@ CREATE TABLE "dictation_words" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"list_id" text NOT NULL,
-	"vocab_word_id" text,
+	"list_id" uuid NOT NULL,
+	"vocab_word_id" uuid,
 	"word" text NOT NULL,
 	"meaning" text
 );
@@ -298,8 +298,8 @@ CREATE TABLE "attendance_records" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"class_id" text NOT NULL,
-	"student_id" text NOT NULL,
+	"class_id" uuid NOT NULL,
+	"student_id" uuid NOT NULL,
 	"attendance_date" date NOT NULL,
 	"status" "attendance_status" DEFAULT 'unrecorded' NOT NULL,
 	"remark" text
@@ -311,9 +311,9 @@ CREATE TABLE "classroom_points" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"class_id" text NOT NULL,
-	"session_id" text,
-	"student_id" text NOT NULL,
+	"class_id" uuid NOT NULL,
+	"session_id" uuid,
+	"student_id" uuid NOT NULL,
 	"group_name" text,
 	"points" integer DEFAULT 0 NOT NULL,
 	"reason" text
@@ -324,7 +324,7 @@ CREATE TABLE "classroom_poll_options" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
-	"poll_id" text NOT NULL,
+	"poll_id" uuid NOT NULL,
 	"label" text NOT NULL,
 	"vote_count" integer DEFAULT 0 NOT NULL
 );
@@ -334,9 +334,9 @@ CREATE TABLE "classroom_poll_votes" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
-	"poll_id" text NOT NULL,
-	"option_id" text NOT NULL,
-	"student_id" text
+	"poll_id" uuid NOT NULL,
+	"option_id" uuid NOT NULL,
+	"student_id" uuid
 );
 --> statement-breakpoint
 CREATE TABLE "classroom_polls" (
@@ -345,8 +345,8 @@ CREATE TABLE "classroom_polls" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"class_id" text NOT NULL,
-	"session_id" text,
+	"class_id" uuid NOT NULL,
+	"session_id" uuid,
 	"question" text NOT NULL,
 	"type" "poll_type" DEFAULT 'single_choice' NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL
@@ -358,7 +358,7 @@ CREATE TABLE "classroom_sessions" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"class_id" text NOT NULL,
+	"class_id" uuid NOT NULL,
 	"session_date" date NOT NULL,
 	"activity" text,
 	"note" text
@@ -370,9 +370,9 @@ CREATE TABLE "student_feedback" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	"user_id" text NOT NULL,
-	"class_id" text NOT NULL,
-	"student_id" text NOT NULL,
-	"session_id" text,
+	"class_id" uuid NOT NULL,
+	"student_id" uuid NOT NULL,
+	"session_id" uuid,
 	"feedback_date" date,
 	"tag" text NOT NULL,
 	"type" "feedback_type" DEFAULT 'positive' NOT NULL,

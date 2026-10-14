@@ -17,7 +17,7 @@ const updateSchema = z.object({
   displayName: z.string().optional(),
   title: z.string().optional(),
   timezone: z.string().optional(),
-  defaultClassId: z.string().nullable().optional(),
+  defaultClassId: z.string().uuid().nullable().optional(),
 });
 
 routes.patch("/", async (c) => {

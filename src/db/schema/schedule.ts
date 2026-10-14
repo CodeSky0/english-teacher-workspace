@@ -1,4 +1,4 @@
-import { pgTable, text, integer, time, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, integer, time, index } from "drizzle-orm/pg-core";
 import { baseColumns } from "./_common";
 import { user } from "./auth";
 import { classes } from "./classes";
@@ -24,7 +24,7 @@ export const timetableCells = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    classId: text("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
+    classId: uuid("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
     dayOfWeek: integer("day_of_week").notNull(),
     periodNo: integer("period_no").notNull(),
     subject: text("subject"),

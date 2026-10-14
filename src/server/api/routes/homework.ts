@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { eq, and, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
 import { homework, homeworkRecords } from "@/db/schema/homework";
-import { notFound } from "../errors";
+import { notFound, unprocessable } from "../errors";
 
 const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
 
@@ -53,8 +53,12 @@ routes.get("/:id/records", async (c) => {
 routes.post("/:id/records", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const body = await c.req.json();
-  const [record] = await db.insert(homeworkRecords).values({ ...body, homeworkId: id, userId: user.id }).returning();
+  const [hw] = await db.select().from(homework).where(and(eq(homework.id, id), eq(homework.userId, user.id), isNull(homework.deletedAt)));
+  if (!hw) return notFound(c);
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, homeworkId: _hid, ...rest } = body;
+  const [record] = await db.insert(homeworkRecords).values({ ...rest, homeworkId: id, userId: user.id }).returning();
   return c.json({ data: record }, 201);
 });
 

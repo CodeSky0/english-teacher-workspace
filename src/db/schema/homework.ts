@@ -1,4 +1,4 @@
-import { pgTable, text, date, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, date, boolean, index } from "drizzle-orm/pg-core";
 import { baseColumns, homeworkStatusEnum, homeworkRecordStatusEnum } from "./_common";
 import { user } from "./auth";
 import { classes } from "./classes";
@@ -10,7 +10,7 @@ export const homework = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    classId: text("class_id").references(() => classes.id, { onDelete: "set null" }),
+    classId: uuid("class_id").references(() => classes.id, { onDelete: "set null" }),
     title: text("title").notNull(),
     assignDate: date("assign_date"),
     dueDate: date("due_date"),
@@ -18,7 +18,7 @@ export const homework = pgTable(
     content: text("content"),
     status: homeworkStatusEnum("status").notNull().default("draft"),
     remark: text("remark"),
-    vocabUnitId: text("vocab_unit_id").references(() => vocabUnits.id, { onDelete: "set null" }),
+    vocabUnitId: uuid("vocab_unit_id").references(() => vocabUnits.id, { onDelete: "set null" }),
     isSample: boolean("is_sample").notNull().default(false),
   },
   (t) => ({
@@ -32,8 +32,8 @@ export const homeworkRecords = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    homeworkId: text("homework_id").notNull().references(() => homework.id, { onDelete: "cascade" }),
-    studentId: text("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+    homeworkId: uuid("homework_id").notNull().references(() => homework.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
     status: homeworkRecordStatusEnum("status").notNull().default("unsubmitted"),
     score: text("score"),
     remark: text("remark"),

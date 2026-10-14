@@ -63,7 +63,7 @@ export default function StudentsPage() {
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/students/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success("'已删除"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success("已删除"); },
     onError: (e: any) => toast.error(e.message || "删除失败"),
   });
 

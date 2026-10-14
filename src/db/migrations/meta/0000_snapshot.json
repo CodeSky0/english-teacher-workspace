@@ -1,5 +1,5 @@
 {
-  "id": "25ff6160-7e7f-403a-8339-b71c4adeb121",
+  "id": "fa3b79ce-a15d-45a0-a4b2-df81f31a9f49",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -266,7 +266,7 @@
         },
         "default_class_id": {
           "name": "default_class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -512,7 +512,7 @@
         },
         "class_id": {
           "name": "class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -682,7 +682,7 @@
         },
         "class_id": {
           "name": "class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -964,7 +964,7 @@
         },
         "class_id": {
           "name": "class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -1330,7 +1330,7 @@
         },
         "class_id": {
           "name": "class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -1380,7 +1380,7 @@
         },
         "vocab_unit_id": {
           "name": "vocab_unit_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -1510,13 +1510,13 @@
         },
         "homework_id": {
           "name": "homework_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "student_id": {
           "name": "student_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -1674,13 +1674,13 @@
         },
         "exam_id": {
           "name": "exam_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "student_id": {
           "name": "student_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -1855,7 +1855,7 @@
         },
         "class_id": {
           "name": "class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -2118,7 +2118,7 @@
         },
         "unit_id": {
           "name": "unit_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -2291,7 +2291,7 @@
         },
         "class_id": {
           "name": "class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -2420,19 +2420,19 @@
         },
         "list_id": {
           "name": "list_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "student_id": {
           "name": "student_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "word_id": {
           "name": "word_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -2563,13 +2563,13 @@
         },
         "list_id": {
           "name": "list_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "vocab_word_id": {
           "name": "vocab_word_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -2840,13 +2840,13 @@
         },
         "class_id": {
           "name": "class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "student_id": {
           "name": "student_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -3025,19 +3025,19 @@
         },
         "class_id": {
           "name": "class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "session_id": {
           "name": "session_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
         "student_id": {
           "name": "student_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -3201,7 +3201,7 @@
         },
         "poll_id": {
           "name": "poll_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -3290,19 +3290,19 @@
         },
         "poll_id": {
           "name": "poll_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "option_id": {
           "name": "option_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "student_id": {
           "name": "student_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         }
@@ -3397,13 +3397,13 @@
         },
         "class_id": {
           "name": "class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "session_id": {
           "name": "session_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -3547,7 +3547,7 @@
         },
         "class_id": {
           "name": "class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -3675,19 +3675,19 @@
         },
         "class_id": {
           "name": "class_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "student_id": {
           "name": "student_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
         "session_id": {
           "name": "session_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },

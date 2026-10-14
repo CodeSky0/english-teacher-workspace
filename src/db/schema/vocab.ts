@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, boolean, index } from "drizzle-orm/pg-core";
 import { baseColumns } from "./_common";
 import { user } from "./auth";
 
@@ -23,7 +23,7 @@ export const vocabWords = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    unitId: text("unit_id").notNull().references(() => vocabUnits.id, { onDelete: "cascade" }),
+    unitId: uuid("unit_id").notNull().references(() => vocabUnits.id, { onDelete: "cascade" }),
     word: text("word").notNull(),
     meaning: text("meaning"),
     phoneticUs: text("phonetic_us"),

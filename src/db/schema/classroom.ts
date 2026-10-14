@@ -1,4 +1,4 @@
-import { pgTable, text, date, boolean, integer, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, date, boolean, integer, jsonb, index } from "drizzle-orm/pg-core";
 import { baseColumns, attendanceStatusEnum, pollTypeEnum, feedbackTypeEnum } from "./_common";
 import { user } from "./auth";
 import { classes } from "./classes";
@@ -9,8 +9,8 @@ export const attendanceRecords = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    classId: text("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
-    studentId: text("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+    classId: uuid("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
     attendanceDate: date("attendance_date").notNull(),
     status: attendanceStatusEnum("status").notNull().default("unrecorded"),
     remark: text("remark"),
@@ -28,7 +28,7 @@ export const classroomSessions = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    classId: text("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
+    classId: uuid("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
     sessionDate: date("session_date").notNull(),
     activity: text("activity"),
     note: text("note"),
@@ -44,9 +44,9 @@ export const classroomPoints = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    classId: text("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
-    sessionId: text("session_id").references(() => classroomSessions.id, { onDelete: "set null" }),
-    studentId: text("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+    classId: uuid("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => classroomSessions.id, { onDelete: "set null" }),
+    studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
     groupName: text("group_name"),
     points: integer("points").notNull().default(0),
     reason: text("reason"),
@@ -63,9 +63,9 @@ export const studentFeedback = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    classId: text("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
-    studentId: text("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
-    sessionId: text("session_id").references(() => classroomSessions.id, { onDelete: "set null" }),
+    classId: uuid("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => classroomSessions.id, { onDelete: "set null" }),
     feedbackDate: date("feedback_date"),
     tag: text("tag").notNull(),
     type: feedbackTypeEnum("type").notNull().default("positive"),
@@ -82,8 +82,8 @@ export const classroomPolls = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    classId: text("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
-    sessionId: text("session_id").references(() => classroomSessions.id, { onDelete: "set null" }),
+    classId: uuid("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => classroomSessions.id, { onDelete: "set null" }),
     question: text("question").notNull(),
     type: pollTypeEnum("type").notNull().default("single_choice"),
     isActive: boolean("is_active").notNull().default(true),
@@ -98,7 +98,7 @@ export const classroomPollOptions = pgTable(
   "classroom_poll_options",
   {
     ...baseColumns,
-    pollId: text("poll_id").notNull().references(() => classroomPolls.id, { onDelete: "cascade" }),
+    pollId: uuid("poll_id").notNull().references(() => classroomPolls.id, { onDelete: "cascade" }),
     label: text("label").notNull(),
     voteCount: integer("vote_count").notNull().default(0),
   },
@@ -111,9 +111,9 @@ export const classroomPollVotes = pgTable(
   "classroom_poll_votes",
   {
     ...baseColumns,
-    pollId: text("poll_id").notNull().references(() => classroomPolls.id, { onDelete: "cascade" }),
-    optionId: text("option_id").notNull().references(() => classroomPollOptions.id, { onDelete: "cascade" }),
-    studentId: text("student_id"),
+    pollId: uuid("poll_id").notNull().references(() => classroomPolls.id, { onDelete: "cascade" }),
+    optionId: uuid("option_id").notNull().references(() => classroomPollOptions.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id"),
   },
   (t) => ({
     pollIdx: index("poll_votes_poll_idx").on(t.pollId),

@@ -1,4 +1,4 @@
-import { pgTable, text, date, boolean, numeric, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, date, boolean, numeric, index } from "drizzle-orm/pg-core";
 import { baseColumns } from "./_common";
 import { user } from "./auth";
 import { classes } from "./classes";
@@ -9,7 +9,7 @@ export const exams = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    classId: text("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
+    classId: uuid("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     examDate: date("exam_date"),
     type: text("type"),
@@ -27,8 +27,8 @@ export const examScores = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    examId: text("exam_id").notNull().references(() => exams.id, { onDelete: "cascade" }),
-    studentId: text("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+    examId: uuid("exam_id").notNull().references(() => exams.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
     listeningScore: numeric("listening_score"),
     speakingScore: numeric("speaking_score"),
     writtenScore: numeric("written_score"),

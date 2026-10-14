@@ -93,7 +93,7 @@ function RollCallTool() {
   const [noRepeat, setNoRepeat] = useState(true);
 
   const roll = useCallback(() => {
-    const pool = noRepeat ? students.filter((s) => !history.includes(s)) : students;
+    const pool = noRepeat ? students.filter((s) => !history.some((h) => h.id === s.id)) : students;
     if (pool.length === 0) { toast.info(noRepeat ? "所有人都已点名" : "没有学生"); return; }
     const next = pool[Math.floor(Math.random() * pool.length)];
     setPicked(next);
@@ -126,13 +126,13 @@ function RollCallTool() {
 }
 
 function PointsTool() {
-  const { students } = useStudents();
+  const { students, currentClass } = useStudents();
   const qc = useQueryClient();
   const [groups, setGroups] = useState<Record<string, number>>({});
   const [groupName, setGroupName] = useState("");
 
   const addPointMut = useMutation({
-    mutationFn: (d: { studentId: string; points: number; groupName: string }) => apiClient.post("/classroom/points", { ...d, classId: useCurrentClass().currentClass?.id }),
+    mutationFn: (d: { studentId: string; points: number; groupName: string }) => apiClient.post("/classroom/points", { ...d, classId: currentClass?.id }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["classroom-points"] }),
   });
 
@@ -199,7 +199,7 @@ function TimerTool() {
 }
 
 function FeedbackTool() {
-  const { students } = useStudents();
+  const { students, currentClass } = useStudents();
   const TAGS = ["积极发言", "朗读流利", "表达清晰", "认真听讲", "主动合作", "需要关注", "上课走神"];
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const addFeedbackMut = useMutation({ mutationFn: (d: any) => apiClient.post("/classroom/feedback", d), onSuccess: () => toast.success("已记录"), onError: (e: any) => toast.error(e.message) });
@@ -212,7 +212,7 @@ function FeedbackTool() {
       </select>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         {TAGS.map((tag) => (
-          <Button key={tag} variant="outline" disabled={!selectedStudent} onClick={() => addFeedbackMut.mutate({ studentId: selectedStudent, tag, classId: useCurrentClass().currentClass?.id, type: tag.includes("需要") || tag.includes("走神") ? "negative" : "positive" })}>{tag}</Button>
+          <Button key={tag} variant="outline" disabled={!selectedStudent} onClick={() => addFeedbackMut.mutate({ studentId: selectedStudent, tag, classId: currentClass?.id, type: tag.includes("需要") || tag.includes("走神") ? "negative" : "positive" })}>{tag}</Button>
         ))}
       </div>
     </div>

@@ -16,8 +16,8 @@ const templates: Record<string, string> = {
 routes.get("/templates", (c) => c.json({ data: Object.keys(templates) }));
 
 routes.post("/generate", async (c) => {
-  const body = await c.req.json();
-  const { template, context } = body;
+  const body = await c.req.json().catch(() => ({}));
+  const { template } = body ?? {};
   const content = templates[template] || "未知模板";
   return c.json({
     data: {
@@ -55,6 +55,9 @@ routes.post("/chat", async (c) => {
       }),
     });
     const json = await res.json();
+    if (!res.ok) {
+      return c.json({ error: { code: "AI_ERROR", message: json?.error?.message || "AI 服务返回错误" } }, 502);
+    }
     return c.json({ data: { content: json.choices?.[0]?.message?.content || "", isTemplate: false } });
   } catch {
     return c.json({ error: { code: "AI_ERROR", message: "AI 服务调用失败" } }, 500);

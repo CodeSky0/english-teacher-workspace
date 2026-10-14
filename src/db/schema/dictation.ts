@@ -1,4 +1,4 @@
-import { pgTable, text, date, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, date, boolean, index } from "drizzle-orm/pg-core";
 import { baseColumns } from "./_common";
 import { user } from "./auth";
 import { classes } from "./classes";
@@ -9,7 +9,7 @@ export const dictationLists = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    classId: text("class_id").references(() => classes.id, { onDelete: "set null" }),
+    classId: uuid("class_id").references(() => classes.id, { onDelete: "set null" }),
     name: text("name").notNull(),
     dictationDate: date("dictation_date"),
     isSample: boolean("is_sample").notNull().default(false),
@@ -25,8 +25,8 @@ export const dictationWords = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    listId: text("list_id").notNull().references(() => dictationLists.id, { onDelete: "cascade" }),
-    vocabWordId: text("vocab_word_id").references(() => vocabWords.id, { onDelete: "set null" }),
+    listId: uuid("list_id").notNull().references(() => dictationLists.id, { onDelete: "cascade" }),
+    vocabWordId: uuid("vocab_word_id").references(() => vocabWords.id, { onDelete: "set null" }),
     word: text("word").notNull(),
     meaning: text("meaning"),
   },
@@ -41,9 +41,9 @@ export const dictationResults = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    listId: text("list_id").notNull().references(() => dictationLists.id, { onDelete: "cascade" }),
-    studentId: text("student_id").notNull(),
-    wordId: text("word_id").notNull(),
+    listId: uuid("list_id").notNull().references(() => dictationLists.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull(),
+    wordId: uuid("word_id").notNull(),
     isCorrect: boolean("is_correct"),
   },
   (t) => ({

@@ -73,23 +73,46 @@ routes.post("/import", async (c) => {
   const counts: Record<string, number> = {};
 
   try {
-    if (mode === "overwrite") {
-      await db.delete(schema.classes).where(eq(schema.classes.userId, u.id));
-      await db.delete(schema.students).where(eq(schema.students.userId, u.id));
-    }
+    const result = await db.transaction(async (tx) => {
+      if (mode === "overwrite") {
+        await tx.delete(schema.students).where(eq(schema.students.userId, u.id));
+        await tx.delete(schema.classes).where(eq(schema.classes.userId, u.id));
+      }
 
-    if (data.classes?.length) {
-      const rows = data.classes.map((r: any) => ({ ...r, id: undefined, userId: u.id, deletedAt: null }));
-      const inserted = await db.insert(schema.classes).values(rows).returning();
-      counts.classes = inserted.length;
-    }
-    if (data.students?.length) {
-      const rows = data.students.map((r: any) => ({ ...r, id: undefined, userId: u.id, deletedAt: null }));
-      const inserted = await db.insert(schema.students).values(rows).returning();
-      counts.students = inserted.length;
-    }
+      const classIdMap = new Map<string, string>();
 
-    return c.json({ data: { counts, mode } });
+      if (data.classes?.length) {
+        const rows = data.classes.map((r: any) => ({
+          name: r.name, enName: r.enName, gradeLevel: r.gradeLevel,
+          academicYear: r.academicYear, isSample: r.isSample ?? false,
+          userId: u.id, deletedAt: null,
+        }));
+        const inserted = await tx.insert(schema.classes).values(rows).returning();
+        data.classes.forEach((r: any, i: number) => {
+          if (r.id) classIdMap.set(r.id, inserted[i].id);
+        });
+        counts.classes = inserted.length;
+      }
+
+      if (data.students?.length) {
+        const rows = data.students
+          .map((r: any) => ({
+            name: r.name, enName: r.enName, gender: r.gender ?? "unknown",
+            studentNo: r.studentNo, seatNo: r.seatNo, isSample: r.isSample ?? false,
+            classId: r.classId ? (classIdMap.get(r.classId) ?? null) : null,
+            userId: u.id, deletedAt: null,
+          }))
+          .filter((r: any) => r.classId);
+        if (rows.length) {
+          const inserted = await tx.insert(schema.students).values(rows).returning();
+          counts.students = inserted.length;
+        }
+      }
+
+      return counts;
+    });
+
+    return c.json({ data: { counts: result, mode } });
   } catch (e: any) {
     return c.json({ error: { code: "IMPORT_FAILED", message: e.message || "导入失败" } }, 500);
   }

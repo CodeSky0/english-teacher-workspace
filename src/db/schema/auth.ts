@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -11,7 +11,7 @@ export const user = pgTable("user", {
   displayName: text("display_name"),
   title: text("title"),
   timezone: text("timezone").default("Asia/Shanghai"),
-  defaultClassId: text("default_class_id"),
+  defaultClassId: uuid("default_class_id"),
   sampleInitialized: boolean("sample_initialized").notNull().default(false),
 });
 

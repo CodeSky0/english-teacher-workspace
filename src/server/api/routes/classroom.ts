@@ -5,41 +5,51 @@ import {
   attendanceRecords, classroomSessions, classroomPoints,
   studentFeedback, classroomPolls, classroomPollOptions,
 } from "@/db/schema/classroom";
-import { notFound } from "../errors";
+import { notFound, unprocessable } from "../errors";
 
 const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
 
 function makeSubRoutes(table: any, extraFields: string[] = []) {
   const sub = new Hono<{ Variables: { user: { id: string }; session: any } }>();
+  const hasUser = !!table.userId;
   sub.get("/", async (c) => {
     const user = c.get("user");
     const classId = c.req.query("classId");
-    const conds = [eq(table.userId, user.id), isNull(table.deletedAt)];
+    const conds: any[] = [isNull(table.deletedAt)];
+    if (hasUser) conds.push(eq(table.userId, user.id));
     if (classId && table.classId) conds.push(eq(table.classId, classId));
     const records = await db.select().from(table).where(and(...conds));
     return c.json({ data: records });
   });
   sub.post("/", async (c) => {
     const user = c.get("user");
-    const body = await c.req.json();
-    const [record] = await db.insert(table).values({ ...body, userId: user.id }).returning();
+    const body = await c.req.json().catch(() => null);
+    if (!body) return unprocessable(c, "请求体不合法");
+    const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...rest } = body;
+    const values = hasUser ? { ...rest, userId: user.id } : rest;
+    const [record] = await db.insert(table).values(values).returning();
     return c.json({ data: record }, 201);
   });
   sub.patch("/:id", async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");
-    const body = await c.req.json();
-    const { id: _id, userId: _uid, createdAt: _ca, ...updateData } = body;
+    const body = await c.req.json().catch(() => null);
+    if (!body) return unprocessable(c, "请求体不合法");
+    const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...updateData } = body;
+    const conds: any[] = [eq(table.id, id), isNull(table.deletedAt)];
+    if (hasUser) conds.push(eq(table.userId, user.id));
     const [record] = await db.update(table).set({ ...updateData, updatedAt: new Date() })
-      .where(and(eq(table.id, id), eq(table.userId, user.id), isNull(table.deletedAt))).returning();
+      .where(and(...conds)).returning();
     if (!record) return notFound(c);
     return c.json({ data: record });
   });
   sub.delete("/:id", async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");
+    const conds: any[] = [eq(table.id, id), isNull(table.deletedAt)];
+    if (hasUser) conds.push(eq(table.userId, user.id));
     const [record] = await db.update(table).set({ deletedAt: new Date(), updatedAt: new Date() })
-      .where(and(eq(table.id, id), eq(table.userId, user.id), isNull(table.deletedAt))).returning();
+      .where(and(...conds)).returning();
     if (!record) return notFound(c);
     return c.json({ data: record });
   });

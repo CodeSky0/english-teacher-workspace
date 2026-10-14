@@ -12,9 +12,13 @@ export function createResourceRoutes(table: Table) {
   routes.get("/", async (c) => {
     const user = c.get("user");
     const classId = c.req.query("classId");
-    const conditions = [eq(table.userId, user.id), isNull(table.deletedAt)];
+    const listId = c.req.query("listId");
+    const conditions: any[] = [eq(table.userId, user.id), isNull(table.deletedAt)];
     if (classId && table.classId) {
       conditions.push(eq(table.classId, classId));
+    }
+    if (listId && table.listId) {
+      conditions.push(eq(table.listId, listId));
     }
     const records = await db.select().from(table).where(and(...conditions));
     return c.json({ data: records });
@@ -32,7 +36,8 @@ export function createResourceRoutes(table: Table) {
     const user = c.get("user");
     const body = await c.req.json().catch(() => null);
     if (!body) return unprocessable(c, "请求体不合法");
-    const [record] = await db.insert(table).values({ ...body, userId: user.id }).returning();
+    const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...rest } = body;
+    const [record] = await db.insert(table).values({ ...rest, userId: user.id }).returning();
     return c.json({ data: record }, 201);
   });
 
@@ -41,7 +46,7 @@ export function createResourceRoutes(table: Table) {
     const id = c.req.param("id");
     const body = await c.req.json().catch(() => null);
     if (!body) return unprocessable(c, "请求体不合法");
-    const { id: _id, userId: _uid, createdAt: _ca, ...updateData } = body;
+    const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...updateData } = body;
     const [record] = await db.update(table)
       .set({ ...updateData, updatedAt: new Date() })
       .where(and(eq(table.id, id), eq(table.userId, user.id), isNull(table.deletedAt)))

@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, boolean, integer, index } from "drizzle-orm/pg-core";
 import { baseColumns, genderEnum } from "./_common";
 import { user } from "./auth";
 
@@ -24,7 +24,7 @@ export const students = pgTable(
   {
     ...baseColumns,
     userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    classId: text("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
+    classId: uuid("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     enName: text("en_name"),
     gender: genderEnum("gender").default("unknown"),
