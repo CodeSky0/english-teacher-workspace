@@ -1,10 +1,6 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: ["class"],
-  content: [
-    "./src/**/*.{ts,tsx}",
-  ],
   theme: {
     extend: {
       colors: {
@@ -50,12 +46,8 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-      },
     },
   },
-  plugins: [require("tailwindcss-animate")],
 };
 
 export default config;

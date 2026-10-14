@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "../styles/yohaku-tokens.css";
+@config "../../tailwind.config.ts";
 
 @layer base {
   :root {
@@ -40,7 +40,6 @@
     --c-other-bg: #f1f5f9;
 
     --radius: 0.5rem;
-    --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   }
 
   * {
