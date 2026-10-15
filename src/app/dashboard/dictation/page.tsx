@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useCurrentClass, useClasses } from "@/hooks/use-classes";
@@ -11,23 +11,61 @@ import { Input, Label } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
-import { Plus, Trash2, Headphones, ChevronRight, Volume2 } from "lucide-react";
+import { ImportDialog } from "@/components/common/import-dialog";
+import { downloadExport } from "@/lib/excel/client";
+import {
+  Plus, Trash2, Headphones, ChevronRight, Volume2, Upload, Download,
+  Check, X, Search, Library, Loader2, GraduationCap,
+} from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type DictList = { id: string; name: string; classId: string | null; dictationDate: string | null };
-type DictWord = { id: string; listId: string; word: string; meaning: string | null };
+type DictWord = { id: string; word: string; meaning: string | null };
+type Student = { id: string; name: string; studentNo: string | null; seatNo: number | null };
+type DictResult = { id: string; listId: string; studentId: string; wordId: string; isCorrect: boolean | null };
+type VocabUnitOption = { id: string; name: string };
+
+type CellValue = boolean | null;
+
+const cellKey = (studentId: string, wordId: string) => `${studentId}:${wordId}`;
+
+function accuracyText(correct: number, total: number): string {
+  if (!total) return "—";
+  return `${((correct / total) * 100).toFixed(0)}%`;
+}
 
 export default function DictationPage() {
   const { currentClass } = useCurrentClass();
   const { classes } = useClasses();
   const qc = useQueryClient();
+
   const [selectedList, setSelectedList] = useState<DictList | null>(null);
+  const [tab, setTab] = useState<"words" | "scores">("words");
   const [listDialog, setListDialog] = useState(false);
   const [wordDialog, setWordDialog] = useState(false);
   const [listForm, setListForm] = useState({ name: "", classId: "", dictationDate: "" });
   const [wordForm, setWordForm] = useState({ word: "", meaning: "" });
 
-  const { data: listsData, isLoading } = useQuery({ queryKey: ["dict-lists"], queryFn: () => apiClient.get<{ data: DictList[] }>("/dictation/lists") });
+  // 导入
+  const [importOpen, setImportOpen] = useState(false);
+  const [unitImportOpen, setUnitImportOpen] = useState(false);
+  const [unitImportId, setUnitImportId] = useState("");
+  const [unitImporting, setUnitImporting] = useState(false);
+  const [exporting, setExporting] = useState<"" | "list" | "summary">("");
+
+  // 成绩录入
+  const [scoreClassId, setScoreClassId] = useState("");
+  const [studentFilter, setStudentFilter] = useState("");
+  const [grid, setGrid] = useState<Record<string, CellValue>>({});
+  const [saving, setSaving] = useState(false);
+  const pendingRef = useRef<Record<string, { studentId: string; wordId: string; isCorrect: CellValue }>>({});
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { data: listsData, isLoading } = useQuery({
+    queryKey: ["dict-lists"],
+    queryFn: () => apiClient.get<{ data: DictList[] }>("/dictation/lists"),
+  });
   const lists = listsData?.data ?? [];
 
   const { data: wordsData } = useQuery({
@@ -37,14 +75,225 @@ export default function DictationPage() {
   });
   const words = wordsData?.data ?? [];
 
+  const { data: unitsData } = useQuery({
+    queryKey: ["vocab-units"],
+    queryFn: () => apiClient.get<{ data: VocabUnitOption[] }>("/vocab/units"),
+    enabled: unitImportOpen,
+  });
+  const vocabUnits = unitsData?.data ?? [];
+
+  const effectiveClassId = scoreClassId || selectedList?.classId || currentClass?.id || "";
+
+  const { data: studentsData } = useQuery({
+    queryKey: ["students", effectiveClassId],
+    queryFn: () => apiClient.get<{ data: Student[] }>(`/students?classId=${effectiveClassId}`),
+    enabled: !!effectiveClassId && !!selectedList,
+  });
+  const students = useMemo(() => {
+    const rows = studentsData?.data ?? [];
+    return rows.slice().sort((a, b) => {
+      const sa = a.seatNo ?? Number.MAX_SAFE_INTEGER;
+      const sb = b.seatNo ?? Number.MAX_SAFE_INTEGER;
+      if (sa !== sb) return sa - sb;
+      return a.name.localeCompare(b.name, "zh-CN");
+    });
+  }, [studentsData]);
+
+  const { data: resultsData } = useQuery({
+    queryKey: ["dict-results", selectedList?.id],
+    queryFn: () => apiClient.get<{ data: DictResult[] }>(`/dictation/lists/${selectedList?.id}/results`),
+    enabled: !!selectedList && tab === "scores",
+  });
+  const results = resultsData?.data ?? [];
+
+  // 服务端数据 -> 本地网格（有未保存改动时不覆盖）
+  useEffect(() => {
+    if (Object.keys(pendingRef.current).length > 0) return;
+    const next: Record<string, CellValue> = {};
+    for (const r of results) next[cellKey(r.studentId, r.wordId)] = r.isCorrect;
+    setGrid(next);
+  }, [results]);
+
+  // 切换词表时重置临时状态
+  useEffect(() => {
+    setGrid({});
+    pendingRef.current = {};
+    setStudentFilter("");
+    setTab("words");
+    if (selectedList?.classId) setScoreClassId(selectedList.classId);
+    else if (currentClass?.id) setScoreClassId(currentClass.id);
+  }, [selectedList?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const flush = useCallback(async () => {
+    if (!selectedList) return;
+    const items = Object.values(pendingRef.current);
+    if (items.length === 0) return;
+    pendingRef.current = {};
+    setSaving(true);
+    try {
+      await apiClient.post(`/dictation/lists/${selectedList.id}/results`, { results: items });
+      qc.invalidateQueries({ queryKey: ["dict-results", selectedList.id] });
+    } catch (e: any) {
+      toast.error(e?.message || "成绩保存失败");
+    } finally {
+      setSaving(false);
+    }
+  }, [selectedList, qc]);
+
+  function scheduleFlush() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(flush, 400);
+  }
+
+  function setCell(studentId: string, wordId: string, value: CellValue) {
+    const key = cellKey(studentId, wordId);
+    setGrid((prev) => ({ ...prev, [key]: value }));
+    pendingRef.current[key] = { studentId, wordId, isCorrect: value };
+    scheduleFlush();
+  }
+
+  function toggleCell(studentId: string, wordId: string) {
+    const current = grid[cellKey(studentId, wordId)] ?? null;
+    const next: CellValue = current === null ? true : current === true ? false : null;
+    setCell(studentId, wordId, next);
+  }
+
+  function fillStudent(studentId: string, value: CellValue) {
+    const next = { ...grid };
+    for (const w of words) {
+      const key = cellKey(studentId, w.id);
+      next[key] = value;
+      pendingRef.current[key] = { studentId, wordId: w.id, isCorrect: value };
+    }
+    setGrid(next);
+    scheduleFlush();
+  }
+
+  function fillAll(value: CellValue) {
+    const next = { ...grid };
+    for (const s of students) {
+      for (const w of words) {
+        const key = cellKey(s.id, w.id);
+        next[key] = value;
+        pendingRef.current[key] = { studentId: s.id, wordId: w.id, isCorrect: value };
+      }
+    }
+    setGrid(next);
+    scheduleFlush();
+    toast.success(value === true ? "已标记全班全对" : "已清空本次成绩");
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
   const createListMut = useMutation({ mutationFn: (d: any) => apiClient.post("/dictation/lists", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已创建"); setListDialog(false); }, onError: (e: any) => toast.error(e.message) });
-  const deleteListMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/dictation/lists/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已删除"); }, onError: (e: any) => toast.error(e.message) });
+  const deleteListMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/dictation/lists/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已删除"); setSelectedList(null); }, onError: (e: any) => toast.error(e.message) });
   const createWordMut = useMutation({ mutationFn: (d: any) => apiClient.post("/dictation/words", { ...d, listId: selectedList?.id }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-words"] }); toast.success("已添加"); setWordDialog(false); }, onError: (e: any) => toast.error(e.message) });
   const deleteWordMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/dictation/words/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-words"] }); toast.success("已删除"); }, onError: (e: any) => toast.error(e.message) });
+
+  const filteredStudents = useMemo(() => {
+    if (!studentFilter.trim()) return students;
+    const kw = studentFilter.toLowerCase();
+    return students.filter(
+      (s) => s.name.toLowerCase().includes(kw) || (s.studentNo ?? "").toLowerCase().includes(kw)
+    );
+  }, [students, studentFilter]);
+
+  const studentStats = useMemo(() => {
+    return new Map(
+      students.map((s) => {
+        let correct = 0;
+        let recorded = 0;
+        for (const w of words) {
+          const v = grid[cellKey(s.id, w.id)] ?? null;
+          if (v === true) { correct++; recorded++; }
+          else if (v === false) recorded++;
+        }
+        return [s.id, { correct, recorded, total: words.length }];
+      })
+    );
+  }, [students, words, grid]);
+
+  const wordStats = useMemo(() => {
+    return new Map(
+      words.map((w) => {
+        let wrong = 0;
+        let recorded = 0;
+        for (const s of students) {
+          const v = grid[cellKey(s.id, w.id)] ?? null;
+          if (v === true) recorded++;
+          else if (v === false) { recorded++; wrong++; }
+        }
+        return [w.id, { wrong, recorded }];
+      })
+    );
+  }, [words, students, grid]);
+
+  const classSummary = useMemo(() => {
+    let correct = 0;
+    let recorded = 0;
+    for (const s of students) {
+      const st = studentStats.get(s.id);
+      if (!st) continue;
+      correct += st.correct;
+      recorded += st.recorded;
+    }
+    return { correct, recorded, avg: recorded ? Math.round((correct / recorded) * 1000) / 10 : null };
+  }, [students, studentStats]);
 
   function speak(text: string) {
     if (!("speechSynthesis" in window)) { toast.error("浏览器不支持语音合成"); return; }
     const u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; speechSynthesis.speak(u);
+  }
+
+  async function handleImportWords(rows: Record<string, string>[], mode: "append" | "upsert") {
+    if (!selectedList) return;
+    const res = await apiClient.post<{ data: { created: number; updated: number; skipped: number } }>(
+      "/import/dictation-words",
+      { listId: selectedList.id, rows, mode }
+    );
+    qc.invalidateQueries({ queryKey: ["dict-words", selectedList.id] });
+    const { created, updated, skipped } = res.data;
+    toast.success(`导入完成：新增 ${created} 词${updated ? `，更新 ${updated} 词` : ""}${skipped ? `，跳过重复 ${skipped} 词` : ""}`);
+  }
+
+  async function handleImportFromUnit() {
+    if (!selectedList || !unitImportId) return;
+    setUnitImporting(true);
+    try {
+      const res = await apiClient.get<{ data: { word: string; meaning: string | null }[] }>(
+        `/vocab/words?unitId=${unitImportId}`
+      );
+      const rows = (res.data ?? []).map((w) => ({ word: w.word, meaning: w.meaning ?? "" }));
+      if (rows.length === 0) { toast.warning("该单元没有单词"); return; }
+      await handleImportWords(rows, "append");
+      setUnitImportOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "导入失败");
+    } finally {
+      setUnitImporting(false);
+    }
+  }
+
+  async function handleExport(scope: "list" | "summary") {
+    if (!selectedList) return;
+    setExporting(scope);
+    try {
+      if (scope === "list") {
+        await downloadExport(`/export/dictation/${selectedList.id}`, `听写成绩_${selectedList.name}.xlsx`);
+      } else {
+        if (!effectiveClassId) { toast.error("请先选择班级"); return; }
+        await downloadExport(`/export/dictation-summary?classId=${effectiveClassId}`, "历次听写汇总.xlsx");
+      }
+      toast.success("已导出 Excel");
+    } catch (e: any) {
+      toast.error(e?.message || "导出失败");
+    } finally {
+      setExporting("");
+    }
   }
 
   return (
@@ -54,12 +303,13 @@ export default function DictationPage() {
 
       {!selectedList ? (
         <Card><CardContent className="p-0">
-          {isLoading ? <LoadingState /> : lists.length === 0 ? <EmptyState icon={<Headphones className="h-10 w-10" />} title="暂无听写词表" /> :
+          {isLoading ? <LoadingState /> : lists.length === 0 ? <EmptyState icon={<Headphones className="h-10 w-10" />} title="暂无听写词表" description="新建词表后可导入单词并录入成绩" /> :
             <div className="divide-y divide-line">
               {lists.map((l) => (
                 <div key={l.id} className="flex items-center justify-between p-4 hover:bg-bg/50">
                   <button onClick={() => setSelectedList(l)} className="flex flex-1 items-center gap-2 text-left">
                     <span className="font-medium">{l.name}</span>
+                    <Badge variant="muted">{l.classId ? (classes.find((c) => c.id === l.classId)?.name ?? "已删除班级") : "未关联班级"}</Badge>
                     {l.dictationDate && <Badge variant="muted">{l.dictationDate}</Badge>}
                     <ChevronRight className="h-4 w-4 text-muted" />
                   </button>
@@ -70,30 +320,180 @@ export default function DictationPage() {
         </CardContent></Card>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button onClick={() => setSelectedList(null)} className="text-sm text-primary hover:underline">← 返回</button>
               <span className="text-muted">|</span>
               <h3 className="font-semibold">{selectedList.name}</h3>
               <Badge variant="muted">{words.length} 词</Badge>
+              {saving && <span className="flex items-center gap-1 text-xs text-muted"><Loader2 className="h-3 w-3 animate-spin" />保存中…</span>}
             </div>
-            <Button onClick={() => { setWordForm({ word: "", meaning: "" }); setWordDialog(true); }} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />添加单词</Button>
+            <div className="flex flex-wrap gap-2">
+              <div className="flex rounded-md border border-line p-0.5">
+                <button
+                  onClick={() => setTab("words")}
+                  className={cn("rounded px-3 py-1 text-xs", tab === "words" ? "bg-primary text-white" : "text-muted hover:text-text")}
+                >
+                  单词管理
+                </button>
+                <button
+                  onClick={() => setTab("scores")}
+                  className={cn("rounded px-3 py-1 text-xs", tab === "scores" ? "bg-primary text-white" : "text-muted hover:text-text")}
+                >
+                  成绩录入
+                </button>
+              </div>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4" />导入单词</Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setUnitImportId(""); setUnitImportOpen(true); }}><Library className="h-4 w-4" />从词汇单元导入</Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleExport("list")} disabled={exporting !== ""}>
+                <Download className="h-4 w-4" />
+                {exporting === "list" ? "导出中…" : "导出成绩"}
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleExport("summary")} disabled={exporting !== ""}>
+                <GraduationCap className="h-4 w-4" />
+                {exporting === "summary" ? "导出中…" : "历次汇总"}
+              </Button>
+            </div>
           </div>
-          <Card><CardContent className="p-0">
-            {words.length === 0 ? <EmptyState title="暂无单词" /> :
-              <div className="divide-y divide-line">
-                {words.map((w) => (
-                  <div key={w.id} className="flex items-center justify-between p-4 hover:bg-bg/50">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{w.word}</span>
-                      <button onClick={() => speak(w.word)} className="text-primary hover:text-primary-d"><Volume2 className="h-4 w-4" /></button>
-                      {w.meaning && <span className="text-sm text-muted">{w.meaning}</span>}
+
+          {tab === "words" ? (
+            <Card><CardContent className="p-0">
+              {words.length === 0 ? <EmptyState title="暂无单词" description="可手动添加、Excel 导入或从词汇单元一键导入" /> :
+                <div className="divide-y divide-line">
+                  {words.map((w, i) => (
+                    <div key={w.id} className="flex items-center justify-between p-4 hover:bg-bg/50">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 text-xs text-muted">{i + 1}</span>
+                        <span className="font-medium">{w.word}</span>
+                        <button onClick={() => speak(w.word)} className="text-primary hover:text-primary-d"><Volume2 className="h-4 w-4" /></button>
+                        {w.meaning && <span className="text-sm text-muted">{w.meaning}</span>}
+                      </div>
+                      <button onClick={() => deleteWordMut.mutate(w.id)} className="text-muted hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
                     </div>
-                    <button onClick={() => deleteWordMut.mutate(w.id)} className="text-muted hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+                  ))}
+                </div>}
+              <div className="border-t border-line p-3">
+                <Button size="sm" className="gap-1.5" onClick={() => { setWordForm({ word: "", meaning: "" }); setWordDialog(true); }}><Plus className="h-4 w-4" />添加单词</Button>
+              </div>
+            </CardContent></Card>
+          ) : (
+            <div className="space-y-3">
+              <Card>
+                <CardContent className="flex flex-wrap items-end gap-3 py-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted">听写班级</Label>
+                    <select
+                      value={effectiveClassId}
+                      onChange={(e) => setScoreClassId(e.target.value)}
+                      className="flex h-9 rounded-md border border-line bg-panel px-3 text-sm"
+                    >
+                      <option value="">选择班级</option>
+                      {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
                   </div>
-                ))}
-              </div>}
-          </CardContent></Card>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted">搜索学生</Label>
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted" />
+                      <Input
+                        value={studentFilter}
+                        onChange={(e) => setStudentFilter(e.target.value)}
+                        placeholder="姓名 / 学号"
+                        className="h-9 w-40 pl-8"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => fillAll(true)}>全班全对</Button>
+                    <Button size="sm" variant="outline" onClick={() => fillAll(null)}>清空成绩</Button>
+                  </div>
+                  {classSummary.avg != null && (
+                    <div className="ml-auto flex items-center gap-4 text-sm">
+                      <span className="text-muted">已批改 <b className="text-text">{classSummary.recorded}</b> 格</span>
+                      <span className="text-muted">全班正确率 <b className="text-primary">{classSummary.avg}%</b></span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card><CardContent className="p-0">
+                {words.length === 0 ? <EmptyState title="请先添加听写单词" /> :
+                 students.length === 0 ? <EmptyState title="该班级暂无学生" description="请先在学生管理中添加或导入学生" /> :
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-line bg-panel text-left text-muted">
+                          <th className="sticky left-0 z-10 bg-panel px-3 py-2 font-medium">学生</th>
+                          {words.map((w) => {
+                            const st = wordStats.get(w.id);
+                            return (
+                              <th key={w.id} className="min-w-[64px] px-1 py-2 text-center font-medium">
+                                <div className="flex flex-col items-center">
+                                  <span className="text-text">{w.word}</span>
+                                  {st && st.recorded > 0 && (
+                                    <span className={cn("text-[10px]", st.wrong / st.recorded >= 0.4 ? "text-red-500" : "text-muted")}>
+                                      错 {st.wrong}/{st.recorded}
+                                    </span>
+                                  )}
+                                </div>
+                              </th>
+                            );
+                          })}
+                          <th className="px-3 py-2 text-center font-medium">正确</th>
+                          <th className="px-3 py-2 text-center font-medium">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredStudents.map((st) => {
+                          const stat = studentStats.get(st.id);
+                          return (
+                            <tr key={st.id} className="border-b border-line/50 hover:bg-bg/40">
+                              <td className="sticky left-0 z-10 bg-panel px-3 py-1.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{st.name}</span>
+                                  {st.seatNo != null && <span className="text-xs text-muted">{st.seatNo}号</span>}
+                                </div>
+                              </td>
+                              {words.map((w) => {
+                                const v = grid[cellKey(st.id, w.id)] ?? null;
+                                return (
+                                  <td key={w.id} className="px-1 py-1.5 text-center">
+                                    <button
+                                      onClick={() => toggleCell(st.id, w.id)}
+                                      className={cn(
+                                        "flex h-7 w-12 items-center justify-center rounded border text-xs transition-colors",
+                                        v === true && "border-green-500 bg-green-50 text-green-600",
+                                        v === false && "border-red-400 bg-red-50 text-red-500",
+                                        v === null && "border-line text-muted hover:bg-bg"
+                                      )}
+                                      title="点击切换：正确 / 错误 / 未批改"
+                                    >
+                                      {v === true ? <Check className="h-3.5 w-3.5" /> : v === false ? <X className="h-3.5 w-3.5" /> : ""}
+                                    </button>
+                                  </td>
+                                );
+                              })}
+                              <td className="px-3 py-1.5 text-center">
+                                <span className="font-medium">{stat?.correct ?? 0}</span>
+                                <span className="text-xs text-muted">/{words.length}</span>
+                                <div className="text-xs text-muted">{accuracyText(stat?.correct ?? 0, words.length)}</div>
+                              </td>
+                              <td className="px-3 py-1.5">
+                                <div className="flex gap-1">
+                                  <button onClick={() => fillStudent(st.id, true)} className="rounded border border-line px-1.5 py-0.5 text-[10px] text-muted hover:text-green-600">全对</button>
+                                  <button onClick={() => fillStudent(st.id, null)} className="rounded border border-line px-1.5 py-0.5 text-[10px] text-muted hover:text-red-500">清空</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>}
+              </CardContent></Card>
+              <p className="text-xs text-muted">点击格子循环切换「正确 → 错误 → 未批改」，改动会自动保存（约 0.4 秒后写入）。</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -117,6 +517,32 @@ export default function DictationPage() {
           <Button onClick={async () => { if (!wordForm.word.trim()) { toast.error("单词不能为空"); return; } await createWordMut.mutateAsync(wordForm); }} disabled={createWordMut.isPending} className="w-full">添加</Button>
         </div>
       </Dialog>
+
+      <Dialog open={unitImportOpen} onClose={() => setUnitImportOpen(false)} title="从词汇单元导入">
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>词汇单元</Label>
+            <select value={unitImportId} onChange={(e) => setUnitImportId(e.target.value)} className="flex h-9 w-full rounded-md border border-line bg-panel px-3 text-sm">
+              <option value="">请选择</option>
+              {vocabUnits.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+          <p className="text-xs text-muted">导入后会自动跳过与当前词表重复的单词。</p>
+          <Button onClick={handleImportFromUnit} disabled={!unitImportId || unitImporting} className="w-full">
+            {unitImporting ? "导入中…" : "导入该单元单词"}
+          </Button>
+        </div>
+      </Dialog>
+
+      <ImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        kind="dictation-words"
+        title="导入听写单词"
+        target={`导入到：${selectedList?.name ?? ""}`}
+        confirmLabel="导入单词"
+        onConfirm={handleImportWords}
+      />
     </div>
   );
 }

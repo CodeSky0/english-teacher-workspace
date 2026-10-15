@@ -17,6 +17,9 @@ import { profileRoutes } from "./routes/profile";
 import { recycleRoutes } from "./routes/recycle";
 import { backupRoutes } from "./routes/backup";
 import { aiRoutes } from "./routes/ai";
+import { excelRoutes } from "./routes/excel";
+import { importExportRoutes } from "./routes/import-export";
+import { overviewRoutes } from "./routes/overview";
 
 type AppEnv = {
   Variables: {
@@ -56,6 +59,10 @@ api.route("/classroom", classroomRoutes);
 api.route("/recycle", recycleRoutes);
 api.route("/backup", backupRoutes);
 api.route("/ai", aiRoutes);
+api.route("/excel", excelRoutes);
+api.route("/overview", overviewRoutes);
+// 导入/导出路由自带 /import、/export 前缀，直接挂在 api 根上
+api.route("/", importExportRoutes);
 
 app.route("/api", api);
 

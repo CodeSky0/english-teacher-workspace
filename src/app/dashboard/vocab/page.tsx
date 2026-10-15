@@ -10,7 +10,9 @@ import { Input, Label, Textarea } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
-import { Plus, Pencil, Trash2, BookOpen, Volume2, ChevronRight } from "lucide-react";
+import { ImportDialog } from "@/components/common/import-dialog";
+import { downloadExport } from "@/lib/excel/client";
+import { Plus, Pencil, Trash2, BookOpen, Volume2, ChevronRight, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
 
 type VocabUnit = { id: string; name: string; textbookVersion: string | null; gradeLevel: string | null };
@@ -24,6 +26,10 @@ export default function VocabPage() {
   const [editingWord, setEditingWord] = useState<VocabWord | null>(null);
   const [unitForm, setUnitForm] = useState({ name: "", textbookVersion: "", gradeLevel: "" });
   const [wordForm, setWordForm] = useState({ word: "", meaning: "", phoneticUs: "", partOfSpeech: "", exampleEn: "", exampleZh: "" });
+  const [importOpen, setImportOpen] = useState(false);
+  const [importUnitId, setImportUnitId] = useState("");
+  const [newUnitName, setNewUnitName] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   const { data: unitsData, isLoading } = useQuery({ queryKey: ["vocab-units"], queryFn: () => apiClient.get<{ data: VocabUnit[] }>("/vocab/units") });
   const units = unitsData?.data ?? [];
@@ -40,6 +46,45 @@ export default function VocabPage() {
   const createWordMut = useMutation({ mutationFn: (d: any) => apiClient.post("/vocab/words", { ...d, unitId: selectedUnit?.id }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已添加"); setWordDialog(false); }, onError: (e: any) => toast.error(e.message) });
   const updateWordMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: any }) => apiClient.patch(`/vocab/words/${id}`, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已保存"); setWordDialog(false); }, onError: (e: any) => toast.error(e.message) });
   const deleteWordMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/vocab/words/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已删除"); }, onError: (e: any) => toast.error(e.message) });
+
+  function openImport() {
+    setImportUnitId(selectedUnit?.id ?? "");
+    setNewUnitName("");
+    setImportOpen(true);
+  }
+
+  async function handleImport(rows: Record<string, string>[], mode: "append" | "upsert") {
+    const res = await apiClient.post<{
+      data: {
+        unitId: string; unitName: string; created: number; updated: number; skipped: number;
+        errors: { index: number; message: string }[];
+      };
+    }>("/import/vocab", {
+      unitId: importUnitId || undefined,
+      unitName: importUnitId ? undefined : newUnitName,
+      rows,
+      mode,
+    });
+    const { created, updated, skipped, errors, unitId, unitName } = res.data;
+    qc.invalidateQueries({ queryKey: ["vocab-units"] });
+    qc.invalidateQueries({ queryKey: ["vocab-words"] });
+    toast.success(`导入到「${unitName}」：新增 ${created} 词${updated ? `，更新 ${updated} 词` : ""}${skipped ? `，跳过重复 ${skipped} 词` : ""}`);
+    if (errors?.length) toast.warning(`${errors.length} 行数据有误已忽略`);
+    setSelectedUnit({ id: unitId, name: unitName, textbookVersion: null, gradeLevel: null });
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const path = selectedUnit ? `/export/vocab?unitId=${selectedUnit.id}` : "/export/vocab";
+      await downloadExport(path, `${selectedUnit ? selectedUnit.name : "词汇表"}.xlsx`);
+      toast.success("已导出 Excel");
+    } catch (e: any) {
+      toast.error(e?.message || "导出失败");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   function speak(text: string) {
     if (!("speechSynthesis" in window)) { toast.error("浏览器不支持语音合成"); return; }
@@ -60,7 +105,16 @@ export default function VocabPage() {
   return (
     <div>
       <PageHeader title="词汇中心" description={`共 ${units.length} 个单元`}
-        action={<Button onClick={() => setUnitDialog(true)} className="gap-1.5"><Plus className="h-4 w-4" />新建单元</Button>} />
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="gap-1.5" onClick={openImport}><Upload className="h-4 w-4" />导入 Excel</Button>
+            <Button variant="outline" className="gap-1.5" onClick={handleExport} disabled={exporting}>
+              <Download className="h-4 w-4" />
+              {exporting ? "导出中…" : selectedUnit ? "导出本单元" : "导出全部"}
+            </Button>
+            <Button onClick={() => setUnitDialog(true)} className="gap-1.5"><Plus className="h-4 w-4" />新建单元</Button>
+          </div>
+        } />
 
       {!selectedUnit ? (
         <Card><CardContent className="p-0">
@@ -114,6 +168,36 @@ export default function VocabPage() {
           </CardContent></Card>
         </div>
       )}
+
+      <ImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        kind="vocab"
+        title="导入单词"
+        target="支持中英文表头，重复单词可选择跳过或更新"
+        confirmLabel="导入单词"
+        onConfirm={handleImport}
+        extra={
+          <div className="space-y-2 rounded-md border border-line p-3">
+            <Label>导入到</Label>
+            <select
+              value={importUnitId}
+              onChange={(e) => { setImportUnitId(e.target.value); setNewUnitName(""); }}
+              className="flex h-9 w-full rounded-md border border-line bg-panel px-3 text-sm"
+            >
+              <option value="">＋ 新建单元</option>
+              {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+            {!importUnitId && (
+              <Input
+                value={newUnitName}
+                onChange={(e) => setNewUnitName(e.target.value)}
+                placeholder="新单元名称，如 Unit 3"
+              />
+            )}
+          </div>
+        }
+      />
 
       <Dialog open={unitDialog} onClose={() => setUnitDialog(false)} title="新建词汇单元">
         <div className="space-y-4">

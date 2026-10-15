@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/states";
-import { Plus, Search, Pencil, Trash2, Users } from "lucide-react";
+import { ImportDialog } from "@/components/common/import-dialog";
+import { downloadExport } from "@/lib/excel/client";
+import { Plus, Search, Pencil, Trash2, Users, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,8 @@ export default function StudentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Student | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [form, setForm] = useState({ name: "", enName: "", gender: "unknown", studentNo: "", seatNo: "" });
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -108,6 +112,31 @@ export default function StudentsPage() {
     setDeleteId(null);
   }
 
+  async function handleImport(rows: Record<string, string>[], mode: "append" | "upsert") {
+    const res = await apiClient.post<{
+      data: {
+        created: number; updated: number; skipped: number; errors: { index: number; message: string }[];
+      };
+    }>("/import/students", { classId: currentClass?.id, rows, mode });
+    qc.invalidateQueries({ queryKey: ["students"] });
+    const { created, updated, skipped, errors } = res.data;
+    toast.success(`导入完成：新增 ${created} 人${updated ? `，更新 ${updated} 人` : ""}${skipped ? `，跳过重复 ${skipped} 人` : ""}`);
+    if (errors?.length) toast.warning(`${errors.length} 行数据有误已忽略`);
+  }
+
+  async function handleExport() {
+    if (!currentClass) return;
+    setExporting(true);
+    try {
+      await downloadExport(`/export/students?classId=${currentClass.id}`, `学生名单_${currentClass.name}.xlsx`);
+      toast.success("已导出 Excel");
+    } catch (e: any) {
+      toast.error(e?.message || "导出失败");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   if (classLoading) return <LoadingState />;
   if (!currentClass) {
     return (
@@ -126,10 +155,20 @@ export default function StudentsPage() {
         title="学生管理"
         description={`${currentClass.name} · 共 ${students.length} 名学生`}
         action={
-          <Button onClick={openCreate} className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            添加学生
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="gap-1.5" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4" />
+              导入 Excel
+            </Button>
+            <Button variant="outline" className="gap-1.5" onClick={handleExport} disabled={exporting}>
+              <Download className="h-4 w-4" />
+              {exporting ? "导出中…" : "导出 Excel"}
+            </Button>
+            <Button onClick={openCreate} className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              添加学生
+            </Button>
+          </div>
         }
       />
       <div className="mb-4 flex items-center gap-2">
@@ -213,6 +252,16 @@ export default function StudentsPage() {
           </Button>
         </div>
       </Dialog>
+
+      <ImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        kind="students"
+        title="导入学生名单"
+        target={`导入到：${currentClass?.name ?? ""}`}
+        confirmLabel="导入学生"
+        onConfirm={handleImport}
+      />
 
       <Dialog open={!!deleteId} onClose={() => setDeleteId(null)} title="确认删除">
         <p className="text-sm text-muted">删除后该学生将进入回收站，可在设置中恢复。</p>

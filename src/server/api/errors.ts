@@ -22,6 +22,10 @@ export function notFound(c: Context, msg = "记录不存在") {
   return c.json(apiError("NOT_FOUND", msg), 404);
 }
 
+export function badRequest(c: Context, msg = "请求参数不合法") {
+  return c.json(apiError("BAD_REQUEST", msg), 400);
+}
+
 export function conflict(c: Context, msg = "数据冲突") {
   return c.json(apiError("CONFLICT", msg), 409);
 }

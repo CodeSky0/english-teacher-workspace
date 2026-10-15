@@ -34,7 +34,7 @@ export const navGroups: NavGroup[] = [
     group: "教学准备",
     items: [
       { label: "教学课表", href: "/dashboard/schedule", icon: CalendarDays },
-      { label: "备棵与反思", href: "/dashboard/plans", icon: ClipboardList },
+      { label: "备课与反思", href: "/dashboard/plans", icon: ClipboardList },
       { label: "教学教研", href: "/dashboard/research", icon: PenLine },
     ],
   },
