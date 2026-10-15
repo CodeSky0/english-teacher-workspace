@@ -2,44 +2,68 @@
 @import "../styles/yohaku-tokens.css";
 @config "../../tailwind.config.ts";
 
+/*
+ * Yohaku 设计语言（应用层映射）
+ *
+ * 真正的 token 已在 styles/yohaku-tokens.css 里以 Tailwind v4 @theme 声明
+ * （中性色阶 1-10、和色 info/success/warning/error、accent 梅 ume）。
+ * 本文件把页面里仍在用的旧色板变量（--bg / --panel / --primary / --c-* 等）
+ * 重映射到 Yohaku 的暖羊皮纸 + 暗玫瑰 + 和色，使所有用 bg-panel / text-text /
+ * border-line / bg-primary 的组件自动切换到 Yohaku 设计语言。
+ *
+ * 设计规范参考 @yohaku/design-system/CHEATSHEET.md：
+ *   - n-2 carries surface, ring-border carries division
+ *   - accent 覆盖 ≤5% 表面（仅 CTA / 焦点 / 品牌）
+ *   - body 用 n-9（暖深褐）
+ */
 @layer base {
   :root {
-    --primary: #0e7490;
-    --primary-d: #0c5e75;
-    --primary-l: #e0f2f5;
-    --primary-2: #14b8a6;
+    /* 主色：Yohaku accent 梅 ume（暗玫瑰 #c56473） */
+    --primary: #c56473;
+    --primary-d: #a85463;
+    --primary-l: #f5dde0;
+    --primary-2: #3d6896; /* info 縹蓝（第二主色 / 链接） */
 
-    --accent: #2563eb;
+    --accent: #c56473;
 
-    --bg: #f4f6fb;
-    --panel: #ffffff;
-    --line: #e3e8ef;
-    --text: #1a2233;
-    --muted: #6b7689;
+    /* 表面：Yohaku 暖羊皮纸系 */
+    --bg: #f9f8f5;        /* neutral-1 页面背景，温暖白 */
+    --panel: #ffffff;     /* 白卡片（与 n-1 背景有明显层次） */
+    --line: #e3e1db;      /* neutral-3 暖灰边线 */
+    --text: #24231f;      /* neutral-9 暖深褐正文 */
+    --muted: #787670;     /* neutral-6 次要文字 / 图标 */
 
-    --side-bg: linear-gradient(180deg, #0f1e3d, #142a52 60%, #0f1e3d);
-    --side-active: #14b8a6;
+    /* 侧边栏：用 Yohaku 暖深褐（neutral-8/9）保持"深色工作台"工具感，
+       文字沿用 white 仍可读，避免推翻 sidebar 组件 */
+    --side-bg: linear-gradient(180deg, #403f3a 0%, #24231f 100%);
+    --side-active: #c56473; /* accent 高亮 */
 
-    --c-listen: #2563eb;
-    --c-listen-bg: #dbeafe;
-    --c-grammar: #d97706;
-    --c-grammar-bg: #fef3c7;
-    --c-read: #059669;
-    --c-read-bg: #d1fae5;
-    --c-write: #dc2626;
-    --c-write-bg: #fee2e2;
-    --c-vocab: #475569;
-    --c-vocab-bg: #e2e8f0;
-    --c-speak: #0891b2;
-    --c-speak-bg: #cffafe;
-    --c-exam: #ea580c;
-    --c-exam-bg: #ffedd5;
-    --c-homework: #7c3aed;
+    /* 学科 / 状态色：全部映射到和色（info/success/warning/error/accent） */
+    --c-listen: #3d6896;   /* 縹 */
+    --c-listen-bg: #dde7f0;
+    --c-grammar: #a87a3d;  /* 朽葉 */
+    --c-grammar-bg: #f3e6d2;
+    --c-read: #5e9f7e;     /* 若竹 */
+    --c-read-bg: #dcebe2;
+    --c-write: #c56473;    /* 梅（accent，"写"是核心动作） */
+    --c-write-bg: #f5dde0;
+    --c-vocab: #5c5a55;    /* neutral-7 素 */
+    --c-vocab-bg: #e3e1db;
+    --c-speak: #3d6896;    /* 縹 */
+    --c-speak-bg: #dde7f0;
+    --c-exam: #a64953;     /* 蘇芳（考试，紧迫） */
+    --c-exam-bg: #f3dadb;
+    --c-homework: #7c3aed; /* 紫（无对应和色，保留识别度） */
     --c-homework-bg: #ede9fe;
-    --c-other: #94a3b8;
-    --c-other-bg: #f1f5f9;
+    --c-other: #a8a69f;    /* neutral-5（仅分类色，不作文字） */
+    --c-other-bg: #f0efeb;
 
     --radius: 0.5rem;
+  }
+
+  html {
+    /* Yohaku: 整体字距略开，提升衬线感 */
+    letter-spacing: 0.01em;
   }
 
   * {
