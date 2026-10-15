@@ -33,10 +33,10 @@
     --text: #24231f;      /* neutral-9 暖深褐正文 */
     --muted: #787670;     /* neutral-6 次要文字 / 图标 */
 
-    /* 侧边栏：用 Yohaku 暖深褐（neutral-8/9）保持"深色工作台"工具感，
-       文字沿用 white 仍可读，避免推翻 sidebar 组件 */
-    --side-bg: linear-gradient(180deg, #403f3a 0%, #24231f 100%);
-    --side-active: #c56473; /* accent 高亮 */
+    /* 侧边栏：Yohaku「n-2 carries surface」— 用 neutral-2 羊皮纸面承载导航，
+       右侧 --line 细线分隔（sidebar 组件已改为浅色，与顶栏/卡片同一语言） */
+    --side-bg: #f0efeb;     /* neutral-2 */
+    --side-active: #c56473; /* accent 梅，仅用于激活项左标 */
 
     /* 学科 / 状态色：全部映射到和色（info/success/warning/error/accent） */
     --c-listen: #3d6896;   /* 縹 */
