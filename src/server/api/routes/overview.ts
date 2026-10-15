@@ -162,6 +162,57 @@ routes.get("/", async (c) => {
     .sort((a, b) => b.wrongRate - a.wrongRate || b.wrongCount - a.wrongCount)
     .slice(0, 10);
 
+  // ---- 学情预警：连续 N 次听写低于阈值 ----
+  const listsOfClass = (classId: string) =>
+    (listsByClass.get(classId) ?? [])
+      .slice()
+      .sort((a, b) => (a.dictationDate ?? "").localeCompare(b.dictationDate ?? "") || a.name.localeCompare(b.name, "zh-CN"));
+
+  const AT_RISK_THRESHOLD = 60;
+  const MIN_STREAK = 2;
+  const alerts: {
+    studentId: string;
+    studentName: string;
+    studentNo: string | null;
+    classId: string;
+    className: string;
+    streak: number;
+    latestAccuracy: number | null;
+    latestListName: string;
+  }[] = [];
+
+  for (const cl of classRows) {
+    const ordered = listsOfClass(cl.id);
+    if (ordered.length < MIN_STREAK) continue;
+    for (const s of studentRows.filter((x) => x.classId === cl.id)) {
+      // 从最近一次往前数连续「低于阈值」的次数，未批改的场次跳过不计也不打断
+      let streak = 0;
+      let latest: { accuracy: number; listName: string } | null = null;
+      for (let i = ordered.length - 1; i >= 0; i--) {
+        const l = ordered[i];
+        const recorded = recordedByListStudent.get(`${l.id}:${s.id}`) ?? 0;
+        if (!recorded) continue;
+        const accuracy = pct(correctByListStudent.get(`${l.id}:${s.id}`) ?? 0, recorded) ?? 0;
+        if (latest === null) latest = { accuracy, listName: l.name };
+        if (accuracy < AT_RISK_THRESHOLD) streak++;
+        else break;
+      }
+      if (streak >= MIN_STREAK && latest) {
+        alerts.push({
+          studentId: s.id,
+          studentName: s.name,
+          studentNo: s.studentNo ?? null,
+          classId: cl.id,
+          className: cl.name,
+          streak,
+          latestAccuracy: latest.accuracy,
+          latestListName: latest.listName,
+        });
+      }
+    }
+  }
+  alerts.sort((a, b) => b.streak - a.streak || a.latestAccuracy! - b.latestAccuracy!);
+
   // ---- 今日课表 ----
   const todayDow = new Date().getDay(); // 1=周一 … 5=周五
   const todaySchedule = cellRows
@@ -192,6 +243,8 @@ routes.get("/", async (c) => {
       recentDictations,
       weakWords,
       todaySchedule,
+      alerts: alerts.slice(0, 12),
+      alertThreshold: AT_RISK_THRESHOLD,
     },
   });
 });

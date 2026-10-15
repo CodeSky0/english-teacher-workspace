@@ -15,7 +15,7 @@ import { ImportDialog } from "@/components/common/import-dialog";
 import { downloadExport } from "@/lib/excel/client";
 import {
   Plus, Trash2, Headphones, ChevronRight, Volume2, Upload, Download,
-  Check, X, Search, Library, Loader2, GraduationCap,
+  Check, X, Search, Library, Loader2, GraduationCap, Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -53,6 +53,10 @@ export default function DictationPage() {
   const [unitImportId, setUnitImportId] = useState("");
   const [unitImporting, setUnitImporting] = useState(false);
   const [exporting, setExporting] = useState<"" | "list" | "summary">("");
+  const [printOpen, setPrintOpen] = useState(false);
+  const [printMode, setPrintMode] = useState<"blank" | "meaning">("blank");
+  const [printCopies, setPrintCopies] = useState(1);
+  const [wrongExporting, setWrongExporting] = useState(false);
 
   // 成绩录入
   const [scoreClassId, setScoreClassId] = useState("");
@@ -278,6 +282,26 @@ export default function DictationPage() {
     }
   }
 
+  async function handleExportWrongWords() {
+    const targetClass = currentClass?.id;
+    if (!targetClass) {
+      toast.error("请先在左侧选择一个班级");
+      return;
+    }
+    setWrongExporting(true);
+    try {
+      await downloadExport(
+        `/export/wrong-words?classId=${targetClass}&minCount=1`,
+        `错词本_${currentClass?.name ?? ""}_${new Date().toISOString().slice(0, 10)}.xlsx`
+      );
+      toast.success("已导出错词本");
+    } catch (e: any) {
+      toast.error(e?.message || "导出失败");
+    } finally {
+      setWrongExporting(false);
+    }
+  }
+
   async function handleExport(scope: "list" | "summary") {
     if (!selectedList) return;
     setExporting(scope);
@@ -299,7 +323,15 @@ export default function DictationPage() {
   return (
     <div>
       <PageHeader title="听写词表" description={`共 ${lists.length} 张词表`}
-        action={<Button onClick={() => { setListForm({ name: "", classId: currentClass?.id ?? "", dictationDate: "" }); setListDialog(true); }} className="gap-1.5"><Plus className="h-4 w-4" />新建词表</Button>} />
+        action={
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-1.5" onClick={handleExportWrongWords} disabled={wrongExporting}>
+              <Download className="h-4 w-4" />
+              {wrongExporting ? "导出中…" : "错词本"}
+            </Button>
+            <Button onClick={() => { setListForm({ name: "", classId: currentClass?.id ?? "", dictationDate: "" }); setListDialog(true); }} className="gap-1.5"><Plus className="h-4 w-4" />新建词表</Button>
+          </div>
+        } />
 
       {!selectedList ? (
         <Card><CardContent className="p-0">
@@ -352,6 +384,10 @@ export default function DictationPage() {
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleExport("summary")} disabled={exporting !== ""}>
                 <GraduationCap className="h-4 w-4" />
                 {exporting === "summary" ? "导出中…" : "历次汇总"}
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setPrintOpen(true)} disabled={words.length === 0}>
+                <Printer className="h-4 w-4" />
+                打印听写纸
               </Button>
             </div>
           </div>
@@ -496,6 +532,79 @@ export default function DictationPage() {
           )}
         </div>
       )}
+
+      <Dialog open={printOpen} onClose={() => setPrintOpen(false)} title="打印听写纸">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-4 rounded-md border border-line bg-bg/40 p-3 text-sm">
+            <label className="flex items-center gap-1.5">
+              <input type="radio" checked={printMode === "blank"} onChange={() => setPrintMode("blank")} />
+              只留空（听写用）
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input type="radio" checked={printMode === "meaning"} onChange={() => setPrintMode("meaning")} />
+              带中文释义（复习单）
+            </label>
+            <label className="flex items-center gap-1.5 text-muted">
+              份数
+              <Input
+                type="number"
+                min={1}
+                max={60}
+                value={printCopies}
+                onChange={(e) => setPrintCopies(Math.min(60, Math.max(1, Number(e.target.value) || 1)))}
+                className="h-8 w-16"
+              />
+            </label>
+          </div>
+
+          <div className="max-h-[46vh] overflow-auto rounded-md border border-line bg-white">
+            <div id="print-root" className="p-6 text-black">
+              {Array.from({ length: printCopies }).map((_, copyIdx) => (
+                <div key={copyIdx} className={copyIdx > 0 ? "mt-8 border-t border-dashed border-black/30 pt-8" : ""}>
+                  <div className="mb-4 flex items-end justify-between border-b border-black pb-2">
+                    <div>
+                      <div className="text-lg font-bold">{selectedList?.name}</div>
+                      <div className="mt-0.5 text-xs text-black/70">
+                        {selectedList?.dictationDate ? `日期：${selectedList.dictationDate}` : "日期：__________"}
+                      </div>
+                    </div>
+                    <div className="flex items-end gap-4 text-sm">
+                      <span>班级：__________</span>
+                      <span>姓名：__________</span>
+                      <span>得分：__________</span>
+                    </div>
+                  </div>
+                  <table className="w-full border-collapse text-sm">
+                    <tbody>
+                      {words.map((w, i) => (
+                        <tr key={w.id} className="border-b border-black/10">
+                          <td className="w-10 py-2 align-top text-black/60">{i + 1}.</td>
+                          <td className="w-[38%] py-2 align-top">
+                            {printMode === "meaning" ? (
+                              <span className="font-medium">{w.meaning || w.word}</span>
+                            ) : (
+                              <span className="text-black/40">{w.meaning ? `${w.meaning}` : "—"}</span>
+                            )}
+                          </td>
+                          <td className="py-2 align-top">
+                            <div className="h-6 border-b border-black/30" />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="mt-4 text-xs text-black/60">共 {words.length} 词</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Button className="w-full gap-1.5" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" />打印
+          </Button>
+          <p className="text-xs text-muted">打印时只会输出上方白色区域，可直接用浏览器「另存为 PDF」。</p>
+        </div>
+      </Dialog>
 
       <Dialog open={listDialog} onClose={() => setListDialog(false)} title="新建听写词表">
         <div className="space-y-4">

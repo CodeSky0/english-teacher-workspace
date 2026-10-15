@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 import { classes, students } from "@/db/schema/classes";
 import { vocabUnits, vocabWords } from "@/db/schema/vocab";
 import { dictationLists, dictationWords, dictationResults } from "@/db/schema/dictation";
+import { classroomPoints, attendanceRecords, studentFeedback } from "@/db/schema/classroom";
 import { buildXlsx, xlsxResponse, type SheetSpec } from "@/server/excel/workbook";
 import { normalizeGender, genderLabel } from "@/lib/excel/fields";
 import { badRequest, notFound, unprocessable } from "../errors";
@@ -536,6 +537,166 @@ routes.get("/export/dictation-summary", async (c) => {
     },
   ]);
   return xlsxResponse(`历次听写汇总_${today()}.xlsx`, buffer);
+});
+
+// ---------------------------------------------------------------- 导出：错词本
+
+/** 班级错词本：按出错人次倒序，用于生成复习单 */
+routes.get("/export/wrong-words", async (c) => {
+  const user = c.get("user");
+  const classId = str(c.req.query("classId"));
+  const minCount = Math.max(1, Number(c.req.query("minCount") ?? 1) || 1);
+  const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 100) || 100, 1), 500);
+
+  const listConditions = [eq(dictationLists.userId, user.id), isNull(dictationLists.deletedAt)];
+  if (classId) {
+    if (!(await assertClass(classId, user.id))) return notFound(c, "班级不存在");
+    listConditions.push(eq(dictationLists.classId, classId));
+  }
+  const lists = await db.select().from(dictationLists).where(and(...listConditions));
+  if (lists.length === 0) return unprocessable(c, "还没有听写词表");
+
+  const listIds = lists.map((l) => l.id);
+  const listNameById = new Map(lists.map((l) => [l.id, l.name]));
+  const listDateById = new Map(lists.map((l) => [l.id, l.dictationDate ?? ""]));
+
+  const words = await db
+    .select()
+    .from(dictationWords)
+    .where(and(eq(dictationWords.userId, user.id), inArray(dictationWords.listId, listIds), isNull(dictationWords.deletedAt)));
+  const wordById = new Map(words.map((w) => [w.id, w]));
+
+  const results = await db
+    .select()
+    .from(dictationResults)
+    .where(and(eq(dictationResults.userId, user.id), inArray(dictationResults.listId, listIds)));
+
+  type Bucket = { word: string; meaning: string; wrong: number; recorded: number; students: Set<string>; lastDate: string; listNames: Set<string> };
+  const buckets = new Map<string, Bucket>();
+
+  for (const r of results) {
+    const w = wordById.get(r.wordId);
+    if (!w) continue;
+    const key = w.word.trim().toLowerCase();
+    let b = buckets.get(key);
+    if (!b) {
+      b = { word: w.word, meaning: w.meaning ?? "", wrong: 0, recorded: 0, students: new Set(), lastDate: "", listNames: new Set() };
+      buckets.set(key, b);
+    }
+    b.recorded++;
+    if (r.isCorrect === false) {
+      b.wrong++;
+      b.students.add(r.studentId);
+      const d = listDateById.get(r.listId) ?? "";
+      if (d > b.lastDate) b.lastDate = d;
+      const n = listNameById.get(r.listId);
+      if (n) b.listNames.add(n);
+    }
+  }
+
+  const rows: (string | number)[][] = [...buckets.values()]
+    .filter((b) => b.wrong >= minCount)
+    .sort((a, b) => b.wrong - a.wrong || a.word.localeCompare(b.word))
+    .slice(0, limit)
+    .map((b) => [
+      b.word,
+      b.meaning,
+      b.wrong,
+      b.recorded,
+      rate(b.wrong, b.recorded),
+      b.students.size,
+      b.lastDate,
+      [...b.listNames].join("、"),
+    ]);
+
+  if (rows.length === 0) return unprocessable(c, "没有符合条件的错词");
+
+  const buffer = await buildXlsx([
+    {
+      name: "错词本",
+      headers: ["单词", "释义", "出错次数", "听写次数", "出错率", "出错人数", "最近出错日期", "来源词表"],
+      rows,
+      widths: [18, 26, 10, 10, 10, 10, 14, 30],
+    },
+  ]);
+  return xlsxResponse(`错词本_${today()}.xlsx`, buffer);
+});
+
+// ---------------------------------------------------------------- 导出：课堂表现
+
+/** 课堂积分与考勤汇总，用于阶段性评价 */
+routes.get("/export/classroom", async (c) => {
+  const user = c.get("user");
+  const classId = str(c.req.query("classId"));
+  if (!classId) return badRequest(c, "缺少 classId");
+  if (!(await assertClass(classId, user.id))) return notFound(c, "班级不存在");
+
+  const studentRows = await db
+    .select()
+    .from(students)
+    .where(and(eq(students.classId, classId), eq(students.userId, user.id), isNull(students.deletedAt)));
+  studentRows.sort((a, b) => {
+    const sa = a.seatNo ?? Number.MAX_SAFE_INTEGER;
+    const sb = b.seatNo ?? Number.MAX_SAFE_INTEGER;
+    if (sa !== sb) return sa - sb;
+    return a.name.localeCompare(b.name, "zh-CN");
+  });
+
+  const points = await db
+    .select()
+    .from(classroomPoints)
+    .where(and(eq(classroomPoints.classId, classId), eq(classroomPoints.userId, user.id), isNull(classroomPoints.deletedAt)));
+  const attendance = await db
+    .select()
+    .from(attendanceRecords)
+    .where(and(eq(attendanceRecords.classId, classId), eq(attendanceRecords.userId, user.id), isNull(attendanceRecords.deletedAt)));
+  const feedback = await db
+    .select()
+    .from(studentFeedback)
+    .where(and(eq(studentFeedback.classId, classId), eq(studentFeedback.userId, user.id), isNull(studentFeedback.deletedAt)));
+
+  const pointsByStudent = new Map<string, number>();
+  for (const p of points) pointsByStudent.set(p.studentId, (pointsByStudent.get(p.studentId) ?? 0) + (p.points ?? 0));
+
+  const attByStudent = new Map<string, Record<string, number>>();
+  for (const a of attendance) {
+    const cur = attByStudent.get(a.studentId) ?? {};
+    cur[a.status] = (cur[a.status] ?? 0) + 1;
+    attByStudent.set(a.studentId, cur);
+  }
+
+  const fbByStudent = new Map<string, Record<string, number>>();
+  for (const f of feedback) {
+    const cur = fbByStudent.get(f.studentId) ?? {};
+    cur[f.type] = (cur[f.type] ?? 0) + 1;
+    fbByStudent.set(f.studentId, cur);
+  }
+
+  const rows: (string | number)[][] = studentRows.map((st) => {
+    const att = attByStudent.get(st.id) ?? {};
+    const fb = fbByStudent.get(st.id) ?? {};
+    return [
+      st.name,
+      st.studentNo ?? "",
+      pointsByStudent.get(st.id) ?? 0,
+      att.present ?? 0,
+      att.late ?? 0,
+      att.leave ?? 0,
+      att.absent ?? 0,
+      fb.positive ?? 0,
+      fb.negative ?? 0,
+    ];
+  });
+
+  const buffer = await buildXlsx([
+    {
+      name: "课堂表现",
+      headers: ["姓名", "学号", "累计积分", "出勤", "迟到", "请假", "缺勤", "表扬", "待改进"],
+      rows,
+      widths: [14, 16, 10, 8, 8, 8, 8, 8, 8],
+    },
+  ]);
+  return xlsxResponse(`课堂表现_${today()}.xlsx`, buffer);
 });
 
 export { routes as importExportRoutes };

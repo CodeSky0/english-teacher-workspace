@@ -74,3 +74,26 @@
     @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
   }
 }
+
+/* 打印：只输出带 id="print-root" 的区域，其余内容隐藏。
+   用于听写纸、名单等需要纸质输出的场景。 */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #print-root,
+  #print-root * {
+    visibility: visible !important;
+  }
+  #print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: #fff;
+    color: #000;
+  }
+  @page {
+    margin: 16mm;
+  }
+}

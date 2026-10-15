@@ -41,6 +41,17 @@ type Overview = {
   }[];
   weakWords: { word: string; listName: string; wrongCount: number; totalCount: number; wrongRate: number }[];
   todaySchedule: { className: string; periodNo: number; subject: string; classroom: string }[];
+  alerts: {
+    studentId: string;
+    studentName: string;
+    studentNo: string | null;
+    classId: string;
+    className: string;
+    streak: number;
+    latestAccuracy: number | null;
+    latestListName: string;
+  }[];
+  alertThreshold: number;
 };
 
 function accuracyColor(value: number | null): string {
@@ -155,6 +166,55 @@ export default function OverviewPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* 学情预警：连续多次听写不达标的学生 */}
+      {ov && ov.alerts.length > 0 && (
+        <Card className="mt-6 border-amber-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base text-amber-600">
+              <AlertTriangle className="h-4 w-4" />
+              需要关注的学生
+              <span className="text-xs font-normal text-muted">
+                连续 {2} 次及以上听写正确率低于 {ov.alertThreshold}%
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-muted">
+                    <th className="px-4 py-2.5 font-medium">学生</th>
+                    <th className="px-4 py-2.5 font-medium">班级</th>
+                    <th className="px-4 py-2.5 font-medium">连续不达标</th>
+                    <th className="px-4 py-2.5 font-medium">最近一次</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ov.alerts.map((a) => (
+                    <tr key={a.studentId} className="border-b border-line/50 hover:bg-bg/50">
+                      <td className="px-4 py-2.5">
+                        <Link href="/dashboard/students" className="font-medium hover:text-primary">{a.studentName}</Link>
+                        {a.studentNo && <span className="ml-2 text-xs text-muted">{a.studentNo}</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-muted">{a.className}</td>
+                      <td className="px-4 py-2.5">
+                        <Badge variant="outline" className="border-amber-400 text-amber-600">{a.streak} 次</Badge>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={`font-medium ${accuracyColor(a.latestAccuracy)}`}>
+                          {a.latestAccuracy == null ? "—" : `${a.latestAccuracy}%`}
+                        </span>
+                        <span className="ml-1 text-xs text-muted">· {a.latestListName}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <Card>
@@ -275,6 +335,7 @@ export default function OverviewPage() {
               <Link href="/dashboard/students" className="rounded-md border border-line p-3 text-sm hover:bg-bg">学生管理</Link>
               <Link href="/dashboard/dictation" className="rounded-md border border-line p-3 text-sm hover:bg-bg">听写与成绩</Link>
               <Link href="/dashboard/vocab" className="rounded-md border border-line p-3 text-sm hover:bg-bg">词汇中心</Link>
+              <Link href="/dashboard/classroom" className="rounded-md border border-line p-3 text-sm hover:bg-bg">课堂互动</Link>
               <Link href="/dashboard/schedule" className="rounded-md border border-line p-3 text-sm hover:bg-bg">设置课表</Link>
             </div>
           </CardContent>

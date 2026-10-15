@@ -11,6 +11,7 @@ import {
   Settings,
   HelpCircle,
   PenLine,
+  Shuffle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +45,7 @@ export const navGroups: NavGroup[] = [
       { label: "学生管理", href: "/dashboard/students", icon: Users },
       { label: "作业与练习", href: "/dashboard/homework", icon: BookOpen },
       { label: "学情分析", href: "/dashboard/grades", icon: GraduationCap },
+      { label: "课堂互动", href: "/dashboard/classroom", icon: Shuffle },
     ],
   },
   {
