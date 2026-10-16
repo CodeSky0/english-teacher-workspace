@@ -49,28 +49,28 @@ function SortableCard({
     zIndex: isDragging ? 20 : undefined,
   };
   return (
-    <Card ref={setNodeRef} style={style}>
+    <Card ref={setNodeRef} style={style} className="animate-fade-in-up">
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-base">
           <button
             type="button"
             {...attributes}
             {...listeners}
-            className="cursor-grab touch-none text-muted transition-colors hover:text-text active:cursor-grabbing"
+            className="cursor-grab touch-none text-neutral-4 transition-colors duration-[var(--dur-quick)] hover:text-text active:cursor-grabbing"
             aria-label="拖拽排序"
           >
             <GripVertical className="h-4 w-4" />
           </button>
-          <Icon className="h-4 w-4" />
+          <Icon className="h-4 w-4 text-primary" />
           {title}
         </CardTitle>
         <button
           type="button"
           onClick={onHide}
-          className="text-muted transition-colors hover:text-red-500"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-4 transition-all duration-[var(--dur-quick)] hover:bg-[#f3dadb]/50 hover:text-[#a64953]"
           aria-label="隐藏卡片"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3.5 w-3.5" />
         </button>
       </CardHeader>
       {children}
@@ -148,8 +148,8 @@ export default function OverviewPage() {
       </div>
 
       {customizing && (
-        <Card className="mb-4">
-          <CardContent className="pt-4">
+        <Card className="mb-4 animate-scale-in">
+          <CardContent className="pt-5">
             <p className="mb-3 text-sm font-medium">显示 / 隐藏卡片</p>
             <div className="flex flex-wrap gap-2">
               {CARD_DEFS.map((def) => {
@@ -161,10 +161,10 @@ export default function OverviewPage() {
                     type="button"
                     onClick={() => toggleCard(def.id)}
                     className={cn(
-                      "flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition-colors",
+                      "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
                       visible
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-line text-muted hover:bg-bg",
+                        ? "border-primary/40 bg-primary-l/60 text-primary-d shadow-paper-xs"
+                        : "border-line text-muted hover:bg-neutral-3/50 hover:text-neutral-7",
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" />

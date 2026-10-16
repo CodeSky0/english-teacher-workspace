@@ -3,19 +3,17 @@
 @config "../../tailwind.config.ts";
 
 /*
- * Yohaku 设计语言（应用层映射）
+ * Yohaku 设计语言（应用层映射）· 视觉精修版
  *
- * 真正的 token 已在 styles/yohaku-tokens.css 里以 Tailwind v4 @theme 声明
- * （中性色阶 1-10、和色 info/success/warning/error、accent 梅 ume）。
- * 本文件把页面里仍在用的旧色板变量（--bg / --panel / --primary / --c-* 等）
- * 重映射到 Yohaku 的暖羊皮纸 + 暗玫瑰 + 和色，使所有用 bg-panel / text-text /
- * border-line / bg-primary 的组件自动切换到 Yohaku 设计语言。
- *
- * 设计规范参考 @yohaku/design-system/CHEATSHEET.md：
- *   - n-2 carries surface, ring-border carries division
- *   - accent 覆盖 ≤5% 表面（仅 CTA / 焦点 / 品牌）
- *   - body 用 n-9（暖深褐）
+ * 在原 Yohaku 暖羊皮纸 + 暗玫瑰 + 和色基础上，注入：
+ *   1. 纸张质感背景（极淡噪点 + 和纸纤维感）
+ *   2. 四级光影体系（xs/sm/md/lg），替代单一 shadow-sm
+ *   3. 微动效曲线变量（spring/smooth/quick）
+ *   4. 玻璃拟态工具类（.glass / .glass-strong）
+ *   5. 和风装饰元素（淡墨分隔线、梅色光晕）
+ *   6. 精致排版（字距、行高、渲染优化）
  */
+
 @layer base {
   :root {
     /* 主色：Yohaku accent 梅 ume（暗玫瑰 #c56473） */
@@ -33,37 +31,51 @@
     --text: #24231f;      /* neutral-9 暖深褐正文 */
     --muted: #787670;     /* neutral-6 次要文字 / 图标 */
 
-    /* 侧边栏：Yohaku「n-2 carries surface」— 用 neutral-2 羊皮纸面承载导航，
-       右侧 --line 细线分隔（sidebar 组件已改为浅色，与顶栏/卡片同一语言） */
+    /* 侧边栏：Yohaku「n-2 carries surface」 */
     --side-bg: #f0efeb;     /* neutral-2 */
-    --side-active: #c56473; /* accent 梅，仅用于激活项左标 */
+    --side-active: #c56473; /* accent 梅 */
 
-    /* 学科 / 状态色：全部映射到和色（info/success/warning/error/accent） */
-    --c-listen: #3d6896;   /* 縹 */
-    --c-listen-bg: #dde7f0;
-    --c-grammar: #a87a3d;  /* 朽葉 */
-    --c-grammar-bg: #f3e6d2;
-    --c-read: #5e9f7e;     /* 若竹 */
-    --c-read-bg: #dcebe2;
-    --c-write: #c56473;    /* 梅（accent，"写"是核心动作） */
-    --c-write-bg: #f5dde0;
-    --c-vocab: #5c5a55;    /* neutral-7 素 */
-    --c-vocab-bg: #e3e1db;
-    --c-speak: #3d6896;    /* 縹 */
-    --c-speak-bg: #dde7f0;
-    --c-exam: #a64953;     /* 蘇芳（考试，紧迫） */
-    --c-exam-bg: #f3dadb;
-    --c-homework: #7c3aed; /* 紫（无对应和色，保留识别度） */
-    --c-homework-bg: #ede9fe;
-    --c-other: #a8a69f;    /* neutral-5（仅分类色，不作文字） */
-    --c-other-bg: #f0efeb;
+    /* 学科 / 状态色：和色 */
+    --c-listen: #3d6896;   --c-listen-bg: #dde7f0;
+    --c-grammar: #a87a3d;  --c-grammar-bg: #f3e6d2;
+    --c-read: #5e9f7e;     --c-read-bg: #dcebe2;
+    --c-write: #c56473;    --c-write-bg: #f5dde0;
+    --c-vocab: #5c5a55;    --c-vocab-bg: #e3e1db;
+    --c-speak: #3d6896;    --c-speak-bg: #dde7f0;
+    --c-exam: #a64953;     --c-exam-bg: #f3dadb;
+    --c-homework: #7c3aed; --c-homework-bg: #ede9fe;
+    --c-other: #a8a69f;    --c-other-bg: #f0efeb;
 
     --radius: 0.5rem;
+
+    /* ── 精修：四级光影体系（增强深度感） ── */
+    --shadow-xs: 0 1px 2px 0 rgba(36, 35, 31, 0.06);
+    --shadow-sm: 0 2px 4px -1px rgba(36, 35, 31, 0.08), 0 1px 2px -1px rgba(36, 35, 31, 0.05);
+    --shadow-md: 0 6px 12px -3px rgba(36, 35, 31, 0.12), 0 3px 6px -3px rgba(36, 35, 31, 0.07);
+    --shadow-lg: 0 16px 32px -8px rgba(36, 35, 31, 0.16), 0 6px 12px -6px rgba(36, 35, 31, 0.09);
+    --shadow-xl: 0 28px 56px -12px rgba(36, 35, 31, 0.20), 0 12px 24px -8px rgba(36, 35, 31, 0.11);
+    /* 梅色光晕（用于 CTA / 焦点元素） */
+    --shadow-glow: 0 0 0 3px rgba(197, 100, 115, 0.15), 0 4px 12px -2px rgba(197, 100, 115, 0.2);
+    --shadow-glow-strong: 0 0 24px -2px rgba(197, 100, 115, 0.4), 0 0 0 3px rgba(197, 100, 115, 0.12);
+
+    /* ── 精修：微动效曲线 ── */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-quick: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur-quick: 150ms;
+    --dur-smooth: 220ms;
+    --dur-slow: 360ms;
+
+    /* ── 精修：和纸噪点纹理（极淡，叠加在背景上） ── */
+    --paper-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.91 0 0 0 0 0.89 0 0 0 0 0.85 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   html {
-    /* Yohaku: 整体字距略开，提升衬线感 */
     letter-spacing: 0.01em;
+    /* 精修：更好的文字渲染 */
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   * {
@@ -71,25 +83,180 @@
   }
 
   body {
+    /* 精修：纸张质感背景 — 暖羊皮纸底色 + 极淡和纸噪点 */
     background-color: var(--bg);
+    background-image: var(--paper-texture);
+    background-repeat: repeat;
+    background-size: 160px 160px;
     color: var(--text);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* 精修：选区颜色 — 梅色 */
+  ::selection {
+    background-color: rgba(197, 100, 115, 0.18);
+    color: var(--primary-d);
+  }
+
+  /* 精修：标题用衬线，增强和风书卷感 */
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    letter-spacing: 0.02em;
   }
 }
 
 @layer utilities {
+  /* ── 精修：玻璃拟态 ── */
+  .glass {
+    background-color: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  }
+  .glass-strong {
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  }
+  .glass-sidebar {
+    background-color: rgba(240, 239, 235, 0.82);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  }
+
+  /* ── 精修：光影工具类 ── */
+  .shadow-paper-xs { box-shadow: var(--shadow-xs); }
+  .shadow-paper-sm { box-shadow: var(--shadow-sm); }
+  .shadow-paper-md { box-shadow: var(--shadow-md); }
+  .shadow-paper-lg { box-shadow: var(--shadow-lg); }
+  .shadow-paper-xl { box-shadow: var(--shadow-xl); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .shadow-glow-strong { box-shadow: var(--shadow-glow-strong); }
+
+  /* ── 精修：和风装饰 ── */
+  /* 淡墨分隔线 — 渐变淡入淡出，似墨笔一挥 */
+  .divider-ink {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--line) 20%, var(--line) 80%, transparent);
+  }
+  /* 梅色渐变文字 */
+  .text-gradient-ume {
+    background: linear-gradient(135deg, #c56473 0%, #a64953 50%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  /* 暖光渐变背景（用于首屏 / 卡片高亮） */
+  .bg-warm-glow {
+    background: radial-gradient(ellipse at top left, rgba(245, 221, 224, 0.5) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(221, 231, 240, 0.4) 0%, transparent 50%);
+  }
+
+  /* ── 和风纹理：一笔笺（竖纹和纸） ── */
+  .texture-washi {
+    background-image:
+      repeating-linear-gradient(90deg, transparent 0px, transparent 39px, rgba(120, 118, 112, 0.025) 39px, rgba(120, 118, 112, 0.025) 40px),
+      var(--paper-texture);
+    background-size: auto, 160px 160px;
+  }
+  /* ── 和风纹理：墨流し（墨流抽象纹样） ── */
+  .texture-suminagashi {
+    background-image:
+      radial-gradient(ellipse 200px 80px at 15% 30%, rgba(60, 59, 55, 0.03) 0%, transparent 100%),
+      radial-gradient(ellipse 150px 60px at 85% 70%, rgba(197, 100, 115, 0.04) 0%, transparent 100%),
+      radial-gradient(ellipse 180px 70px at 50% 50%, rgba(61, 104, 150, 0.025) 0%, transparent 100%);
+  }
+  /* ── 朱印（红色印章）效果 ── */
+  .stamp-shu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 2px solid #a64953;
+    border-radius: 0.5rem;
+    color: #a64953;
+    font-family: var(--font-serif);
+    font-size: 0.875rem;
+    font-weight: 600;
+    background-color: rgba(166, 73, 83, 0.06);
+    transform: rotate(-4deg);
+    opacity: 0.85;
+    box-shadow: inset 0 0 0 1px rgba(166, 73, 83, 0.2);
+  }
+
+  /* ── 精修：滚动条 ── */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: var(--line) transparent;
+    scrollbar-color: var(--color-neutral-4) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: var(--line);
+    background-color: var(--color-neutral-4);
     border-radius: 3px;
+    transition: background-color var(--dur-quick) var(--ease-smooth);
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-neutral-5);
+  }
+
+  /* ── 精修：入场动画 ── */
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.08); }
+  }
+  @keyframes glow-sweep {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  .animate-fade-in-up {
+    animation: fade-in-up var(--dur-slow) var(--ease-quick) both;
+  }
+  .animate-fade-in {
+    animation: fade-in var(--dur-smooth) var(--ease-smooth) both;
+  }
+  .animate-scale-in {
+    animation: scale-in var(--dur-smooth) var(--ease-spring) both;
+  }
+  .animate-breathe {
+    animation: breathe 6s var(--ease-smooth) infinite;
+  }
+  /* 按钮光泽流动 */
+  .btn-glow-sweep {
+    background-image: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: glow-sweep 3s var(--ease-smooth) infinite;
+  }
+  /* 骨架屏微光 */
+  .shimmer {
+    background: linear-gradient(90deg, var(--color-neutral-2) 25%, var(--color-neutral-3) 50%, var(--color-neutral-2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s var(--ease-smooth) infinite;
   }
 }
 
@@ -99,8 +266,7 @@
   }
 }
 
-/* 打印：只输出带 id="print-root" 的区域，其余内容隐藏。
-   用于听写纸、名单等需要纸质输出的场景。 */
+/* 打印 */
 @media print {
   body * {
     visibility: hidden !important;

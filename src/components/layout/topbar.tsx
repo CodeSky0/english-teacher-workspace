@@ -49,30 +49,30 @@ export function Topbar() {
   }[saveStatus];
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-panel px-4">
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line/60 glass px-4 shadow-paper-xs">
       <button
-        className="text-muted hover:text-text lg:hidden"
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors duration-[var(--dur-quick)] hover:bg-neutral-3/60 hover:text-text lg:hidden"
         onClick={toggleSidebar}
       >
         <Menu className="h-5 w-5" />
       </button>
-      <h1 className="text-lg font-semibold text-text">{title}</h1>
+      <h1 className="text-lg font-semibold text-text tracking-tight">{title}</h1>
       <div className="ml-2 hidden sm:block">
         <ClassSelector />
       </div>
       <div className="ml-auto flex items-center gap-3">
         <div className="hidden items-center md:flex">
-          <Search className="mr-1 h-4 w-4 text-muted" />
+          <Search className="mr-1.5 h-4 w-4 text-neutral-5" />
           <Input
             placeholder="搜索…"
-            className="h-8 w-40 text-sm"
+            className="h-8 w-44 text-sm"
           />
         </div>
         {statusText && (
           <span
             className={cn(
-              "hidden text-xs sm:inline",
-              saveStatus === "error" ? "text-red-500" : "text-muted"
+              "hidden text-xs sm:inline transition-opacity duration-[var(--dur-quick)]",
+              saveStatus === "error" ? "text-[#a64953]" : "text-muted"
             )}
           >
             {statusText}
@@ -86,32 +86,35 @@ export function Topbar() {
         >
           <Monitor className="h-4 w-4" />
           <span className="hidden sm:inline">课堂互动</span>
-          <kbd className="hidden rounded bg-bg px-1 text-xs lg:inline">C</kbd>
+          <kbd className="hidden rounded bg-neutral-3/70 px-1.5 py-0.5 text-caption-10 font-medium text-neutral-6 lg:inline">
+            C
+          </kbd>
         </Button>
         <div className="relative">
           <button
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm text-white"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#a64953] text-sm font-medium text-white shadow-paper-sm transition-all duration-[var(--dur-quick)] ease-[var(--ease-spring)] hover:shadow-glow-strong hover:scale-105"
             onClick={() => setUserMenuOpen(!userMenuOpen)}
           >
             {userName?.[0]?.toUpperCase() || "T"}
           </button>
           {userMenuOpen && (
-            <div className="absolute right-0 top-10 w-48 rounded-md border border-line bg-panel py-1 shadow-md">
-              <div className="border-b border-line px-3 py-2">
+            <div className="absolute right-0 top-11 w-52 rounded-xl border border-line/60 bg-panel py-1.5 shadow-paper-lg animate-scale-in origin-top-right">
+              <div className="border-b border-line/60 px-3 py-2.5">
                 <p className="text-sm font-medium text-text">{userName}</p>
+                <p className="mt-0.5 text-caption-10 text-neutral-5">教师账户</p>
               </div>
               <button
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text hover:bg-bg"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-text transition-colors duration-[var(--dur-quick)] hover:bg-neutral-3/50"
                 onClick={() => {
                   setUserMenuOpen(false);
                   router.push("/dashboard/settings");
                 }}
               >
-                <UserIcon className="h-4 w-4" />
+                <UserIcon className="h-4 w-4 text-neutral-5" />
                 个人设置
               </button>
               <button
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-bg"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-[#a64953] transition-colors duration-[var(--dur-quick)] hover:bg-[#f3dadb]/50"
                 onClick={async () => {
                   await authClient.signOut();
                   router.push("/login");

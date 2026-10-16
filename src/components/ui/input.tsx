@@ -6,7 +6,12 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
     <input
       ref={ref}
       className={cn(
-        "flex h-9 w-full rounded-md border border-line bg-panel px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50",
+        "flex h-9 w-full rounded-lg border border-line bg-panel px-3 py-1 text-sm shadow-paper-xs",
+        "transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+        "placeholder:text-neutral-5",
+        "hover:border-neutral-4",
+        "focus-visible:outline-none focus-visible:border-primary/50 focus-visible:ring-4 focus-visible:ring-primary/10 focus-visible:shadow-paper-sm",
+        "disabled:opacity-50 disabled:cursor-not-allowed",
         className
       )}
       {...props}
@@ -20,7 +25,12 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
     <textarea
       ref={ref}
       className={cn(
-        "flex min-h-[80px] w-full rounded-md border border-line bg-panel px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50",
+        "flex min-h-[80px] w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm shadow-paper-xs",
+        "transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+        "placeholder:text-neutral-5",
+        "hover:border-neutral-4",
+        "focus-visible:outline-none focus-visible:border-primary/50 focus-visible:ring-4 focus-visible:ring-primary/10 focus-visible:shadow-paper-sm",
+        "disabled:opacity-50",
         className
       )}
       {...props}

@@ -51,18 +51,18 @@ export type Overview = {
 
 function accuracyColor(value: number | null): string {
   if (value == null) return "text-muted";
-  if (value >= 85) return "text-green-600";
+  if (value >= 85) return "text-[#3d7a5e]";
   if (value >= 70) return "text-primary";
-  if (value >= 60) return "text-amber-600";
-  return "text-red-600";
+  if (value >= 60) return "text-[#8a6230]";
+  return "text-[#a64953]";
 }
 
 function StatsCard({ ov }: { ov: Overview }) {
   const stats = [
-    { label: "任教班级", value: ov.totals.classes, icon: LayoutDashboard, color: "var(--c-listen)" },
-    { label: "学生总数", value: ov.totals.students, icon: Users, color: "var(--c-vocab)" },
-    { label: "已布置作业", value: ov.totals.openHomework, icon: BookOpen, color: "var(--c-homework)" },
-    { label: "考试场次", value: ov.totals.exams, icon: GraduationCap, color: "var(--c-exam)" },
+    { label: "任教班级", value: ov.totals.classes, icon: LayoutDashboard, color: "#3d6896", bg: "#dde7f0" },
+    { label: "学生总数", value: ov.totals.students, icon: Users, color: "#5c5a55", bg: "#e3e1db" },
+    { label: "已布置作业", value: ov.totals.openHomework, icon: BookOpen, color: "#7c3aed", bg: "#ede9fe" },
+    { label: "考试场次", value: ov.totals.exams, icon: GraduationCap, color: "#a64953", bg: "#f3dadb" },
   ];
   return (
     <CardContent>
@@ -70,16 +70,26 @@ function StatsCard({ ov }: { ov: Overview }) {
         {stats.map((s) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className="flex items-center gap-3 rounded-lg border border-line p-4">
+            <div
+              key={s.label}
+              className="group relative overflow-hidden rounded-xl border border-line/60 bg-panel p-4 shadow-paper-xs transition-all duration-[var(--dur-smooth)] ease-[var(--ease-smooth)] hover:shadow-paper-md hover:-translate-y-0.5"
+            >
+              {/* 装饰：右上角色块淡色 */}
               <div
-                className="flex h-10 w-10 items-center justify-center rounded-lg"
-                style={{ background: `${s.color}1a`, color: s.color }}
-              >
-                <Icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm text-muted">{s.label}</p>
-                <p className="text-xl font-bold text-text">{s.value}</p>
+                className="absolute -right-6 -top-6 h-16 w-16 rounded-full opacity-20 blur-xl transition-opacity duration-[var(--dur-smooth)] group-hover:opacity-40"
+                style={{ backgroundColor: s.color }}
+              />
+              <div className="relative flex items-center gap-3">
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-[var(--dur-quick)] ease-[var(--ease-spring)] group-hover:scale-110"
+                  style={{ backgroundColor: s.bg, color: s.color }}
+                >
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted">{s.label}</p>
+                  <p className="text-2xl font-semibold text-text tabular-nums">{s.value}</p>
+                </div>
               </div>
             </div>
           );
@@ -98,28 +108,28 @@ function ClassesCard({ ov }: { ov: Overview }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-line text-left text-muted">
-                <th className="px-4 py-3 font-medium">班级</th>
-                <th className="px-4 py-3 font-medium">人数</th>
-                <th className="px-4 py-3 font-medium">听写次数</th>
-                <th className="px-4 py-3 font-medium">平均正确率</th>
-                <th className="px-4 py-3 font-medium">最近一次听写</th>
-                <th className="px-4 py-3 font-medium">考试</th>
+              <tr className="border-b border-line bg-neutral-2/50 text-left text-muted">
+                <th className="px-5 py-3 font-medium">班级</th>
+                <th className="px-5 py-3 font-medium">人数</th>
+                <th className="px-5 py-3 font-medium">听写次数</th>
+                <th className="px-5 py-3 font-medium">平均正确率</th>
+                <th className="px-5 py-3 font-medium">最近一次听写</th>
+                <th className="px-5 py-3 font-medium">考试</th>
               </tr>
             </thead>
             <tbody>
               {ov.classes.map((c) => (
-                <tr key={c.id} className="border-b border-line/50 hover:bg-bg/50">
-                  <td className="px-4 py-2.5">
-                    <Link href="/dashboard/students" className="font-medium hover:text-primary">{c.name}</Link>
+                <tr key={c.id} className="border-b border-line/50 transition-colors duration-[var(--dur-quick)] hover:bg-primary-l/30">
+                  <td className="px-5 py-3">
+                    <Link href="/dashboard/students" className="font-medium transition-colors duration-[var(--dur-quick)] hover:text-primary">{c.name}</Link>
                     {c.gradeLevel && <span className="ml-2 text-xs text-muted">{c.gradeLevel}</span>}
                   </td>
-                  <td className="px-4 py-2.5">{c.studentCount}</td>
-                  <td className="px-4 py-2.5">{c.dictationCount}</td>
-                  <td className={`px-4 py-2.5 font-medium ${accuracyColor(c.avgAccuracy)}`}>
+                  <td className="px-5 py-3 tabular-nums">{c.studentCount}</td>
+                  <td className="px-5 py-3 tabular-nums">{c.dictationCount}</td>
+                  <td className={`px-5 py-3 font-medium tabular-nums ${accuracyColor(c.avgAccuracy)}`}>
                     {c.avgAccuracy == null ? "—" : `${c.avgAccuracy}%`}
                   </td>
-                  <td className="px-4 py-2.5 text-muted">
+                  <td className="px-5 py-3 text-muted">
                     {c.lastDictation ? (
                       <span>
                         {c.lastDictation.name}
@@ -132,7 +142,7 @@ function ClassesCard({ ov }: { ov: Overview }) {
                       </span>
                     ) : "—"}
                   </td>
-                  <td className="px-4 py-2.5">{c.examCount}</td>
+                  <td className="px-5 py-3 tabular-nums">{c.examCount}</td>
                 </tr>
               ))}
             </tbody>
@@ -147,31 +157,31 @@ function AlertsCard({ ov }: { ov: Overview }) {
   return (
     <CardContent className="p-0">
       {ov.alerts.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted">暂无需要关注的学生</p>
+        <p className="py-10 text-center text-sm text-muted">暂无需要关注的学生</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-line text-left text-muted">
-                <th className="px-4 py-2.5 font-medium">学生</th>
-                <th className="px-4 py-2.5 font-medium">班级</th>
-                <th className="px-4 py-2.5 font-medium">连续不达标</th>
-                <th className="px-4 py-2.5 font-medium">最近一次</th>
+              <tr className="border-b border-line bg-neutral-2/50 text-left text-muted">
+                <th className="px-5 py-3 font-medium">学生</th>
+                <th className="px-5 py-3 font-medium">班级</th>
+                <th className="px-5 py-3 font-medium">连续不达标</th>
+                <th className="px-5 py-3 font-medium">最近一次</th>
               </tr>
             </thead>
             <tbody>
               {ov.alerts.map((a) => (
-                <tr key={a.studentId} className="border-b border-line/50 hover:bg-bg/50">
-                  <td className="px-4 py-2.5">
-                    <Link href="/dashboard/students" className="font-medium hover:text-primary">{a.studentName}</Link>
+                <tr key={a.studentId} className="border-b border-line/50 transition-colors duration-[var(--dur-quick)] hover:bg-[#f3dadb]/30">
+                  <td className="px-5 py-3">
+                    <Link href="/dashboard/students" className="font-medium transition-colors duration-[var(--dur-quick)] hover:text-primary">{a.studentName}</Link>
                     {a.studentNo && <span className="ml-2 text-xs text-muted">{a.studentNo}</span>}
                   </td>
-                  <td className="px-4 py-2.5 text-muted">{a.className}</td>
-                  <td className="px-4 py-2.5">
-                    <Badge variant="outline" className="border-amber-400 text-amber-600">{a.streak} 次</Badge>
+                  <td className="px-5 py-3 text-muted">{a.className}</td>
+                  <td className="px-5 py-3">
+                    <Badge variant="warning">{a.streak} 次</Badge>
                   </td>
-                  <td className="px-4 py-2.5">
-                    <span className={`font-medium ${accuracyColor(a.latestAccuracy)}`}>
+                  <td className="px-5 py-3">
+                    <span className={`font-medium tabular-nums ${accuracyColor(a.latestAccuracy)}`}>
                       {a.latestAccuracy == null ? "—" : `${a.latestAccuracy}%`}
                     </span>
                     <span className="ml-1 text-xs text-muted">· {a.latestListName}</span>
@@ -190,12 +200,12 @@ function TodayScheduleCard({ ov }: { ov: Overview }) {
   return (
     <CardContent>
       {ov.todaySchedule.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted">今天没有排课，或尚未设置课表</p>
+        <p className="py-10 text-center text-sm text-muted">今天没有排课，或尚未设置课表</p>
       ) : (
-        <div className="divide-y divide-line">
+        <div className="divide-y divide-line/60">
           {ov.todaySchedule.map((c, i) => (
-            <div key={`${c.className}-${c.periodNo}-${i}`} className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-2">
+            <div key={`${c.className}-${c.periodNo}-${i}`} className="flex items-center justify-between py-2.5 transition-colors duration-[var(--dur-quick)] hover:bg-neutral-2/40 -mx-2 px-2 rounded-lg">
+              <div className="flex items-center gap-2.5">
                 <Badge variant="muted">第 {c.periodNo} 节</Badge>
                 <span className="text-sm font-medium">{c.className}</span>
               </div>
@@ -218,7 +228,7 @@ function WeekScheduleCard({ ov }: { ov: Overview }) {
   if (ov.weekSchedule.length === 0) {
     return (
       <CardContent>
-        <p className="py-8 text-center text-sm text-muted">尚未设置课表</p>
+        <p className="py-10 text-center text-sm text-muted">尚未设置课表</p>
       </CardContent>
     );
   }
@@ -233,25 +243,25 @@ function WeekScheduleCard({ ov }: { ov: Overview }) {
   const maxPeriod = Math.max(MAX_PERIODS, ...ov.weekSchedule.map((c) => c.periodNo));
 
   return (
-    <CardContent className="p-2 overflow-x-auto">
+    <CardContent className="p-3 overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th className="w-12 border border-line bg-bg p-2 text-xs font-medium text-muted">节</th>
+            <th className="w-12 border border-line/60 bg-neutral-2/60 p-2 text-xs font-medium text-muted rounded-tl-lg">节</th>
             {WEEK_DAYS.map((d) => (
-              <th key={d} className="border border-line bg-bg p-2 font-medium">{d}</th>
+              <th key={d} className="border border-line/60 bg-neutral-2/60 p-2 font-medium">{d}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {Array.from({ length: maxPeriod }, (_, i) => i + 1).map((period) => (
             <tr key={period}>
-              <td className="border border-line bg-bg p-2 text-center text-xs font-medium text-muted">{period}</td>
+              <td className="border border-line/60 bg-neutral-2/60 p-2 text-center text-xs font-medium text-muted">{period}</td>
               {WEEK_DAYS.map((_, dayIdx) => {
                 const day = dayIdx + 1;
                 const cells = cellMap.get(`${day}-${period}`) ?? [];
                 return (
-                  <td key={day} className="border border-line p-1 align-top">
+                  <td key={day} className="border border-line/60 p-1.5 align-top transition-colors duration-[var(--dur-quick)] hover:bg-primary-l/20">
                     {cells.map((c, i) => {
                       const style = c.subject ? subjectStyle(c.subject) : null;
                       return (
@@ -277,17 +287,17 @@ function RecentDictationsCard({ ov }: { ov: Overview }) {
   return (
     <CardContent>
       {ov.recentDictations.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted">还没有听写记录</p>
+        <p className="py-10 text-center text-sm text-muted">还没有听写记录</p>
       ) : (
-        <div className="divide-y divide-line">
+        <div className="divide-y divide-line/60">
           {ov.recentDictations.map((d) => (
-            <div key={d.id} className="flex items-center justify-between py-2">
+            <div key={d.id} className="flex items-center justify-between py-2.5 transition-colors duration-[var(--dur-quick)] hover:bg-neutral-2/40 -mx-2 px-2 rounded-lg">
               <div>
                 <span className="text-sm font-medium">{d.name}</span>
                 <span className="ml-2 text-xs text-muted">{d.className}</span>
                 {d.date && <span className="ml-1 text-xs text-muted">· {d.date}</span>}
               </div>
-              <span className={`text-sm font-medium ${accuracyColor(d.avgAccuracy)}`}>
+              <span className={`text-sm font-medium tabular-nums ${accuracyColor(d.avgAccuracy)}`}>
                 {d.avgAccuracy == null ? `${d.wordCount} 词` : `${d.avgAccuracy}%`}
               </span>
             </div>
@@ -302,16 +312,16 @@ function WeakWordsCard({ ov }: { ov: Overview }) {
   return (
     <CardContent>
       {ov.weakWords.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted">录入听写成绩后，这里会统计最容易错的单词</p>
+        <p className="py-10 text-center text-sm text-muted">录入听写成绩后，这里会统计最容易错的单词</p>
       ) : (
-        <div className="divide-y divide-line">
+        <div className="divide-y divide-line/60">
           {ov.weakWords.map((w) => (
-            <div key={`${w.word}-${w.listName}`} className="flex items-center justify-between py-2">
+            <div key={`${w.word}-${w.listName}`} className="flex items-center justify-between py-2.5 transition-colors duration-[var(--dur-quick)] hover:bg-[#f3dadb]/30 -mx-2 px-2 rounded-lg">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">{w.word}</span>
                 <span className="text-xs text-muted">{w.listName}</span>
               </div>
-              <span className="text-sm text-red-500">
+              <span className="text-sm text-[#a64953] tabular-nums">
                 错 {w.wrongCount}/{w.totalCount} · {w.wrongRate}%
               </span>
             </div>
@@ -323,32 +333,39 @@ function WeakWordsCard({ ov }: { ov: Overview }) {
 }
 
 function DataOverviewCard({ ov }: { ov: Overview }) {
+  const links = [
+    { href: "/dashboard/students", label: "学生管理", color: "#5c5a55" },
+    { href: "/dashboard/dictation", label: "听写与成绩", color: "#3d6896" },
+    { href: "/dashboard/vocab", label: "词汇中心", color: "#5e9f7e" },
+    { href: "/dashboard/classroom", label: "课堂互动", color: "#c56473" },
+    { href: "/dashboard/schedule", label: "设置课表", color: "#a87a3d" },
+  ];
   return (
     <CardContent>
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-md border border-line p-3">
-          <p className="text-xs text-muted">词汇单元</p>
-          <p className="text-lg font-bold">{ov.totals.vocabUnits}</p>
-        </div>
-        <div className="rounded-md border border-line p-3">
-          <p className="text-xs text-muted">词条总数</p>
-          <p className="text-lg font-bold">{ov.totals.vocabWords}</p>
-        </div>
-        <div className="rounded-md border border-line p-3">
-          <p className="text-xs text-muted">听写词表</p>
-          <p className="text-lg font-bold">{ov.totals.dictationLists}</p>
-        </div>
-        <div className="rounded-md border border-line p-3">
-          <p className="text-xs text-muted">已批改格子</p>
-          <p className="text-lg font-bold">{ov.totals.dictationResults}</p>
-        </div>
+        {[
+          { label: "词汇单元", value: ov.totals.vocabUnits },
+          { label: "词条总数", value: ov.totals.vocabWords },
+          { label: "听写词表", value: ov.totals.dictationLists },
+          { label: "已批改格子", value: ov.totals.dictationResults },
+        ].map((d) => (
+          <div key={d.label} className="rounded-xl border border-line/60 bg-neutral-2/40 p-3.5 transition-all duration-[var(--dur-quick)] hover:bg-neutral-3/40">
+            <p className="text-xs text-muted">{d.label}</p>
+            <p className="mt-0.5 text-xl font-semibold tabular-nums">{d.value}</p>
+          </div>
+        ))}
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <Link href="/dashboard/students" className="rounded-md border border-line p-3 text-sm hover:bg-bg">学生管理</Link>
-        <Link href="/dashboard/dictation" className="rounded-md border border-line p-3 text-sm hover:bg-bg">听写与成绩</Link>
-        <Link href="/dashboard/vocab" className="rounded-md border border-line p-3 text-sm hover:bg-bg">词汇中心</Link>
-        <Link href="/dashboard/classroom" className="rounded-md border border-line p-3 text-sm hover:bg-bg">课堂互动</Link>
-        <Link href="/dashboard/schedule" className="rounded-md border border-line p-3 text-sm hover:bg-bg">设置课表</Link>
+      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        {links.map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            className="group flex items-center justify-between rounded-xl border border-line/60 bg-panel p-3 text-sm font-medium shadow-paper-xs transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)] hover:shadow-paper-sm hover:-translate-y-0.5"
+          >
+            <span className="transition-colors duration-[var(--dur-quick)] group-hover:text-primary">{l.label}</span>
+            <span className="text-neutral-4 transition-transform duration-[var(--dur-quick)] group-hover:translate-x-0.5 group-hover:text-primary">→</span>
+          </Link>
+        ))}
       </div>
     </CardContent>
   );

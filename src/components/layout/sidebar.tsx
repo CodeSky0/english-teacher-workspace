@@ -15,22 +15,22 @@ export function Sidebar() {
     <>
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-neutral-10/40 backdrop-blur-sm lg:hidden animate-fade-in"
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      {/* Yohaku：n-2 承载表面（surface），ring-border 承载分隔（division）。
-          侧边栏用 neutral-2 羊皮纸面 + 右侧 --line 细线，与白色卡片形成层次。 */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-line bg-neutral-2 transition-all duration-200 lg:static lg:z-auto",
+          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-line/60 glass-sidebar",
+          "transition-all duration-[var(--dur-smooth)] ease-[var(--ease-smooth)]",
+          "lg:static lg:z-auto",
           sidebarCollapsed ? "w-16" : "w-60",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        {/* 品牌区：accent 只占 ≤5% 表面，仅用于这一个标记 */}
-        <div className="flex h-16 shrink-0 items-center gap-2 border-b border-line px-4">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-primary text-xs font-medium text-white">
+        {/* 品牌区 */}
+        <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-line/60 px-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#a64953] text-sm font-medium text-white shadow-glow">
             英
           </span>
           <span
@@ -42,18 +42,18 @@ export function Sidebar() {
             英语教师工作台
           </span>
           <button
-            className="ml-auto shrink-0 text-neutral-6 transition-colors hover:text-neutral-9 lg:hidden"
+            className="ml-auto shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-neutral-6 transition-colors duration-[var(--dur-quick)] hover:bg-neutral-3/60 hover:text-neutral-9 lg:hidden"
             onClick={() => setSidebarOpen(false)}
             aria-label="关闭侧边栏"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
-        <nav className="scrollbar-thin flex-1 overflow-y-auto px-2 py-3">
+        <nav className="scrollbar-thin flex-1 overflow-y-auto px-2.5 py-4">
           {navGroups.map((group) => (
-            <div key={group.group} className="mb-4">
+            <div key={group.group} className="mb-5">
               {!sidebarCollapsed && (
-                <p className="mb-1 px-3 text-label-12 font-medium uppercase tracking-wider text-neutral-6">
+                <p className="mb-1.5 px-3 text-label-12 font-medium uppercase tracking-wider text-neutral-5">
                   {group.group}
                 </p>
               )}
@@ -67,15 +67,24 @@ export function Sidebar() {
                     onClick={() => setSidebarOpen(false)}
                     title={sidebarCollapsed ? item.label : undefined}
                     className={cn(
-                      "flex items-center gap-3 rounded-md border-l-[3px] border-transparent px-3 py-2 text-sm transition-colors",
+                      "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm",
+                      "transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
                       active
-                        ? // 激活：淡梅底 + 深梅字 + accent 左标（CJK 不用合成加粗）
-                          "border-primary bg-primary-l font-medium text-primary-d"
-                        : "text-neutral-7 hover:bg-neutral-3/70 hover:text-neutral-9",
+                        ? "bg-primary-l/70 font-medium text-primary-d shadow-paper-xs"
+                        : "text-neutral-7 hover:bg-neutral-3/50 hover:text-neutral-9",
                       sidebarCollapsed && "justify-center px-2"
                     )}
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
+                    {/* 激活态左侧梅色指示条 */}
+                    {active && (
+                      <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" />
+                    )}
+                    <Icon
+                      className={cn(
+                        "h-4 w-4 shrink-0 transition-transform duration-[var(--dur-quick)] ease-[var(--ease-spring)]",
+                        active ? "text-primary" : "group-hover:scale-110"
+                      )}
+                    />
                     {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                   </Link>
                 );
@@ -83,6 +92,15 @@ export function Sidebar() {
             </div>
           ))}
         </nav>
+        {/* 底部淡墨分隔线 */}
+        {!sidebarCollapsed && (
+          <div className="px-4 pb-4">
+            <div className="divider-ink" />
+            <p className="mt-3 text-center text-caption-10 text-neutral-5">
+              Yohaku · 和風設計
+            </p>
+          </div>
+        )}
       </aside>
     </>
   );

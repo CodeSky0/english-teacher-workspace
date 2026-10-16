@@ -12,10 +12,12 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex items-start justify-between">
+    <div className="mb-6 flex items-start justify-between animate-fade-in-up">
       <div>
-        <h2 className="text-2xl font-bold text-text">{title}</h2>
-        {description && <p className="mt-1 text-sm text-muted">{description}</p>}
+        <h2 className="text-2xl font-semibold tracking-tight text-text">{title}</h2>
+        {description && (
+          <p className="mt-1.5 text-sm text-muted">{description}</p>
+        )}
       </div>
       {action}
     </div>

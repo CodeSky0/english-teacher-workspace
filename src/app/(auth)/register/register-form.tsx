@@ -35,14 +35,22 @@ export default function RegisterForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="text-xl">注册账户</CardTitle>
-        <CardDescription>创建你的英语教师工作台账户</CardDescription>
+    <Card className="w-full border-line/70 shadow-paper-md">
+      <CardHeader className="space-y-2">
+        <div className="flex items-center gap-2.5 lg:hidden">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#a64953] text-sm font-medium text-white shadow-glow">
+            英
+          </span>
+          <span className="font-serif text-base font-medium tracking-wide text-neutral-9">
+            英语教师工作台
+          </span>
+        </div>
+        <CardTitle className="text-2xl font-semibold tracking-tight">创建账户</CardTitle>
+        <CardDescription className="text-copy-14">开始使用英语教师工作台</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-2">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="name">姓名</Label>
             <Input
               id="name"
@@ -52,7 +60,7 @@ export default function RegisterForm() {
               required
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="email">邮箱</Label>
             <Input
               id="email"
@@ -63,7 +71,7 @@ export default function RegisterForm() {
               required
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="password">密码</Label>
             <Input
               id="password"
@@ -75,13 +83,13 @@ export default function RegisterForm() {
               required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full h-10" disabled={loading}>
             {loading ? "注册中…" : "注册"}
           </Button>
         </form>
-        <p className="mt-4 text-center text-sm text-muted">
+        <p className="mt-6 text-center text-sm text-muted">
           已有账户？{" "}
-          <Link href="/login" className="text-primary hover:underline">
+          <Link href="/login" className="font-medium text-primary hover:underline transition-colors duration-[var(--dur-quick)]">
             登录
           </Link>
         </p>
