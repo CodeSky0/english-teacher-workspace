@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { rateLimit } from "@/server/redis";
 
 const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
 
@@ -30,6 +31,12 @@ routes.post("/generate", async (c) => {
 });
 
 routes.post("/chat", async (c) => {
+  const user = c.get("user");
+  const rl = await rateLimit(`ai:${user.id}`, 20, 60);
+  if (!rl.ok) {
+    return c.json({ error: { code: "RATE_LIMIT", message: "请求过于频繁，请稍后再试" } }, 429);
+  }
+
   if (!process.env.AI_API_KEY) {
     return c.json({
       data: {

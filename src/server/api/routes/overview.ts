@@ -7,6 +7,7 @@ import { dictationLists, dictationWords, dictationResults } from "@/db/schema/di
 import { exams } from "@/db/schema/exams";
 import { homework } from "@/db/schema/homework";
 import { timetableCells } from "@/db/schema/schedule";
+import { cached, ck } from "@/server/cache";
 
 const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
 
@@ -27,9 +28,7 @@ function pct(correct: number, total: number): number | null {
 }
 
 /** 跨班级总览数据 */
-routes.get("/", async (c) => {
-  const user = c.get("user");
-  const uid = user.id;
+async function computeOverview(uid: string) {
 
   const [classRows, studentRows, unitRows, wordRows, listRows, dictWordRows, resultRows, examRows, homeworkRows, cellRows] =
     await Promise.all([
@@ -225,6 +224,18 @@ routes.get("/", async (c) => {
       classroom: cell.classroom ?? "",
     }));
 
+  // ---- 周课表 ----
+  const weekSchedule = cellRows
+    .slice()
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.periodNo - b.periodNo)
+    .map((cell) => ({
+      dayOfWeek: cell.dayOfWeek,
+      periodNo: cell.periodNo,
+      className: classNameById.get(cell.classId) ?? "未知班级",
+      subject: cell.subject ?? "",
+      classroom: cell.classroom ?? "",
+    }));
+
   const totals = {
     classes: classRows.length,
     students: studentRows.length,
@@ -236,17 +247,22 @@ routes.get("/", async (c) => {
     openHomework: homeworkRows.filter((h) => h.status === "published").length,
   };
 
-  return c.json({
-    data: {
-      totals,
-      classes: classStats,
-      recentDictations,
-      weakWords,
-      todaySchedule,
-      alerts: alerts.slice(0, 12),
-      alertThreshold: AT_RISK_THRESHOLD,
-    },
-  });
+  return {
+    totals,
+    classes: classStats,
+    recentDictations,
+    weakWords,
+    todaySchedule,
+    weekSchedule,
+    alerts: alerts.slice(0, 12),
+    alertThreshold: AT_RISK_THRESHOLD,
+  };
+}
+
+routes.get("/", async (c) => {
+  const uid = c.get("user").id;
+  const data = await cached(ck.overview(uid), 90, () => computeOverview(uid));
+  return c.json({ data });
 });
 
 export { routes as overviewRoutes };

@@ -3,6 +3,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
 import { homework, homeworkRecords } from "@/db/schema/homework";
 import { notFound, unprocessable } from "../errors";
+import { bustUser } from "@/server/cache";
 
 const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
 
@@ -19,6 +20,7 @@ routes.post("/", async (c) => {
   const user = c.get("user");
   const body = await c.req.json();
   const [record] = await db.insert(homework).values({ ...body, userId: user.id }).returning();
+  await bustUser(user.id);
   return c.json({ data: record }, 201);
 });
 
@@ -30,6 +32,7 @@ routes.patch("/:id", async (c) => {
   const [record] = await db.update(homework).set({ ...updateData, updatedAt: new Date() })
     .where(and(eq(homework.id, id), eq(homework.userId, user.id), isNull(homework.deletedAt))).returning();
   if (!record) return notFound(c);
+  await bustUser(user.id);
   return c.json({ data: record });
 });
 
@@ -39,6 +42,7 @@ routes.delete("/:id", async (c) => {
   const [record] = await db.update(homework).set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(homework.id, id), eq(homework.userId, user.id), isNull(homework.deletedAt))).returning();
   if (!record) return notFound(c);
+  await bustUser(user.id);
   return c.json({ data: record });
 });
 

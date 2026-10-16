@@ -2,17 +2,28 @@ import { Hono } from "hono";
 import { eq, and, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
 import { notFound, unprocessable } from "../errors";
+import { cached, bustUser } from "@/server/cache";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Table = any;
 
-export function createResourceRoutes(table: Table) {
+type CacheConfig = { key: (uid: string) => string; ttl: number };
+
+export function createResourceRoutes(table: Table, cache?: CacheConfig) {
   const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
 
   routes.get("/", async (c) => {
     const user = c.get("user");
     const classId = c.req.query("classId");
     const listId = c.req.query("listId");
+
+    if (cache && !classId && !listId) {
+      const records = await cached(cache.key(user.id), cache.ttl, () =>
+        db.select().from(table).where(and(eq(table.userId, user.id), isNull(table.deletedAt))),
+      );
+      return c.json({ data: records });
+    }
+
     const conditions: any[] = [eq(table.userId, user.id), isNull(table.deletedAt)];
     if (classId && table.classId) {
       conditions.push(eq(table.classId, classId));
@@ -38,6 +49,7 @@ export function createResourceRoutes(table: Table) {
     if (!body) return unprocessable(c, "请求体不合法");
     const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...rest } = body;
     const [record] = await db.insert(table).values({ ...rest, userId: user.id }).returning();
+    if (cache) await bustUser(user.id, cache.key(user.id));
     return c.json({ data: record }, 201);
   });
 
@@ -52,6 +64,7 @@ export function createResourceRoutes(table: Table) {
       .where(and(eq(table.id, id), eq(table.userId, user.id), isNull(table.deletedAt)))
       .returning();
     if (!record) return notFound(c);
+    if (cache) await bustUser(user.id, cache.key(user.id));
     return c.json({ data: record });
   });
 
@@ -64,6 +77,7 @@ export function createResourceRoutes(table: Table) {
         .where(and(eq(table.id, id), eq(table.userId, user.id)))
         .returning();
       if (!record) return notFound(c);
+      if (cache) await bustUser(user.id, cache.key(user.id));
       return c.json({ data: record });
     }
     const [record] = await db.update(table)
@@ -71,6 +85,7 @@ export function createResourceRoutes(table: Table) {
       .where(and(eq(table.id, id), eq(table.userId, user.id), isNull(table.deletedAt)))
       .returning();
     if (!record) return notFound(c);
+    if (cache) await bustUser(user.id, cache.key(user.id));
     return c.json({ data: record });
   });
 

@@ -4,11 +4,12 @@ import { Hono } from "hono";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
 import { badRequest, notFound, unprocessable } from "../errors";
+import { cached, bustUser, ck } from "@/server/cache";
 
 const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
 
-const listsCrud = createResourceRoutes(dictationLists as any);
-const wordsCrud = createResourceRoutes(dictationWords as any);
+const listsCrud = createResourceRoutes(dictationLists as any, { key: ck.dictLists, ttl: 300 });
+const wordsCrud = createResourceRoutes(dictationWords as any, { key: ck.dictWords, ttl: 300 });
 const resultsCrud = createResourceRoutes(dictationResults as any);
 
 routes.route("/lists", listsCrud);
@@ -78,6 +79,10 @@ routes.post("/lists/:listId/results", async (c) => {
     await db.delete(dictationResults).where(inArray(dictationResults.id, deletes));
   }
 
+  if (inserts.length || updates.length || deletes.length) {
+    await bustUser(user.id, ck.dictResults(user.id, listId));
+  }
+
   return c.json({
     data: { created: inserts.length, updated: updates.length, deleted: deletes.length, unchanged },
   });
@@ -87,10 +92,9 @@ routes.post("/lists/:listId/results", async (c) => {
 routes.get("/lists/:listId/results", async (c) => {
   const user = c.get("user");
   const listId = c.req.param("listId");
-  const records = await db
-    .select()
-    .from(dictationResults)
-    .where(and(eq(dictationResults.listId, listId), eq(dictationResults.userId, user.id)));
+  const records = await cached(ck.dictResults(user.id, listId), 120, () =>
+    db.select().from(dictationResults).where(and(eq(dictationResults.listId, listId), eq(dictationResults.userId, user.id))),
+  );
   return c.json({ data: records });
 });
 

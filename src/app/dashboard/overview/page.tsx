@@ -1,83 +1,137 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import {
+  DndContext,
+  closestCenter,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { apiClient } from "@/lib/api-client";
 import { useClasses } from "@/hooks/use-classes";
 import { PageHeader } from "@/components/common/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { EmptyState, LoadingState, ErrorState } from "@/components/ui/states";
-import {
-  LayoutDashboard, CalendarDays, Users, GraduationCap, Headphones,
-  BookOpen, AlertTriangle, TrendingUp,
-} from "lucide-react";
-import { greeting, todayStr } from "@/lib/utils";
-import Link from "next/link";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { LoadingState, ErrorState } from "@/components/ui/states";
+import { GripVertical, X, Settings, type LucideIcon } from "lucide-react";
+import { greeting, todayStr, cn } from "@/lib/utils";
+import { CARD_DEFS, DEFAULT_CARD_ORDER, type Overview } from "./cards";
 
-type Overview = {
-  totals: {
-    classes: number;
-    students: number;
-    vocabUnits: number;
-    vocabWords: number;
-    dictationLists: number;
-    dictationResults: number;
-    exams: number;
-    openHomework: number;
+const STORAGE_KEY = "overview-cards-v1";
+
+type CardConfig = { order: string[]; hidden: string[] };
+
+function SortableCard({
+  id,
+  title,
+  icon: Icon,
+  onHide,
+  children,
+}: {
+  id: string;
+  title: string;
+  icon: LucideIcon;
+  onHide: () => void;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 20 : undefined,
   };
-  classes: {
-    id: string;
-    name: string;
-    gradeLevel: string | null;
-    studentCount: number;
-    dictationCount: number;
-    examCount: number;
-    avgAccuracy: number | null;
-    lastDictation: { id: string; name: string; date: string | null; avgAccuracy: number | null } | null;
-  }[];
-  recentDictations: {
-    id: string; name: string; date: string | null; className: string;
-    wordCount: number; avgAccuracy: number | null;
-  }[];
-  weakWords: { word: string; listName: string; wrongCount: number; totalCount: number; wrongRate: number }[];
-  todaySchedule: { className: string; periodNo: number; subject: string; classroom: string }[];
-  alerts: {
-    studentId: string;
-    studentName: string;
-    studentNo: string | null;
-    classId: string;
-    className: string;
-    streak: number;
-    latestAccuracy: number | null;
-    latestListName: string;
-  }[];
-  alertThreshold: number;
-};
-
-function accuracyColor(value: number | null): string {
-  if (value == null) return "text-muted";
-  if (value >= 85) return "text-green-600";
-  if (value >= 70) return "text-primary";
-  if (value >= 60) return "text-amber-600";
-  return "text-red-600";
+  return (
+    <Card ref={setNodeRef} style={style}>
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="cursor-grab touch-none text-muted transition-colors hover:text-text active:cursor-grabbing"
+            aria-label="拖拽排序"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <Icon className="h-4 w-4" />
+          {title}
+        </CardTitle>
+        <button
+          type="button"
+          onClick={onHide}
+          className="text-muted transition-colors hover:text-red-500"
+          aria-label="隐藏卡片"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </CardHeader>
+      {children}
+    </Card>
+  );
 }
 
 export default function OverviewPage() {
   const { classes, isLoading: classLoading } = useClasses();
-
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["overview"],
     queryFn: () => apiClient.get<{ data: Overview }>("/overview"),
   });
-
   const ov = data?.data;
 
-  const stats = [
-    { label: "任教班级", value: ov?.totals.classes ?? "—", icon: LayoutDashboard, color: "var(--c-listen)" },
-    { label: "学生总数", value: ov?.totals.students ?? "—", icon: Users, color: "var(--c-vocab)" },
-    { label: "已布置作业", value: ov?.totals.openHomework ?? "—", icon: BookOpen, color: "var(--c-homework)" },
-    { label: "考试场次", value: ov?.totals.exams ?? "—", icon: GraduationCap, color: "var(--c-exam)" },
-  ];
+  const [config, setConfig] = useState<CardConfig>({ order: DEFAULT_CARD_ORDER, hidden: [] });
+  const [ready, setReady] = useState(false);
+  const [customizing, setCustomizing] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as CardConfig;
+        const known = new Set(parsed.order);
+        const missing = DEFAULT_CARD_ORDER.filter((id) => !known.has(id));
+        setConfig({ order: [...parsed.order, ...missing], hidden: parsed.hidden ?? [] });
+      }
+    } catch {
+      // ignore
+    }
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (ready) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+      } catch {
+        // ignore
+      }
+    }
+  }, [config, ready]);
+
+  const visibleIds = config.order.filter((id) => !config.hidden.includes(id));
+
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setConfig((cfg) => ({
+      ...cfg,
+      order: arrayMove(cfg.order, cfg.order.indexOf(String(active.id)), cfg.order.indexOf(String(over.id))),
+    }));
+  }
+
+  function toggleCard(id: string) {
+    setConfig((cfg) => ({
+      ...cfg,
+      hidden: cfg.hidden.includes(id) ? cfg.hidden.filter((x) => x !== id) : [...cfg.hidden, id],
+    }));
+  }
 
   if (isLoading || classLoading) return <LoadingState />;
   if (error) return <ErrorState message="加载失败" onRetry={() => refetch()} />;
@@ -86,261 +140,69 @@ export default function OverviewPage() {
     <div>
       <PageHeader title="总览" description={`${greeting()}！今天是 ${todayStr()}`} />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((s) => {
-          const Icon = s.icon;
-          return (
-            <Card key={s.label}>
-              <CardContent className="flex items-center gap-3 p-4">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-lg"
-                  style={{ background: `${s.color}1a`, color: s.color }}
-                >
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted">{s.label}</p>
-                  <p className="text-xl font-bold text-text">{s.value}</p>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+      <div className="mb-4 flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => setCustomizing((v) => !v)}>
+          <Settings className="mr-1.5 h-4 w-4" />
+          自定义卡片
+        </Button>
       </div>
 
-      {/* 班级总览：一个老师带多个班时的核心视图 */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Users className="h-4 w-4" />
-            班级总览
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {!ov || ov.classes.length === 0 ? (
-            <EmptyState icon={<Users className="h-10 w-10" />} title="还没有班级" description="先在顶栏新建班级" />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-line text-left text-muted">
-                    <th className="px-4 py-3 font-medium">班级</th>
-                    <th className="px-4 py-3 font-medium">人数</th>
-                    <th className="px-4 py-3 font-medium">听写次数</th>
-                    <th className="px-4 py-3 font-medium">平均正确率</th>
-                    <th className="px-4 py-3 font-medium">最近一次听写</th>
-                    <th className="px-4 py-3 font-medium">考试</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ov.classes.map((c) => (
-                    <tr key={c.id} className="border-b border-line/50 hover:bg-bg/50">
-                      <td className="px-4 py-2.5">
-                        <Link href="/dashboard/students" className="font-medium hover:text-primary">{c.name}</Link>
-                        {c.gradeLevel && <span className="ml-2 text-xs text-muted">{c.gradeLevel}</span>}
-                      </td>
-                      <td className="px-4 py-2.5">{c.studentCount}</td>
-                      <td className="px-4 py-2.5">{c.dictationCount}</td>
-                      <td className={`px-4 py-2.5 font-medium ${accuracyColor(c.avgAccuracy)}`}>
-                        {c.avgAccuracy == null ? "—" : `${c.avgAccuracy}%`}
-                      </td>
-                      <td className="px-4 py-2.5 text-muted">
-                        {c.lastDictation ? (
-                          <span>
-                            {c.lastDictation.name}
-                            {c.lastDictation.date && <span className="ml-1 text-xs">· {c.lastDictation.date}</span>}
-                            {c.lastDictation.avgAccuracy != null && (
-                              <span className={`ml-1 text-xs ${accuracyColor(c.lastDictation.avgAccuracy)}`}>
-                                {c.lastDictation.avgAccuracy}%
-                              </span>
-                            )}
-                          </span>
-                        ) : "—"}
-                      </td>
-                      <td className="px-4 py-2.5">{c.examCount}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {customizing && (
+        <Card className="mb-4">
+          <CardContent className="pt-4">
+            <p className="mb-3 text-sm font-medium">显示 / 隐藏卡片</p>
+            <div className="flex flex-wrap gap-2">
+              {CARD_DEFS.map((def) => {
+                const visible = !config.hidden.includes(def.id);
+                const Icon = def.icon;
+                return (
+                  <button
+                    key={def.id}
+                    type="button"
+                    onClick={() => toggleCard(def.id)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition-colors",
+                      visible
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-line text-muted hover:bg-bg",
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {def.title}
+                  </button>
+                );
+              })}
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* 学情预警：连续多次听写不达标的学生 */}
-      {ov && ov.alerts.length > 0 && (
-        <Card className="mt-6 border-amber-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base text-amber-600">
-              <AlertTriangle className="h-4 w-4" />
-              需要关注的学生
-              <span className="text-xs font-normal text-muted">
-                连续 {2} 次及以上听写正确率低于 {ov.alertThreshold}%
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-line text-left text-muted">
-                    <th className="px-4 py-2.5 font-medium">学生</th>
-                    <th className="px-4 py-2.5 font-medium">班级</th>
-                    <th className="px-4 py-2.5 font-medium">连续不达标</th>
-                    <th className="px-4 py-2.5 font-medium">最近一次</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ov.alerts.map((a) => (
-                    <tr key={a.studentId} className="border-b border-line/50 hover:bg-bg/50">
-                      <td className="px-4 py-2.5">
-                        <Link href="/dashboard/students" className="font-medium hover:text-primary">{a.studentName}</Link>
-                        {a.studentNo && <span className="ml-2 text-xs text-muted">{a.studentNo}</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-muted">{a.className}</td>
-                      <td className="px-4 py-2.5">
-                        <Badge variant="outline" className="border-amber-400 text-amber-600">{a.streak} 次</Badge>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <span className={`font-medium ${accuracyColor(a.latestAccuracy)}`}>
-                          {a.latestAccuracy == null ? "—" : `${a.latestAccuracy}%`}
-                        </span>
-                        <span className="ml-1 text-xs text-muted">· {a.latestListName}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <p className="mt-3 text-xs text-muted">
+              拖拽卡片左侧手柄可调整顺序，点击卡片右上角 × 可隐藏
+            </p>
           </CardContent>
         </Card>
       )}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarDays className="h-4 w-4" />
-              今日课表
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!ov || ov.todaySchedule.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted">今天没有排课，或尚未设置课表</p>
-            ) : (
-              <div className="divide-y divide-line">
-                {ov.todaySchedule.map((c, i) => (
-                  <div key={`${c.className}-${c.periodNo}-${i}`} className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="muted">第 {c.periodNo} 节</Badge>
-                      <span className="text-sm font-medium">{c.className}</span>
-                    </div>
-                    <span className="text-sm text-muted">
-                      {c.subject || "未填写"}
-                      {c.classroom ? ` · ${c.classroom}` : ""}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Headphones className="h-4 w-4" />
-              最近听写
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!ov || ov.recentDictations.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted">还没有听写记录</p>
-            ) : (
-              <div className="divide-y divide-line">
-                {ov.recentDictations.map((d) => (
-                  <div key={d.id} className="flex items-center justify-between py-2">
-                    <div>
-                      <span className="text-sm font-medium">{d.name}</span>
-                      <span className="ml-2 text-xs text-muted">{d.className}</span>
-                      {d.date && <span className="ml-1 text-xs text-muted">· {d.date}</span>}
-                    </div>
-                    <span className={`text-sm font-medium ${accuracyColor(d.avgAccuracy)}`}>
-                      {d.avgAccuracy == null ? `${d.wordCount} 词` : `${d.avgAccuracy}%`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="h-4 w-4" />
-              高频错词 TOP 10
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!ov || ov.weakWords.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted">录入听写成绩后，这里会统计最容易错的单词</p>
-            ) : (
-              <div className="divide-y divide-line">
-                {ov.weakWords.map((w) => (
-                  <div key={`${w.word}-${w.listName}`} className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{w.word}</span>
-                      <span className="text-xs text-muted">{w.listName}</span>
-                    </div>
-                    <span className="text-sm text-red-500">
-                      错 {w.wrongCount}/{w.totalCount} · {w.wrongRate}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-4 w-4" />
-              数据概况
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-md border border-line p-3">
-                <p className="text-xs text-muted">词汇单元</p>
-                <p className="text-lg font-bold">{ov?.totals.vocabUnits ?? 0}</p>
-              </div>
-              <div className="rounded-md border border-line p-3">
-                <p className="text-xs text-muted">词条总数</p>
-                <p className="text-lg font-bold">{ov?.totals.vocabWords ?? 0}</p>
-              </div>
-              <div className="rounded-md border border-line p-3">
-                <p className="text-xs text-muted">听写词表</p>
-                <p className="text-lg font-bold">{ov?.totals.dictationLists ?? 0}</p>
-              </div>
-              <div className="rounded-md border border-line p-3">
-                <p className="text-xs text-muted">已批改格子</p>
-                <p className="text-lg font-bold">{ov?.totals.dictationResults ?? 0}</p>
-              </div>
+      {ov && (
+        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={visibleIds} strategy={verticalListSortingStrategy}>
+            <div className="space-y-4">
+              {visibleIds.map((id) => {
+                const def = CARD_DEFS.find((d) => d.id === id);
+                if (!def) return null;
+                return (
+                  <SortableCard
+                    key={id}
+                    id={id}
+                    title={def.title}
+                    icon={def.icon}
+                    onHide={() => toggleCard(id)}
+                  >
+                    {def.render(ov)}
+                  </SortableCard>
+                );
+              })}
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Link href="/dashboard/students" className="rounded-md border border-line p-3 text-sm hover:bg-bg">学生管理</Link>
-              <Link href="/dashboard/dictation" className="rounded-md border border-line p-3 text-sm hover:bg-bg">听写与成绩</Link>
-              <Link href="/dashboard/vocab" className="rounded-md border border-line p-3 text-sm hover:bg-bg">词汇中心</Link>
-              <Link href="/dashboard/classroom" className="rounded-md border border-line p-3 text-sm hover:bg-bg">课堂互动</Link>
-              <Link href="/dashboard/schedule" className="rounded-md border border-line p-3 text-sm hover:bg-bg">设置课表</Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </SortableContext>
+        </DndContext>
+      )}
 
       {classes.length > 1 && (
         <p className="mt-4 text-xs text-muted">
