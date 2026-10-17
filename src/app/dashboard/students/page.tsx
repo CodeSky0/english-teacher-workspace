@@ -12,7 +12,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/states";
 import { ImportDialog } from "@/components/common/import-dialog";
 import { downloadExport } from "@/lib/excel/client";
-import { Plus, Search, Pencil, Trash2, Users, Upload, Download } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Users, Upload, Download, Lock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +33,8 @@ export default function StudentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Student | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [form, setForm] = useState({ name: "", enName: "", gender: "unknown", studentNo: "", seatNo: "" });
@@ -108,8 +110,19 @@ export default function StudentsPage() {
 
   async function handleDelete() {
     if (!deleteId) return;
+    if (!deletePassword.trim()) { toast.error("请输入密码以确认删除"); return; }
+    setVerifying(true);
+    try {
+      await apiClient.post("/profile/verify-password", { password: deletePassword });
+    } catch {
+      toast.error("密码错误，删除已取消");
+      setVerifying(false);
+      return;
+    }
+    setVerifying(false);
     await deleteMut.mutateAsync(deleteId);
     setDeleteId(null);
+    setDeletePassword("");
   }
 
   async function handleImport(rows: Record<string, string>[], mode: "append" | "upsert") {
@@ -263,11 +276,42 @@ export default function StudentsPage() {
         onConfirm={handleImport}
       />
 
-      <Dialog open={!!deleteId} onClose={() => setDeleteId(null)} title="确认删除">
-        <p className="text-sm text-muted">删除后该学生将进入回收站，可在设置中恢复。</p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setDeleteId(null)}>取消</Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={deleteMut.isPending}>确认删除</Button>
+      <Dialog
+        open={!!deleteId}
+        onClose={() => { setDeleteId(null); setDeletePassword(""); }}
+        title="确认删除学生"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-lg border border-[#f3dadb] bg-[#f3dadb]/40 p-3">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-[#a64953]" />
+            <p className="text-sm text-[#a64953]">
+              删除后该学生将进入回收站，可在设置中恢复。此操作需验证你的账户密码。
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>账户密码</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-4" />
+              <Input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="输入你的登录密码以确认"
+                className="pl-9"
+                onKeyDown={(e) => { if (e.key === "Enter" && !deleteMut.isPending && !verifying) handleDelete(); }}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => { setDeleteId(null); setDeletePassword(""); }}>取消</Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteMut.isPending || verifying || !deletePassword.trim()}
+            >
+              {(deleteMut.isPending || verifying) ? "验证中…" : "确认删除"}
+            </Button>
+          </div>
         </div>
       </Dialog>
     </div>

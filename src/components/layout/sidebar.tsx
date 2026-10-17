@@ -97,7 +97,7 @@ export function Sidebar() {
           <div className="px-4 pb-4">
             <div className="divider-ink" />
             <p className="mt-3 text-center text-caption-10 text-neutral-5">
-              Yohaku · 和風設計
+              v1.01-preview
             </p>
           </div>
         )}

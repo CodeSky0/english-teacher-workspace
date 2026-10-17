@@ -1,11 +1,13 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "@/server/db";
 import { user } from "@/db/schema/auth";
+import { account } from "@/db/schema/auth";
 import { z } from "zod";
 import { cached, bust, ck } from "@/server/cache";
+import { verifyPassword } from "better-auth/crypto";
 
-const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
+const routes = new Hono<{ Variables: { user: { id: string; email: string }; session: any } }>();
 
 routes.get("/", async (c) => {
   const u = c.get("user");
@@ -32,6 +34,27 @@ routes.patch("/", async (c) => {
   const [updated] = await db.update(user).set({ ...parsed.data, updatedAt: new Date() }).where(eq(user.id, u.id)).returning();
   await bust(ck.profile(u.id));
   return c.json({ data: updated });
+});
+
+routes.post("/verify-password", async (c) => {
+  const u = c.get("user");
+  const body = await c.req.json();
+  const parsed = z.object({ password: z.string().min(1) }).safeParse(body);
+  if (!parsed.success) return c.json({ error: "密码不能为空" }, 400);
+  const { password } = parsed.data;
+
+  const accounts = await db
+    .select({ password: account.password })
+    .from(account)
+    .where(and(eq(account.userId, u.id), eq(account.providerId, "credential")));
+
+  const hash = accounts[0]?.password;
+  if (!hash) return c.json({ error: "未找到密码账户" }, 400);
+
+  const valid = await verifyPassword({ hash, password });
+  if (!valid) return c.json({ error: "密码错误" }, 400);
+
+  return c.json({ verified: true });
 });
 
 export { routes as profileRoutes };
