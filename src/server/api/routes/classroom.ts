@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, inArray } from "drizzle-orm";
 import { db } from "@/server/db";
 import {
   attendanceRecords, classroomSessions, classroomPoints,
@@ -62,7 +62,77 @@ routes.route("/sessions", makeSubRoutes(classroomSessions));
 routes.route("/points", makeSubRoutes(classroomPoints));
 routes.route("/feedback", makeSubRoutes(studentFeedback));
 routes.route("/polls", makeSubRoutes(classroomPolls));
-routes.route("/poll-options", makeSubRoutes(classroomPollOptions));
+
+// ------------------------------------------------------------ 投票选项（按 poll 归属隔离）
+
+routes.get("/poll-options", async (c) => {
+  const user = c.get("user");
+  const pollId = c.req.query("pollId");
+  if (pollId) {
+    const [poll] = await db.select({ id: classroomPolls.id })
+      .from(classroomPolls)
+      .where(and(eq(classroomPolls.id, pollId), eq(classroomPolls.userId, user.id), isNull(classroomPolls.deletedAt)));
+    if (!poll) return c.json({ data: [] });
+    const records = await db.select().from(classroomPollOptions)
+      .where(and(eq(classroomPollOptions.pollId, pollId), isNull(classroomPollOptions.deletedAt)));
+    return c.json({ data: records });
+  }
+  const polls = await db.select({ id: classroomPolls.id }).from(classroomPolls)
+    .where(and(eq(classroomPolls.userId, user.id), isNull(classroomPolls.deletedAt)));
+  const pollIds = polls.map((p) => p.id);
+  if (pollIds.length === 0) return c.json({ data: [] });
+  const records = await db.select().from(classroomPollOptions)
+    .where(and(inArray(classroomPollOptions.pollId, pollIds), isNull(classroomPollOptions.deletedAt)));
+  return c.json({ data: records });
+});
+
+routes.post("/poll-options", async (c) => {
+  const user = c.get("user");
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const pollId = String(body.pollId ?? "");
+  if (!pollId) return badRequest(c, "缺少 pollId");
+  const [poll] = await db.select({ id: classroomPolls.id })
+    .from(classroomPolls)
+    .where(and(eq(classroomPolls.id, pollId), eq(classroomPolls.userId, user.id), isNull(classroomPolls.deletedAt)));
+  if (!poll) return notFound(c, "投票不存在");
+  const { id: _id, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...rest } = body;
+  const [record] = await db.insert(classroomPollOptions).values({ ...rest, pollId }).returning();
+  return c.json({ data: record }, 201);
+});
+
+routes.patch("/poll-options/:id", async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  const [opt] = await db.select().from(classroomPollOptions).where(eq(classroomPollOptions.id, id));
+  if (!opt) return notFound(c);
+  const [poll] = await db.select({ id: classroomPolls.id })
+    .from(classroomPolls)
+    .where(and(eq(classroomPolls.id, opt.pollId), eq(classroomPolls.userId, user.id), isNull(classroomPolls.deletedAt)));
+  if (!poll) return notFound(c);
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, pollId: _pid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...updateData } = body;
+  const [record] = await db.update(classroomPollOptions).set({ ...updateData, updatedAt: new Date() })
+    .where(and(eq(classroomPollOptions.id, id), isNull(classroomPollOptions.deletedAt))).returning();
+  if (!record) return notFound(c);
+  return c.json({ data: record });
+});
+
+routes.delete("/poll-options/:id", async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+  const [opt] = await db.select().from(classroomPollOptions).where(eq(classroomPollOptions.id, id));
+  if (!opt) return notFound(c);
+  const [poll] = await db.select({ id: classroomPolls.id })
+    .from(classroomPolls)
+    .where(and(eq(classroomPolls.id, opt.pollId), eq(classroomPolls.userId, user.id), isNull(classroomPolls.deletedAt)));
+  if (!poll) return notFound(c);
+  const [record] = await db.update(classroomPollOptions).set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(classroomPollOptions.id, id), isNull(classroomPollOptions.deletedAt))).returning();
+  if (!record) return notFound(c);
+  return c.json({ data: record });
+});
 
 // ------------------------------------------------------------ 批量：考勤
 

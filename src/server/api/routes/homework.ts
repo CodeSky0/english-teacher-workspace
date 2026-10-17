@@ -18,8 +18,10 @@ routes.get("/", async (c) => {
 
 routes.post("/", async (c) => {
   const user = c.get("user");
-  const body = await c.req.json();
-  const [record] = await db.insert(homework).values({ ...body, userId: user.id }).returning();
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...rest } = body;
+  const [record] = await db.insert(homework).values({ ...rest, userId: user.id }).returning();
   await bustUser(user.id);
   return c.json({ data: record }, 201);
 });
@@ -27,8 +29,9 @@ routes.post("/", async (c) => {
 routes.patch("/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const body = await c.req.json();
-  const { id: _id, userId: _uid, createdAt: _ca, ...updateData } = body;
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...updateData } = body;
   const [record] = await db.update(homework).set({ ...updateData, updatedAt: new Date() })
     .where(and(eq(homework.id, id), eq(homework.userId, user.id), isNull(homework.deletedAt))).returning();
   if (!record) return notFound(c);
@@ -69,10 +72,11 @@ routes.post("/:id/records", async (c) => {
 routes.patch("/records/:recordId", async (c) => {
   const user = c.get("user");
   const recordId = c.req.param("recordId");
-  const body = await c.req.json();
-  const { id: _id, userId: _uid, createdAt: _ca, ...updateData } = body;
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, homeworkId: _hid, ...updateData } = body;
   const [record] = await db.update(homeworkRecords).set({ ...updateData, updatedAt: new Date() })
-    .where(and(eq(homeworkRecords.id, recordId), eq(homeworkRecords.userId, user.id))).returning();
+    .where(and(eq(homeworkRecords.id, recordId), eq(homeworkRecords.userId, user.id), isNull(homeworkRecords.deletedAt))).returning();
   if (!record) return notFound(c);
   return c.json({ data: record });
 });

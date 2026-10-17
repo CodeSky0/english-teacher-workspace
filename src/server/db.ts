@@ -11,10 +11,10 @@ const DUMMY_URL = "postgresql://dummy:dummy@localhost:5432/dummy";
 
 function createClient() {
   if (!process.env.DATABASE_URL) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("[db] DATABASE_URL is required in production.");
-    }
-    console.warn("[db] DATABASE_URL not set — database operations will fail at runtime.");
+    console.warn(
+      "[db] DATABASE_URL not set — database operations will fail at runtime. " +
+        "(Use DUMMY_URL only to allow module loading during build.)"
+    );
   }
   const url = process.env.DATABASE_URL || DUMMY_URL;
   return postgres(url, {

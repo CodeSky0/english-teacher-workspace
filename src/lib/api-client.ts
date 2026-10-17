@@ -4,14 +4,34 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
+const DEFAULT_TIMEOUT = 30_000;
+const LONG_TIMEOUT = 120_000;
+
+function withTimeout(ms: number): { signal: AbortSignal | undefined; clear: () => void } {
+  if (typeof AbortController === "undefined") return { signal: undefined, clear: () => {} };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return { signal: controller.signal, clear: () => clearTimeout(timer) };
+}
+
+async function request<T>(path: string, options?: RequestInit, timeout = DEFAULT_TIMEOUT): Promise<T> {
+  const { signal, clear } = withTimeout(timeout);
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+      signal,
+    });
+  } catch (e: any) {
+    clear();
+    if (e?.name === "AbortError") throw new ApiError("TIMEOUT", "请求超时，请稍后重试", 408);
+    throw new ApiError("NETWORK", "网络错误，请检查连接", 0);
+  }
+  clear();
   const json = await res.json().catch(() => ({ error: { code: "PARSE_ERROR", message: "解析响应失败" } }));
   if (!res.ok) {
     throw new ApiError(json.error?.code || "UNKNOWN", json.error?.message || "请求失败", res.status);
@@ -42,14 +62,32 @@ export const apiClient = {
     const form = new FormData();
     form.append("file", file);
     for (const [key, value] of Object.entries(fields ?? {})) form.append(key, value);
-    const res = await fetch(`/api${path}`, { method: "POST", body: form });
+    const { signal, clear } = withTimeout(LONG_TIMEOUT);
+    let res: Response;
+    try {
+      res = await fetch(`/api${path}`, { method: "POST", body: form, signal });
+    } catch (e: any) {
+      clear();
+      if (e?.name === "AbortError") throw new ApiError("TIMEOUT", "上传超时，请减小文件后重试", 408);
+      throw new ApiError("NETWORK", "网络错误，请检查连接", 0);
+    }
+    clear();
     await assertOk(res, "上传失败");
     return (await res.json()) as T;
   },
 
   /** 下载二进制文件（Excel 导出），返回实际保存的文件名 */
   async downloadFile(path: string, fallbackName: string): Promise<string> {
-    const res = await fetch(`/api${path}`);
+    const { signal, clear } = withTimeout(LONG_TIMEOUT);
+    let res: Response;
+    try {
+      res = await fetch(`/api${path}`, { signal });
+    } catch (e: any) {
+      clear();
+      if (e?.name === "AbortError") throw new ApiError("TIMEOUT", "导出超时，请稍后重试", 408);
+      throw new ApiError("NETWORK", "网络错误，请检查连接", 0);
+    }
+    clear();
     await assertOk(res, "导出失败");
     const blob = await res.blob();
     const filename = filenameFromDisposition(res.headers.get("Content-Disposition")) || fallbackName;

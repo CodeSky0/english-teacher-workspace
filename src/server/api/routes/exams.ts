@@ -18,8 +18,10 @@ routes.get("/", async (c) => {
 
 routes.post("/", async (c) => {
   const user = c.get("user");
-  const body = await c.req.json();
-  const [record] = await db.insert(exams).values({ ...body, userId: user.id }).returning();
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...rest } = body;
+  const [record] = await db.insert(exams).values({ ...rest, userId: user.id }).returning();
   await bustUser(user.id);
   return c.json({ data: record }, 201);
 });
@@ -27,8 +29,9 @@ routes.post("/", async (c) => {
 routes.patch("/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const body = await c.req.json();
-  const { id: _id, userId: _uid, createdAt: _ca, ...updateData } = body;
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...updateData } = body;
   const [record] = await db.update(exams).set({ ...updateData, updatedAt: new Date() })
     .where(and(eq(exams.id, id), eq(exams.userId, user.id), isNull(exams.deletedAt))).returning();
   if (!record) return notFound(c);
@@ -50,7 +53,7 @@ routes.get("/:id/scores", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const records = await db.select().from(examScores)
-    .where(and(eq(examScores.examId, id), eq(examScores.userId, user.id)));
+    .where(and(eq(examScores.examId, id), eq(examScores.userId, user.id), isNull(examScores.deletedAt)));
   return c.json({ data: records });
 });
 
@@ -64,10 +67,10 @@ routes.post("/:id/scores", async (c) => {
   const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, examId: _eid, ...rest } = body;
   const { listeningScore, speakingScore, writtenScore, totalScore, totalIsManual } = rest;
   let computedTotal = totalScore;
-  let manual = totalIsManual ?? false;
+  const manual = totalIsManual ?? false;
   if (!manual && listeningScore != null && speakingScore != null && writtenScore != null) {
     const sum = Number(listeningScore) + Number(speakingScore) + Number(writtenScore);
-    computedTotal = String(sum);
+    if (Number.isFinite(sum)) computedTotal = String(sum);
   }
   const [record] = await db.insert(examScores).values({
     ...rest, examId: id, userId: user.id,
@@ -79,14 +82,16 @@ routes.post("/:id/scores", async (c) => {
 routes.patch("/scores/:scoreId", async (c) => {
   const user = c.get("user");
   const scoreId = c.req.param("scoreId");
-  const body = await c.req.json();
-  const { id: _id, userId: _uid, createdAt: _ca, examId: _eid, ...updateData } = body;
-  const { listeningScore, speakingScore, writtenScore, totalScore, totalIsManual } = updateData;
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, examId: _eid, ...updateData } = body;
+  const { listeningScore, speakingScore, writtenScore, totalIsManual } = updateData;
   if (totalIsManual === false && listeningScore != null && speakingScore != null && writtenScore != null) {
-    updateData.totalScore = String(Number(listeningScore) + Number(speakingScore) + Number(writtenScore));
+    const sum = Number(listeningScore) + Number(speakingScore) + Number(writtenScore);
+    if (Number.isFinite(sum)) updateData.totalScore = String(sum);
   }
   const [record] = await db.update(examScores).set({ ...updateData, updatedAt: new Date() })
-    .where(and(eq(examScores.id, scoreId), eq(examScores.userId, user.id))).returning();
+    .where(and(eq(examScores.id, scoreId), eq(examScores.userId, user.id), isNull(examScores.deletedAt))).returning();
   if (!record) return notFound(c);
   return c.json({ data: record });
 });

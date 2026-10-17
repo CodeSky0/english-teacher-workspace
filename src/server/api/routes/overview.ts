@@ -38,10 +38,10 @@ async function computeOverview(uid: string) {
       db.select({ id: vocabWords.id }).from(vocabWords).where(and(eq(vocabWords.userId, uid), isNull(vocabWords.deletedAt))),
       db.select().from(dictationLists).where(and(eq(dictationLists.userId, uid), isNull(dictationLists.deletedAt))),
       db.select().from(dictationWords).where(and(eq(dictationWords.userId, uid), isNull(dictationWords.deletedAt))),
-      db.select().from(dictationResults).where(eq(dictationResults.userId, uid)),
+      db.select().from(dictationResults).where(and(eq(dictationResults.userId, uid), isNull(dictationResults.deletedAt))),
       db.select().from(exams).where(and(eq(exams.userId, uid), isNull(exams.deletedAt))),
       db.select({ id: homework.id, status: homework.status }).from(homework).where(and(eq(homework.userId, uid), isNull(homework.deletedAt))),
-      db.select().from(timetableCells).where(eq(timetableCells.userId, uid)),
+      db.select().from(timetableCells).where(and(eq(timetableCells.userId, uid), isNull(timetableCells.deletedAt))),
     ]);
 
   // ---- 听写统计 ----

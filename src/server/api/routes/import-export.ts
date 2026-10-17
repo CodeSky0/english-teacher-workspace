@@ -357,7 +357,7 @@ routes.get("/export/vocab", async (c) => {
     .from(vocabUnits)
     .where(
       unitId
-        ? and(eq(vocabUnits.id, unitId), eq(vocabUnits.userId, user.id))
+        ? and(eq(vocabUnits.id, unitId), eq(vocabUnits.userId, user.id), isNull(vocabUnits.deletedAt))
         : and(eq(vocabUnits.userId, user.id), isNull(vocabUnits.deletedAt))
     );
   const unitNameById = new Map(unitRows.map((u) => [u.id, u.name]));
@@ -420,7 +420,7 @@ routes.get("/export/dictation/:listId", async (c) => {
   const results = await db
     .select()
     .from(dictationResults)
-    .where(and(eq(dictationResults.listId, listId), eq(dictationResults.userId, user.id)));
+    .where(and(eq(dictationResults.listId, listId), eq(dictationResults.userId, user.id), isNull(dictationResults.deletedAt)));
   const resultMap = new Map<string, boolean | null>();
   for (const r of results) resultMap.set(`${r.studentId}:${r.wordId}`, r.isCorrect);
 
@@ -500,7 +500,7 @@ routes.get("/export/dictation-summary", async (c) => {
   const results = await db
     .select()
     .from(dictationResults)
-    .where(and(eq(dictationResults.userId, user.id), inArray(dictationResults.listId, listIds)));
+    .where(and(eq(dictationResults.userId, user.id), inArray(dictationResults.listId, listIds), isNull(dictationResults.deletedAt)));
 
   const correctMap = new Map<string, number>();
   const recordedMap = new Map<string, number>();
@@ -569,7 +569,7 @@ routes.get("/export/wrong-words", async (c) => {
   const results = await db
     .select()
     .from(dictationResults)
-    .where(and(eq(dictationResults.userId, user.id), inArray(dictationResults.listId, listIds)));
+    .where(and(eq(dictationResults.userId, user.id), inArray(dictationResults.listId, listIds), isNull(dictationResults.deletedAt)));
 
   type Bucket = { word: string; meaning: string; wrong: number; recorded: number; students: Set<string>; lastDate: string; listNames: Set<string> };
   const buckets = new Map<string, Bucket>();

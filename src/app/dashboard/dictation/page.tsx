@@ -138,7 +138,11 @@ export default function DictationPage() {
       await apiClient.post(`/dictation/lists/${selectedList.id}/results`, { results: items });
       qc.invalidateQueries({ queryKey: ["dict-results", selectedList.id] });
     } catch (e: any) {
-      toast.error(e?.message || "成绩保存失败");
+      toast.error(e?.message || "成绩保存失败，将在下次编辑时重试");
+      for (const it of items) {
+        const k = cellKey(it.studentId, it.wordId);
+        if (!(k in pendingRef.current)) pendingRef.current[k] = it;
+      }
     } finally {
       setSaving(false);
     }

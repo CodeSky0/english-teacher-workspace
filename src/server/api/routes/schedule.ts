@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { eq, and, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
 import { timetablePeriods, timetableCells } from "@/db/schema/schedule";
-import { notFound } from "../errors";
+import { notFound, unprocessable } from "../errors";
 import { cached, bustUser, ck } from "@/server/cache";
 
 const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
@@ -17,8 +17,10 @@ routes.get("/periods", async (c) => {
 
 routes.post("/periods", async (c) => {
   const user = c.get("user");
-  const body = await c.req.json();
-  const [record] = await db.insert(timetablePeriods).values({ ...body, userId: user.id }).returning();
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...rest } = body;
+  const [record] = await db.insert(timetablePeriods).values({ ...rest, userId: user.id }).returning();
   await bustUser(user.id, ck.schedulePeriods(user.id));
   return c.json({ data: record }, 201);
 });
@@ -26,11 +28,12 @@ routes.post("/periods", async (c) => {
 routes.patch("/periods/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const body = await c.req.json();
-  const { id: _id, userId: _uid, createdAt: _ca, ...updateData } = body;
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...updateData } = body;
   const [record] = await db.update(timetablePeriods)
     .set({ ...updateData, updatedAt: new Date() })
-    .where(and(eq(timetablePeriods.id, id), eq(timetablePeriods.userId, user.id)))
+    .where(and(eq(timetablePeriods.id, id), eq(timetablePeriods.userId, user.id), isNull(timetablePeriods.deletedAt)))
     .returning();
   if (!record) return notFound(c);
   await bustUser(user.id, ck.schedulePeriods(user.id));
@@ -41,8 +44,8 @@ routes.delete("/periods/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const [record] = await db.update(timetablePeriods)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(timetablePeriods.id, id), eq(timetablePeriods.userId, user.id)))
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(timetablePeriods.id, id), eq(timetablePeriods.userId, user.id), isNull(timetablePeriods.deletedAt)))
     .returning();
   if (!record) return notFound(c);
   await bustUser(user.id, ck.schedulePeriods(user.id));
@@ -65,8 +68,10 @@ routes.get("/cells", async (c) => {
 
 routes.post("/cells", async (c) => {
   const user = c.get("user");
-  const body = await c.req.json();
-  const [record] = await db.insert(timetableCells).values({ ...body, userId: user.id }).returning();
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...rest } = body;
+  const [record] = await db.insert(timetableCells).values({ ...rest, userId: user.id }).returning();
   await bustUser(user.id, ck.scheduleCells(user.id));
   return c.json({ data: record }, 201);
 });
@@ -74,8 +79,9 @@ routes.post("/cells", async (c) => {
 routes.patch("/cells/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const body = await c.req.json();
-  const { id: _id, userId: _uid, createdAt: _ca, ...updateData } = body;
+  const body = await c.req.json().catch(() => null);
+  if (!body) return unprocessable(c, "请求体不合法");
+  const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...updateData } = body;
   const [record] = await db.update(timetableCells)
     .set({ ...updateData, updatedAt: new Date() })
     .where(and(eq(timetableCells.id, id), eq(timetableCells.userId, user.id), isNull(timetableCells.deletedAt)))

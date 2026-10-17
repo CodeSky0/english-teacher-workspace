@@ -41,7 +41,7 @@ routes.post("/lists/:listId/results", async (c) => {
   const existing = await db
     .select()
     .from(dictationResults)
-    .where(and(eq(dictationResults.listId, listId), eq(dictationResults.userId, user.id)));
+    .where(and(eq(dictationResults.listId, listId), eq(dictationResults.userId, user.id), isNull(dictationResults.deletedAt)));
   const byKey = new Map(existing.map((r) => [`${r.studentId}:${r.wordId}`, r]));
 
   const inserts: (typeof dictationResults.$inferInsert)[] = [];
@@ -68,16 +68,18 @@ routes.post("/lists/:listId/results", async (c) => {
     }
   }
 
-  if (inserts.length) await db.insert(dictationResults).values(inserts);
-  for (const u of updates) {
-    await db
-      .update(dictationResults)
-      .set({ isCorrect: u.isCorrect, updatedAt: new Date() })
-      .where(eq(dictationResults.id, u.id));
-  }
-  if (deletes.length) {
-    await db.delete(dictationResults).where(inArray(dictationResults.id, deletes));
-  }
+  await db.transaction(async (tx) => {
+    if (inserts.length) await tx.insert(dictationResults).values(inserts);
+    for (const u of updates) {
+      await tx
+        .update(dictationResults)
+        .set({ isCorrect: u.isCorrect, updatedAt: new Date() })
+        .where(and(eq(dictationResults.id, u.id), eq(dictationResults.userId, user.id)));
+    }
+    if (deletes.length) {
+      await tx.delete(dictationResults).where(inArray(dictationResults.id, deletes));
+    }
+  });
 
   if (inserts.length || updates.length || deletes.length) {
     await bustUser(user.id, ck.dictResults(user.id, listId));
@@ -93,7 +95,7 @@ routes.get("/lists/:listId/results", async (c) => {
   const user = c.get("user");
   const listId = c.req.param("listId");
   const records = await cached(ck.dictResults(user.id, listId), 120, () =>
-    db.select().from(dictationResults).where(and(eq(dictationResults.listId, listId), eq(dictationResults.userId, user.id))),
+    db.select().from(dictationResults).where(and(eq(dictationResults.listId, listId), eq(dictationResults.userId, user.id), isNull(dictationResults.deletedAt))),
   );
   return c.json({ data: records });
 });

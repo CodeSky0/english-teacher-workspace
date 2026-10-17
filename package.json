@@ -8,7 +8,7 @@
     "build": "next build",
     "vercel-build": "tsx scripts/migrate.ts && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -49,6 +49,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@playwright/test": "^1.49.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.10.2",

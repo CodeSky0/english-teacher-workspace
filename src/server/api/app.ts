@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
+import { sql } from "drizzle-orm";
 import { auth } from "@/server/auth/auth";
-import { unauthorized } from "./errors";
+import { unauthorized, serverError } from "./errors";
+import { db } from "@/server/db";
+import { redis } from "@/server/redis";
 import { classesRoutes } from "./routes/classes";
 import { studentsRoutes } from "./routes/students";
 import { scheduleRoutes } from "./routes/schedule";
@@ -32,7 +35,33 @@ const app = new Hono<AppEnv>();
 
 app.use("*", logger());
 
-app.get("/api/health", (c) => c.json({ ok: true, time: new Date().toISOString() }));
+app.onError((err, c) => {
+  console.error("[api] unhandled error:", err);
+  return serverError(c);
+});
+
+app.get("/api/health", async (c) => {
+  const time = new Date().toISOString();
+  const checks: Record<string, string> = {};
+  try {
+    await db.execute(sql`SELECT 1`);
+    checks.db = "ok";
+  } catch {
+    checks.db = "fail";
+  }
+  if (!redis) {
+    checks.redis = "skip";
+  } else {
+    try {
+      await redis.ping();
+      checks.redis = "ok";
+    } catch {
+      checks.redis = "fail";
+    }
+  }
+  const ok = checks.db === "ok";
+  return c.json({ ok, time, checks }, ok ? 200 : 503);
+});
 
 app.use("/api/*", async (c, next) => {
   if (c.req.path === "/api/health") return next();
