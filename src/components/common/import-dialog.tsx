@@ -8,6 +8,7 @@ import type { ImportKind } from "@/lib/excel/fields";
 import { Upload, Download, FileSpreadsheet, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/error";
 
 const PREVIEW_LIMIT = 50;
 
@@ -65,9 +66,9 @@ export function ImportDialog({
       setPreview(data);
       if (data.total === 0) toast.warning("文件中没有读取到数据行");
       else toast.success(`已解析 ${data.total} 行，其中 ${data.validCount} 行有效`);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setFile(null);
-      toast.error(e?.message || "解析失败");
+      toast.error(getErrorMessage(e, "解析失败"));
     } finally {
       setParsing(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -89,8 +90,8 @@ export function ImportDialog({
     try {
       await onConfirm(payload, mode);
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message || "导入失败");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, "导入失败"));
     } finally {
       setSubmitting(false);
     }
@@ -111,8 +112,8 @@ export function ImportDialog({
             onClick={async () => {
               try {
                 await downloadTemplate(kind);
-              } catch (e: any) {
-                toast.error(e?.message || "模板下载失败");
+              } catch (e: unknown) {
+                toast.error(getErrorMessage(e, "模板下载失败"));
               }
             }}
           >

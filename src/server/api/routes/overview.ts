@@ -8,8 +8,9 @@ import { exams } from "@/db/schema/exams";
 import { homework } from "@/db/schema/homework";
 import { timetableCells } from "@/db/schema/schedule";
 import { cached, ck } from "@/server/cache";
+import type { RouteEnv } from "../env";
 
-const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
+const routes = new Hono<RouteEnv>();
 
 type ClassStat = {
   id: string;

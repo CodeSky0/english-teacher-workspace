@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
 import { Plus, Pencil, Trash2, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error";
 
 type Plan = {
   id: string; title: string; classId: string | null; teachDate: string | null;
@@ -40,14 +41,14 @@ export default function PlansPage() {
   const plans = data?.data ?? [];
 
   const createMut = useMutation({
-    mutationFn: (d: any) => apiClient.post("/plans", d),
+    mutationFn: (d: Record<string, unknown>) => apiClient.post("/plans", d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["plans"] }); toast.success("已添加"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
   const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => apiClient.patch(`/plans/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiClient.patch(`/plans/${id}`, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["plans"] }); toast.success("已保存"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
   const deleteMut = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/plans/${id}`),

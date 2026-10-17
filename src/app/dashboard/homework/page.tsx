@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
 import { Plus, Pencil, Trash2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error";
 
 type Homework = {
   id: string; title: string; classId: string | null; assignDate: string | null; dueDate: string | null;
@@ -37,8 +38,8 @@ export default function HomeworkPage() {
   });
   const items = data?.data ?? [];
 
-  const createMut = useMutation({ mutationFn: (d: any) => apiClient.post("/homework", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["homework"] }); toast.success("已添加"); }, onError: (e: any) => toast.error(e.message) });
-  const updateMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: any }) => apiClient.patch(`/homework/${id}`, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["homework"] }); toast.success("已保存"); }, onError: (e: any) => toast.error(e.message) });
+  const createMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/homework", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["homework"] }); toast.success("已添加"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const updateMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiClient.patch(`/homework/${id}`, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["homework"] }); toast.success("已保存"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
   const deleteMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/homework/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["homework"] }); toast.success("已删除"); } });
 
   function openCreate() { setEditing(null); setForm({ title: "", classId: currentClass?.id ?? "", assignDate: "", dueDate: "", type: "", content: "", status: "draft", remark: "" }); setDialogOpen(true); }

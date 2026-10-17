@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { eq, and, isNull, inArray } from "drizzle-orm";
+import { eq, and, isNull, inArray, type SQL, type AnyColumn } from "drizzle-orm";
+import type { AnyPgTable } from "drizzle-orm/pg-core";
 import { db } from "@/server/db";
 import {
   attendanceRecords, classroomSessions, classroomPoints,
@@ -7,18 +8,28 @@ import {
 } from "@/db/schema/classroom";
 import { classes } from "@/db/schema/classes";
 import { notFound, unprocessable, badRequest } from "../errors";
+import type { RouteEnv } from "../env";
 
-const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
+const routes = new Hono<RouteEnv>();
 
-function makeSubRoutes(table: any, extraFields: string[] = []) {
-  const sub = new Hono<{ Variables: { user: { id: string }; session: any } }>();
-  const hasUser = !!table.userId;
+type SubTableColumns = {
+  id: AnyColumn;
+  userId?: AnyColumn;
+  deletedAt: AnyColumn;
+  classId?: AnyColumn;
+};
+
+function makeSubRoutes(table: AnyPgTable, extraFields: string[] = []) {
+  void extraFields;
+  const sub = new Hono<RouteEnv>();
+  const cols = table as unknown as SubTableColumns;
+  const hasUser = !!cols.userId;
   sub.get("/", async (c) => {
     const user = c.get("user");
     const classId = c.req.query("classId");
-    const conds: any[] = [isNull(table.deletedAt)];
-    if (hasUser) conds.push(eq(table.userId, user.id));
-    if (classId && table.classId) conds.push(eq(table.classId, classId));
+    const conds: SQL[] = [isNull(cols.deletedAt)];
+    if (hasUser && cols.userId) conds.push(eq(cols.userId, user.id));
+    if (classId && cols.classId) conds.push(eq(cols.classId, classId));
     const records = await db.select().from(table).where(and(...conds));
     return c.json({ data: records });
   });
@@ -27,7 +38,7 @@ function makeSubRoutes(table: any, extraFields: string[] = []) {
     const body = await c.req.json().catch(() => null);
     if (!body) return unprocessable(c, "请求体不合法");
     const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...rest } = body;
-    const values = hasUser ? { ...rest, userId: user.id } : rest;
+    const values = hasUser && cols.userId ? { ...rest, userId: user.id } : rest;
     const [record] = await db.insert(table).values(values).returning();
     return c.json({ data: record }, 201);
   });
@@ -37,8 +48,8 @@ function makeSubRoutes(table: any, extraFields: string[] = []) {
     const body = await c.req.json().catch(() => null);
     if (!body) return unprocessable(c, "请求体不合法");
     const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...updateData } = body;
-    const conds: any[] = [eq(table.id, id), isNull(table.deletedAt)];
-    if (hasUser) conds.push(eq(table.userId, user.id));
+    const conds: SQL[] = [eq(cols.id, id), isNull(cols.deletedAt)];
+    if (hasUser && cols.userId) conds.push(eq(cols.userId, user.id));
     const [record] = await db.update(table).set({ ...updateData, updatedAt: new Date() })
       .where(and(...conds)).returning();
     if (!record) return notFound(c);
@@ -47,8 +58,8 @@ function makeSubRoutes(table: any, extraFields: string[] = []) {
   sub.delete("/:id", async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");
-    const conds: any[] = [eq(table.id, id), isNull(table.deletedAt)];
-    if (hasUser) conds.push(eq(table.userId, user.id));
+    const conds: SQL[] = [eq(cols.id, id), isNull(cols.deletedAt)];
+    if (hasUser && cols.userId) conds.push(eq(cols.userId, user.id));
     const [record] = await db.update(table).set({ deletedAt: new Date(), updatedAt: new Date() })
       .where(and(...conds)).returning();
     if (!record) return notFound(c);
@@ -57,11 +68,11 @@ function makeSubRoutes(table: any, extraFields: string[] = []) {
   return sub;
 }
 
-routes.route("/attendance", makeSubRoutes(attendanceRecords));
-routes.route("/sessions", makeSubRoutes(classroomSessions));
-routes.route("/points", makeSubRoutes(classroomPoints));
-routes.route("/feedback", makeSubRoutes(studentFeedback));
-routes.route("/polls", makeSubRoutes(classroomPolls));
+routes.route("/attendance", makeSubRoutes(attendanceRecords as unknown as AnyPgTable));
+routes.route("/sessions", makeSubRoutes(classroomSessions as unknown as AnyPgTable));
+routes.route("/points", makeSubRoutes(classroomPoints as unknown as AnyPgTable));
+routes.route("/feedback", makeSubRoutes(studentFeedback as unknown as AnyPgTable));
+routes.route("/polls", makeSubRoutes(classroomPolls as unknown as AnyPgTable));
 
 // ------------------------------------------------------------ 投票选项（按 poll 归属隔离）
 
@@ -137,6 +148,7 @@ routes.delete("/poll-options/:id", async (c) => {
 // ------------------------------------------------------------ 批量：考勤
 
 const ATTENDANCE_STATUSES = new Set(["unrecorded", "present", "absent", "late", "leave"]);
+type AttendanceStatus = "unrecorded" | "present" | "absent" | "late" | "leave";
 
 /** 按「班级 + 日期」整班保存考勤，已存在的记录就地更新 */
 routes.post("/attendance/bulk", async (c) => {
@@ -184,7 +196,7 @@ routes.post("/attendance/bulk", async (c) => {
     const remark = it.remark == null ? null : String(it.remark).trim() || null;
     const found = byStudent.get(studentId);
     if (!found) {
-      inserts.push({ userId: user.id, classId, studentId, attendanceDate: date, status: status as any, remark });
+      inserts.push({ userId: user.id, classId, studentId, attendanceDate: date, status: status as AttendanceStatus, remark });
       continue;
     }
     if (found.status === status && (found.remark ?? null) === remark) continue;
@@ -196,7 +208,7 @@ routes.post("/attendance/bulk", async (c) => {
       updateOps.map((u) =>
         db
           .update(attendanceRecords)
-          .set({ status: u.status as any, remark: u.remark, updatedAt: new Date() })
+          .set({ status: u.status as AttendanceStatus, remark: u.remark, updatedAt: new Date() })
           .where(and(eq(attendanceRecords.id, u.id), eq(attendanceRecords.userId, user.id))),
       ),
     );

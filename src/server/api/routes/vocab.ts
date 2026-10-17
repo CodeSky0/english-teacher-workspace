@@ -4,8 +4,9 @@ import { db } from "@/server/db";
 import { vocabUnits, vocabWords } from "@/db/schema/vocab";
 import { notFound, unprocessable } from "../errors";
 import { cached, bustUser, ck } from "@/server/cache";
+import type { RouteEnv } from "../env";
 
-const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
+const routes = new Hono<RouteEnv>();
 
 routes.get("/units", async (c) => {
   const user = c.get("user");

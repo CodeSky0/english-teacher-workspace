@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/error";
+
+type BulkResult = { data?: { created?: number; updated?: number } };
 
 type Student = { id: string; name: string; studentNo: string | null; seatNo: number | null; enName: string | null };
 type PointRow = { id: string; studentId: string; points: number; reason: string | null; groupName: string | null };
@@ -143,43 +146,43 @@ export default function ClassroomPage() {
   }, [feedbackRows]);
 
   const addPointsMut = useMutation({
-    mutationFn: (d: any) => apiClient.post("/classroom/points", { ...d, classId }),
+    mutationFn: (d: Record<string, unknown>) => apiClient.post("/classroom/points", { ...d, classId }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["classroom-points", classId] }),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 
   const bulkPointsMut = useMutation({
-    mutationFn: (d: any) => apiClient.post("/classroom/points/bulk", { ...d, classId }),
-    onSuccess: (res: any) => {
+    mutationFn: (d: Record<string, unknown>) => apiClient.post<BulkResult>("/classroom/points/bulk", { ...d, classId }),
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["classroom-points", classId] });
       toast.success(`已给 ${res?.data?.created ?? 0} 人加分`);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 
   const saveAttendance = useMutation({
-    mutationFn: (payload: any) => apiClient.post("/classroom/attendance/bulk", payload),
-    onSuccess: (res: any) => {
+    mutationFn: (payload: Record<string, unknown>) => apiClient.post<BulkResult>("/classroom/attendance/bulk", payload),
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["classroom-attendance", classId] });
       toast.success(`考勤已保存（新增 ${res?.data?.created ?? 0}，更新 ${res?.data?.updated ?? 0}）`);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 
   const addFeedbackMut = useMutation({
-    mutationFn: (d: any) => apiClient.post("/classroom/feedback", { ...d, classId, feedbackDate: todayStr() }),
+    mutationFn: (d: Record<string, unknown>) => apiClient.post("/classroom/feedback", { ...d, classId, feedbackDate: todayStr() }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["classroom-feedback", classId] });
       toast.success("已记录");
       setFbRemark("");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 
   const deleteFeedbackMut = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/classroom/feedback/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["classroom-feedback", classId] }),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 
   // ---- 随机点名 ----
@@ -247,8 +250,8 @@ export default function ClassroomPage() {
     try {
       await downloadExport(`/export/classroom?classId=${classId}`, `课堂表现_${todayStr()}.xlsx`);
       toast.success("已导出课堂表现");
-    } catch (e: any) {
-      toast.error(e?.message || "导出失败");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, "导出失败"));
     } finally {
       setExporting(false);
     }

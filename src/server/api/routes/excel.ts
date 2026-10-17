@@ -3,8 +3,9 @@ import { fieldsFor, mapRow, matchField, type ImportKind } from "@/lib/excel/fiel
 import { parseCSV } from "@/lib/csv";
 import { readFirstSheet, buildXlsx, xlsxResponse, type SheetSpec } from "@/server/excel/workbook";
 import { badRequest, unprocessable } from "../errors";
+import type { RouteEnv } from "../env";
 
-const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
+const routes = new Hono<RouteEnv>();
 
 const KINDS: ImportKind[] = ["students", "vocab", "dictation-words"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB

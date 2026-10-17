@@ -1,25 +1,33 @@
 import ExcelJS from "exceljs";
 
 /** 单元格值 -> 纯文本（处理富文本、公式、日期、超链接等） */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function cellToText(value: any): string {
+type RichTextRun = { text?: string };
+type CellValueObject = {
+  result?: unknown;
+  richText?: RichTextRun[];
+  text?: string;
+  hyperlink?: string;
+  error?: unknown;
+};
+
+export function cellToText(value: unknown): string {
   if (value == null) return "";
   if (value instanceof Date) {
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
   }
   if (typeof value === "object") {
-    // 公式/共享公式，优先取计算结果
-    if ("result" in value && value.result != null && value.result !== "") {
-      return cellToText(value.result);
+    const obj = value as CellValueObject | unknown[];
+    if (Array.isArray(obj)) return obj.map(cellToText).join("");
+    if ("result" in obj && obj.result != null && obj.result !== "") {
+      return cellToText(obj.result);
     }
-    if (Array.isArray(value.richText)) {
-      return value.richText.map((r: { text?: string }) => r.text ?? "").join("");
+    if (Array.isArray(obj.richText)) {
+      return obj.richText.map((r) => r.text ?? "").join("");
     }
-    if (typeof value.text === "string") return value.text;
-    if (typeof value.hyperlink === "string" && !value.text) return value.hyperlink;
-    if ("error" in value) return "";
-    if (Array.isArray(value)) return value.map(cellToText).join("");
+    if (typeof obj.text === "string") return obj.text;
+    if (typeof obj.hyperlink === "string" && !obj.text) return obj.hyperlink;
+    if ("error" in obj) return "";
     return "";
   }
   return String(value).trim();

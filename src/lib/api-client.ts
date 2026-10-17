@@ -4,6 +4,8 @@ export class ApiError extends Error {
   }
 }
 
+import { isAbortError } from "./error";
+
 const DEFAULT_TIMEOUT = 30_000;
 const LONG_TIMEOUT = 120_000;
 
@@ -26,9 +28,9 @@ async function request<T>(path: string, options?: RequestInit, timeout = DEFAULT
       },
       signal,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     clear();
-    if (e?.name === "AbortError") throw new ApiError("TIMEOUT", "请求超时，请稍后重试", 408);
+    if (isAbortError(e)) throw new ApiError("TIMEOUT", "请求超时，请稍后重试", 408);
     throw new ApiError("NETWORK", "网络错误，请检查连接", 0);
   }
   clear();
@@ -66,9 +68,9 @@ export const apiClient = {
     let res: Response;
     try {
       res = await fetch(`/api${path}`, { method: "POST", body: form, signal });
-    } catch (e: any) {
+    } catch (e: unknown) {
       clear();
-      if (e?.name === "AbortError") throw new ApiError("TIMEOUT", "上传超时，请减小文件后重试", 408);
+      if (isAbortError(e)) throw new ApiError("TIMEOUT", "上传超时，请减小文件后重试", 408);
       throw new ApiError("NETWORK", "网络错误，请检查连接", 0);
     }
     clear();
@@ -82,9 +84,9 @@ export const apiClient = {
     let res: Response;
     try {
       res = await fetch(`/api${path}`, { signal });
-    } catch (e: any) {
+    } catch (e: unknown) {
       clear();
-      if (e?.name === "AbortError") throw new ApiError("TIMEOUT", "导出超时，请稍后重试", 408);
+      if (isAbortError(e)) throw new ApiError("TIMEOUT", "导出超时，请稍后重试", 408);
       throw new ApiError("NETWORK", "网络错误，请检查连接", 0);
     }
     clear();

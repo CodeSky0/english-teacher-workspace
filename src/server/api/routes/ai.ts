@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { rateLimit } from "@/server/redis";
+import type { RouteEnv } from "../env";
 
-const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
+const routes = new Hono<RouteEnv>();
 
 const templates: Record<string, string> = {
   objectives: "教学目标：\n1. 知识目标：掌握本课核心词汇和句型\n2. 能力目标：能够运用所学语言进行交际\n3. 情感目标：培养学习英语的兴趣和信心",

@@ -14,6 +14,7 @@ import { EmptyState, LoadingState } from "@/components/ui/states";
 import { downloadExport } from "@/lib/excel/client";
 import { Plus, Pencil, Trash2, BookOpen, Volume2, ChevronRight, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error";
 
 const ImportDialog = dynamic(() => import("@/components/common/import-dialog").then((m) => m.ImportDialog), {
   ssr: false,
@@ -45,11 +46,11 @@ export default function VocabPage() {
   });
   const words = wordsData?.data ?? [];
 
-  const createUnitMut = useMutation({ mutationFn: (d: any) => apiClient.post("/vocab/units", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-units"] }); toast.success("已添加"); setUnitDialog(false); }, onError: (e: any) => toast.error(e.message) });
-  const deleteUnitMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/vocab/units/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-units"] }); toast.success("已删除"); }, onError: (e: any) => toast.error(e.message) });
-  const createWordMut = useMutation({ mutationFn: (d: any) => apiClient.post("/vocab/words", { ...d, unitId: selectedUnit?.id }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已添加"); setWordDialog(false); }, onError: (e: any) => toast.error(e.message) });
-  const updateWordMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: any }) => apiClient.patch(`/vocab/words/${id}`, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已保存"); setWordDialog(false); }, onError: (e: any) => toast.error(e.message) });
-  const deleteWordMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/vocab/words/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已删除"); }, onError: (e: any) => toast.error(e.message) });
+  const createUnitMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/vocab/units", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-units"] }); toast.success("已添加"); setUnitDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const deleteUnitMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/vocab/units/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-units"] }); toast.success("已删除"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const createWordMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/vocab/words", { ...d, unitId: selectedUnit?.id }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已添加"); setWordDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const updateWordMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiClient.patch(`/vocab/words/${id}`, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已保存"); setWordDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const deleteWordMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/vocab/words/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已删除"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
 
   function openImport() {
     setImportUnitId(selectedUnit?.id ?? "");
@@ -83,8 +84,8 @@ export default function VocabPage() {
       const path = selectedUnit ? `/export/vocab?unitId=${selectedUnit.id}` : "/export/vocab";
       await downloadExport(path, `${selectedUnit ? selectedUnit.name : "词汇表"}.xlsx`);
       toast.success("已导出 Excel");
-    } catch (e: any) {
-      toast.error(e?.message || "导出失败");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, "导出失败"));
     } finally {
       setExporting(false);
     }

@@ -12,6 +12,7 @@ import { EmptyState, LoadingState } from "@/components/ui/states";
 import { Settings, Database, Trash2, Download, Upload, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/error";
 
 type RecycleItem = { type: string; id: string; title: string; deletedAt: string | null; classId?: string | null };
 
@@ -31,12 +32,12 @@ export default function SettingsPage() {
   const restoreMut = useMutation({
     mutationFn: ({ type, id }: { type: string; id: string }) => apiClient.post(`/recycle/restore/${type}/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["recycle"] }); toast.success("已恢复"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
   const purgeMut = useMutation({
     mutationFn: ({ type, id }: { type: string; id: string }) => apiClient.delete(`/recycle/${type}/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["recycle"] }); toast.success("已彻底删除"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 
   async function handleExport() {
@@ -57,7 +58,7 @@ export default function SettingsPage() {
       const data = JSON.parse(text);
       const res = await apiClient.post<{ counts?: Record<string, number> }>("/backup/import?mode=append", data);
       toast.success(`恢复成功，导入 ${res.counts?.classes ?? 0} 个班级，${res.counts?.students ?? 0} 个学生`);
-    } catch (err: any) { toast.error(err.message || "导入失败"); }
+    } catch (err: unknown) { toast.error(getErrorMessage(err, "导入失败")); }
     e.target.value = "";
   }
 

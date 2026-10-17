@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dices, Trophy, Timer, Tag, Vote, Grid3x3, Layers, Headphones, X, Plus, Minus, RotateCcw, ChevronLeft, Volume2 } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error";
 
 export const dynamic = "force-dynamic";
 
@@ -202,7 +203,7 @@ function FeedbackTool() {
   const { students, currentClass } = useStudents();
   const TAGS = ["积极发言", "朗读流利", "表达清晰", "认真听讲", "主动合作", "需要关注", "上课走神"];
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
-  const addFeedbackMut = useMutation({ mutationFn: (d: any) => apiClient.post("/classroom/feedback", d), onSuccess: () => toast.success("已记录"), onError: (e: any) => toast.error(e.message) });
+  const addFeedbackMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/classroom/feedback", d), onSuccess: () => toast.success("已记录"), onError: (e: unknown) => toast.error(getErrorMessage(e)) });
 
   return (
     <div>
@@ -264,7 +265,7 @@ function AttendanceTool() {
   const STATUSES = ["unrecorded", "present", "absent", "late", "leave"];
   const STATUS_LABEL: Record<string, string> = { unrecorded: "未记录", present: "到课", absent: "缺勤", late: "迟到", leave: "请假" };
   const STATUS_COLOR: Record<string, string> = { unrecorded: "bg-bg", present: "bg-green-100", absent: "bg-red-100", late: "bg-yellow-100", leave: "bg-blue-100" };
-  const saveMut = useMutation({ mutationFn: (d: any) => apiClient.post("/classroom/attendance", { ...d, classId: currentClass?.id, attendanceDate: today }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["attendance"] }); toast.success("已保存"); }, onError: (e: any) => toast.error(e.message) });
+  const saveMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/classroom/attendance", { ...d, classId: currentClass?.id, attendanceDate: today }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["attendance"] }); toast.success("已保存"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
 
   const sorted = [...students].sort((a, b) => (a.seatNo ?? 999) - (b.seatNo ?? 999));
 

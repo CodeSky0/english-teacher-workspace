@@ -16,6 +16,7 @@ import { downloadExport } from "@/lib/excel/client";
 import { Plus, Search, Pencil, Trash2, Users, Upload, Download, Lock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/error";
 
 const ImportDialog = dynamic(() => import("@/components/common/import-dialog").then((m) => m.ImportDialog), {
   ssr: false,
@@ -69,21 +70,21 @@ export default function StudentsPage() {
   });
 
   const createMut = useMutation({
-    mutationFn: (data: any) => apiClient.post("/students", { ...data, classId: currentClass?.id }),
+    mutationFn: (data: Record<string, unknown>) => apiClient.post("/students", { ...data, classId: currentClass?.id }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success("已添加"); },
-    onError: (e: any) => toast.error(e.message || "添加失败"),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, "添加失败")),
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => apiClient.patch(`/students/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiClient.patch(`/students/${id}`, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success("已保存"); },
-    onError: (e: any) => toast.error(e.message || "保存失败"),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, "保存失败")),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/students/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success("已删除"); },
-    onError: (e: any) => toast.error(e.message || "删除失败"),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, "删除失败")),
   });
 
   function openCreate() {
@@ -156,8 +157,8 @@ export default function StudentsPage() {
     try {
       await downloadExport(`/export/students?classId=${currentClass.id}`, `学生名单_${currentClass.name}.xlsx`);
       toast.success("已导出 Excel");
-    } catch (e: any) {
-      toast.error(e?.message || "导出失败");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, "导出失败"));
     } finally {
       setExporting(false);
     }

@@ -2,15 +2,17 @@ import { createResourceRoutes } from "./_factory";
 import { dictationLists, dictationWords, dictationResults } from "@/db/schema/dictation";
 import { Hono } from "hono";
 import { and, eq, inArray, isNull } from "drizzle-orm";
+import type { AnyPgTable } from "drizzle-orm/pg-core";
 import { db } from "@/server/db";
 import { badRequest, notFound, unprocessable } from "../errors";
 import { cached, bustUser, ck } from "@/server/cache";
+import type { RouteEnv } from "../env";
 
-const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
+const routes = new Hono<RouteEnv>();
 
-const listsCrud = createResourceRoutes(dictationLists as any, { key: ck.dictLists, ttl: 300 });
-const wordsCrud = createResourceRoutes(dictationWords as any, { key: ck.dictWords, ttl: 300 });
-const resultsCrud = createResourceRoutes(dictationResults as any);
+const listsCrud = createResourceRoutes(dictationLists as unknown as AnyPgTable, { key: ck.dictLists, ttl: 300 });
+const wordsCrud = createResourceRoutes(dictationWords as unknown as AnyPgTable, { key: ck.dictWords, ttl: 300 });
+const resultsCrud = createResourceRoutes(dictationResults as unknown as AnyPgTable);
 
 routes.route("/lists", listsCrud);
 routes.route("/words", wordsCrud);

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
 import { Plus, GraduationCap, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error";
 
 type Exam = { id: string; name: string; classId: string; examDate: string | null; type: string | null; remark: string | null };
 type Score = { id: string; examId: string; studentId: string; listeningScore: string | null; speakingScore: string | null; writtenScore: string | null; totalScore: string | null; totalIsManual: boolean };
@@ -66,9 +67,9 @@ export default function GradesPage() {
   });
 
   const createExamMut = useMutation({
-    mutationFn: (d: any) => apiClient.post("/exams", { ...d, classId: currentClass?.id }),
+    mutationFn: (d: Record<string, unknown>) => apiClient.post("/exams", { ...d, classId: currentClass?.id }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["exams"] }); toast.success("考试创建成功"); setExamDialog(false); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 
   const saveScoreMut = useMutation({
@@ -85,7 +86,7 @@ export default function GradesPage() {
       });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["scores"] }),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 
   const stats = useMemo(() => {

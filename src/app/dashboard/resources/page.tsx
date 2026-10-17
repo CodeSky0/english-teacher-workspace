@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
 import { Plus, Pencil, Trash2, FolderOpen, ExternalLink, Search } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error";
 
 type Resource = {
   id: string; title: string; type: "courseware" | "lesson_plan" | "exam" | "audio" | "video" | "reading" | "research" | "other";
@@ -40,9 +41,9 @@ export default function ResourcesPage() {
     });
   }, [items, search, typeFilter]);
 
-  const createMut = useMutation({ mutationFn: (d: any) => apiClient.post("/resources", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["resources"] }); toast.success("已添加"); setDialogOpen(false); }, onError: (e: any) => toast.error(e.message) });
-  const updateMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: any }) => apiClient.patch(`/resources/${id}`, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["resources"] }); toast.success("已保存"); setDialogOpen(false); }, onError: (e: any) => toast.error(e.message) });
-  const deleteMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/resources/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["resources"] }); toast.success("已删除"); }, onError: (e: any) => toast.error(e.message) });
+  const createMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/resources", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["resources"] }); toast.success("已添加"); setDialogOpen(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const updateMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiClient.patch(`/resources/${id}`, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["resources"] }); toast.success("已保存"); setDialogOpen(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const deleteMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/resources/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["resources"] }); toast.success("已删除"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
 
   function openCreate() { setEditing(null); setForm({ title: "", type: "other", unit: "", description: "", link: "" }); setDialogOpen(true); }
   function openEdit(r: Resource) { setEditing(r); setForm({ title: r.title, type: r.type, unit: r.unit ?? "", description: r.description ?? "", link: r.link ?? "" }); setDialogOpen(true); }

@@ -13,6 +13,7 @@ import { LoadingState, EmptyState } from "@/components/ui/states";
 import { CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { subjectStyle } from "@/lib/subject-style";
+import { getErrorMessage } from "@/lib/error";
 
 type Cell = { id: string; dayOfWeek: number; periodNo: number; subject: string | null; classroom: string | null };
 
@@ -47,7 +48,7 @@ export default function SchedulePage() {
       });
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success("已保存"); },
-    onError: (e: any) => toast.error(e.message || "保存失败"),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, "保存失败")),
   });
 
   const deleteMut = useMutation({

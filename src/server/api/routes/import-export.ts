@@ -8,8 +8,9 @@ import { classroomPoints, attendanceRecords, studentFeedback } from "@/db/schema
 import { buildXlsx, xlsxResponse, type SheetSpec } from "@/server/excel/workbook";
 import { normalizeGender, genderLabel } from "@/lib/excel/fields";
 import { badRequest, notFound, unprocessable } from "../errors";
+import type { RouteEnv } from "../env";
 
-const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
+const routes = new Hono<RouteEnv>();
 
 const MAX_ROWS = 2000;
 type ImportMode = "append" | "upsert";

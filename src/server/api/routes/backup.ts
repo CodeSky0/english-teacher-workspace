@@ -3,8 +3,37 @@ import { eq, and, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
 import { user } from "@/db/schema/auth";
 import * as schema from "@/db/schema";
+import type { RouteEnv } from "../env";
+import { getErrorMessage } from "@/lib/error";
 
-const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
+const routes = new Hono<RouteEnv>();
+
+type BackupClass = {
+  id?: string;
+  name?: string;
+  enName?: string;
+  gradeLevel?: string;
+  academicYear?: string;
+  isSample?: boolean;
+};
+
+type BackupStudent = {
+  id?: string;
+  name?: string;
+  enName?: string;
+  gender?: string;
+  studentNo?: string;
+  seatNo?: number;
+  isSample?: boolean;
+  classId?: string;
+};
+
+type Gender = "male" | "female" | "unknown";
+
+type BackupData = {
+  classes?: BackupClass[];
+  students?: BackupStudent[];
+};
 
 routes.get("/export", async (c) => {
   const u = c.get("user");
@@ -69,7 +98,7 @@ routes.post("/import", async (c) => {
     return c.json({ error: { code: "INVALID", message: `不支持的版本: ${body.schemaVersion}` } }, 422);
   }
   const mode = c.req.query("mode") || "append";
-  const data = body.data;
+  const data = body.data as BackupData;
   const counts: Record<string, number> = {};
 
   try {
@@ -82,13 +111,13 @@ routes.post("/import", async (c) => {
       const classIdMap = new Map<string, string>();
 
       if (data.classes?.length) {
-        const rows = data.classes.map((r: any) => ({
-          name: r.name, enName: r.enName, gradeLevel: r.gradeLevel,
+        const rows = data.classes.map((r) => ({
+          name: r.name ?? "", enName: r.enName, gradeLevel: r.gradeLevel,
           academicYear: r.academicYear, isSample: r.isSample ?? false,
           userId: u.id, deletedAt: null,
         }));
         const inserted = await tx.insert(schema.classes).values(rows).returning();
-        data.classes.forEach((r: any, i: number) => {
+        data.classes.forEach((r, i) => {
           if (r.id) classIdMap.set(r.id, inserted[i].id);
         });
         counts.classes = inserted.length;
@@ -96,13 +125,28 @@ routes.post("/import", async (c) => {
 
       if (data.students?.length) {
         const rows = data.students
-          .map((r: any) => ({
-            name: r.name, enName: r.enName, gender: r.gender ?? "unknown",
+          .map((r) => ({
+            name: r.name ?? "", enName: r.enName, gender: (r.gender ?? "unknown") as Gender,
             studentNo: r.studentNo, seatNo: r.seatNo, isSample: r.isSample ?? false,
             classId: r.classId ? (classIdMap.get(r.classId) ?? null) : null,
             userId: u.id, deletedAt: null,
           }))
-          .filter((r: any) => r.classId);
+          .filter((r): r is typeof r & { classId: string } => r.classId !== null);
+        if (rows.length) {
+          const inserted = await tx.insert(schema.students).values(rows).returning();
+          counts.students = inserted.length;
+        }
+      }
+
+      if (data.students?.length) {
+        const rows = data.students
+          .map((r) => ({
+            name: r.name ?? "", enName: r.enName, gender: (r.gender ?? "unknown") as Gender,
+            studentNo: r.studentNo, seatNo: r.seatNo, isSample: r.isSample ?? false,
+            classId: r.classId ? (classIdMap.get(r.classId) ?? null) : null,
+            userId: u.id, deletedAt: null,
+          }))
+          .filter((r): r is typeof r & { classId: string } => r.classId !== null);
         if (rows.length) {
           const inserted = await tx.insert(schema.students).values(rows).returning();
           counts.students = inserted.length;
@@ -113,8 +157,8 @@ routes.post("/import", async (c) => {
     });
 
     return c.json({ data: { counts: result, mode } });
-  } catch (e: any) {
-    return c.json({ error: { code: "IMPORT_FAILED", message: e.message || "导入失败" } }, 500);
+  } catch (e: unknown) {
+    return c.json({ error: { code: "IMPORT_FAILED", message: getErrorMessage(e, "导入失败") } }, 500);
   }
 });
 

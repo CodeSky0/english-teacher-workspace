@@ -18,6 +18,7 @@ import {
   Check, X, Search, Library, Loader2, GraduationCap, Printer,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error";
 
 const ImportDialog = dynamic(() => import("@/components/common/import-dialog").then((m) => m.ImportDialog), {
   ssr: false,
@@ -141,8 +142,8 @@ export default function DictationPage() {
     try {
       await apiClient.post(`/dictation/lists/${selectedList.id}/results`, { results: items });
       qc.invalidateQueries({ queryKey: ["dict-results", selectedList.id] });
-    } catch (e: any) {
-      toast.error(e?.message || "成绩保存失败，将在下次编辑时重试");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, "成绩保存失败，将在下次编辑时重试"));
       for (const it of items) {
         const k = cellKey(it.studentId, it.wordId);
         if (!(k in pendingRef.current)) pendingRef.current[k] = it;
@@ -201,10 +202,10 @@ export default function DictationPage() {
     };
   }, []);
 
-  const createListMut = useMutation({ mutationFn: (d: any) => apiClient.post("/dictation/lists", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已创建"); setListDialog(false); }, onError: (e: any) => toast.error(e.message) });
-  const deleteListMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/dictation/lists/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已删除"); setSelectedList(null); }, onError: (e: any) => toast.error(e.message) });
-  const createWordMut = useMutation({ mutationFn: (d: any) => apiClient.post("/dictation/words", { ...d, listId: selectedList?.id }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-words"] }); toast.success("已添加"); setWordDialog(false); }, onError: (e: any) => toast.error(e.message) });
-  const deleteWordMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/dictation/words/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-words"] }); toast.success("已删除"); }, onError: (e: any) => toast.error(e.message) });
+  const createListMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/dictation/lists", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已创建"); setListDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const deleteListMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/dictation/lists/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已删除"); setSelectedList(null); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const createWordMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/dictation/words", { ...d, listId: selectedList?.id }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-words"] }); toast.success("已添加"); setWordDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const deleteWordMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/dictation/words/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-words"] }); toast.success("已删除"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
 
   const filteredStudents = useMemo(() => {
     if (!studentFilter.trim()) return students;
@@ -283,8 +284,8 @@ export default function DictationPage() {
       if (rows.length === 0) { toast.warning("该单元没有单词"); return; }
       await handleImportWords(rows, "append");
       setUnitImportOpen(false);
-    } catch (e: any) {
-      toast.error(e?.message || "导入失败");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, "导入失败"));
     } finally {
       setUnitImporting(false);
     }
@@ -303,8 +304,8 @@ export default function DictationPage() {
         `错词本_${currentClass?.name ?? ""}_${new Date().toISOString().slice(0, 10)}.xlsx`
       );
       toast.success("已导出错词本");
-    } catch (e: any) {
-      toast.error(e?.message || "导出失败");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, "导出失败"));
     } finally {
       setWrongExporting(false);
     }
@@ -321,8 +322,8 @@ export default function DictationPage() {
         await downloadExport(`/export/dictation-summary?classId=${effectiveClassId}`, "历次听写汇总.xlsx");
       }
       toast.success("已导出 Excel");
-    } catch (e: any) {
-      toast.error(e?.message || "导出失败");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, "导出失败"));
     } finally {
       setExporting("");
     }

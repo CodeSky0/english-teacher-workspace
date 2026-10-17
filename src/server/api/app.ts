@@ -23,13 +23,7 @@ import { aiRoutes } from "./routes/ai";
 import { excelRoutes } from "./routes/excel";
 import { importExportRoutes } from "./routes/import-export";
 import { overviewRoutes } from "./routes/overview";
-
-type AppEnv = {
-  Variables: {
-    user: { id: string; name: string; email: string };
-    session: any;
-  };
-};
+import type { AppEnv, RouteUser } from "./env";
 
 const app = new Hono<AppEnv>();
 
@@ -67,7 +61,7 @@ app.use("/api/*", async (c, next) => {
   if (c.req.path === "/api/health") return next();
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!session) return unauthorized(c);
-  c.set("user", session.user as any);
+  c.set("user", session.user as unknown as RouteUser);
   c.set("session", session.session);
   await next();
 });

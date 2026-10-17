@@ -6,8 +6,9 @@ import { account } from "@/db/schema/auth";
 import { z } from "zod";
 import { cached, bust, ck } from "@/server/cache";
 import { verifyPassword } from "better-auth/crypto";
+import type { ProfileEnv } from "../env";
 
-const routes = new Hono<{ Variables: { user: { id: string; email: string }; session: any } }>();
+const routes = new Hono<ProfileEnv>();
 
 routes.get("/", async (c) => {
   const u = c.get("user");

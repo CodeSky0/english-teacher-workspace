@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error";
 
 const TEMPLATES = [
   { key: "objectives", name: "教学目标草稿", desc: "生成教学目标框架" },
@@ -32,13 +33,13 @@ export default function AiPage() {
   const generateMut = useMutation({
     mutationFn: (template: string) => apiClient.post<{ data: { content: string; isTemplate: boolean; note?: string } }>("/ai/generate", { template }),
     onSuccess: (res) => { setResult(res.data.content); setIsTemplate(res.data.isTemplate); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 
   const chatMut = useMutation({
     mutationFn: (msgs: Array<{ role: string; content: string }>) => apiClient.post<{ data: { content: string; isTemplate: boolean } }>("/ai/chat", { messages: msgs }),
     onSuccess: (res) => { setMessages((m) => [...m, { role: "assistant", content: res.data.content }]); setIsTemplate(res.data.isTemplate); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 
   function handleCopy() {

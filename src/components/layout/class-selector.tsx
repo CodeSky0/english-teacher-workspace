@@ -9,6 +9,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { ChevronDown, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/error";
 
 export function ClassSelector() {
   const { classes, isLoading } = useClasses();
@@ -29,8 +30,8 @@ export function ClassSelector() {
       toast.success("班级创建成功");
       setShowCreate(false);
       setName(""); setEnName(""); setGradeLevel("");
-    } catch (e: any) {
-      toast.error(e.message || "创建失败");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, "创建失败"));
     }
   }
 
