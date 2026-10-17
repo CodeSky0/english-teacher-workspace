@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { PageHeader } from "@/components/common/page-header";
@@ -10,10 +11,13 @@ import { Input, Label, Textarea } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
-import { ImportDialog } from "@/components/common/import-dialog";
 import { downloadExport } from "@/lib/excel/client";
 import { Plus, Pencil, Trash2, BookOpen, Volume2, ChevronRight, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
+
+const ImportDialog = dynamic(() => import("@/components/common/import-dialog").then((m) => m.ImportDialog), {
+  ssr: false,
+});
 
 type VocabUnit = { id: string; name: string; textbookVersion: string | null; gradeLevel: string | null };
 type VocabWord = { id: string; unitId: string; word: string; meaning: string | null; phoneticUs: string | null; partOfSpeech: string | null; exampleEn: string | null; exampleZh: string | null };

@@ -11,19 +11,13 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { ClassSelector } from "./class-selector";
 
-export function Topbar() {
+export function Topbar({ userName: userNameProp }: { userName?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const title = getNavTitle(pathname);
   const { toggleSidebar, saveStatus } = useWorkspace();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [userName, setUserName] = useState("");
-
-  useEffect(() => {
-    authClient.getSession().then((s) => {
-      if (s?.data?.user) setUserName(s.data.user.name);
-    });
-  }, []);
+  const userName = userNameProp ?? "";
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

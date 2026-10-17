@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { apiClient } from "@/lib/api-client";
 import { useCurrentClass } from "@/hooks/use-classes";
 import { PageHeader } from "@/components/common/page-header";
@@ -55,6 +56,14 @@ export default function GradesPage() {
   });
   const scores = scoresData?.data ?? [];
   const scoreMap = new Map(scores.map((s) => [s.studentId, s]));
+
+  const gradesScrollRef = useRef<HTMLDivElement>(null);
+  const gradesRowVirtualizer = useVirtualizer({
+    count: students.length,
+    getScrollElement: () => gradesScrollRef.current,
+    estimateSize: () => 48,
+    overscan: 8,
+  });
 
   const createExamMut = useMutation({
     mutationFn: (d: any) => apiClient.post("/exams", { ...d, classId: currentClass?.id }),
@@ -133,9 +142,9 @@ export default function GradesPage() {
           )}
           <Card><CardContent className="p-0">
             {students.length === 0 ? <EmptyState title="暂无学生" /> :
-              <div className="overflow-x-auto">
+              <div ref={gradesScrollRef} className="overflow-auto max-h-[70vh]">
                 <table className="w-full text-sm">
-                  <thead><tr className="border-b border-line text-left text-muted">
+                  <thead className="sticky top-0 z-10 bg-panel"><tr className="border-b border-line text-left text-muted">
                     <th className="px-4 py-3 font-medium">姓名</th>
                     <th className="px-4 py-3 font-medium">听力</th>
                     <th className="px-4 py-3 font-medium">口语</th>
@@ -143,19 +152,32 @@ export default function GradesPage() {
                     <th className="px-4 py-3 font-medium">总分</th>
                   </tr></thead>
                   <tbody>
-                    {students.map((st) => {
-                      const sc = scoreMap.get(st.id);
-                      const total = sc ? calcTotal(sc) : null;
+                    {(() => {
+                      const items = gradesRowVirtualizer.getVirtualItems();
+                      if (items.length === 0) return null;
+                      const padTop = items[0].start;
+                      const padBottom = gradesRowVirtualizer.getTotalSize() - items[items.length - 1].end;
                       return (
-                        <tr key={st.id} className="border-b border-line/50">
-                          <td className="px-4 py-2 font-medium">{st.name}</td>
-                          <td className="px-4 py-2"><Input className="h-8 w-20" type="number" defaultValue={sc?.listeningScore ?? ""} onBlur={(e) => handleScoreChange(st.id, "listening", e.target.value)} placeholder="—" /></td>
-                          <td className="px-4 py-2"><Input className="h-8 w-20" type="number" defaultValue={sc?.speakingScore ?? ""} onBlur={(e) => handleScoreChange(st.id, "speaking", e.target.value)} placeholder="—" /></td>
-                          <td className="px-4 py-2"><Input className="h-8 w-20" type="number" defaultValue={sc?.writtenScore ?? ""} onBlur={(e) => handleScoreChange(st.id, "written", e.target.value)} placeholder="—" /></td>
-                          <td className="px-4 py-2 font-bold">{total ?? "—"}</td>
-                        </tr>
+                        <>
+                          {padTop > 0 && <tr style={{ height: padTop }}><td colSpan={5} /></tr>}
+                          {items.map((vr) => {
+                            const st = students[vr.index];
+                            const sc = scoreMap.get(st.id);
+                            const total = sc ? calcTotal(sc) : null;
+                            return (
+                              <tr key={st.id} className="border-b border-line/50" style={{ height: vr.size }}>
+                                <td className="px-4 py-2 font-medium">{st.name}</td>
+                                <td className="px-4 py-2"><Input className="h-8 w-20" type="number" defaultValue={sc?.listeningScore ?? ""} onBlur={(e) => handleScoreChange(st.id, "listening", e.target.value)} placeholder="—" /></td>
+                                <td className="px-4 py-2"><Input className="h-8 w-20" type="number" defaultValue={sc?.speakingScore ?? ""} onBlur={(e) => handleScoreChange(st.id, "speaking", e.target.value)} placeholder="—" /></td>
+                                <td className="px-4 py-2"><Input className="h-8 w-20" type="number" defaultValue={sc?.writtenScore ?? ""} onBlur={(e) => handleScoreChange(st.id, "written", e.target.value)} placeholder="—" /></td>
+                                <td className="px-4 py-2 font-bold">{total ?? "—"}</td>
+                              </tr>
+                            );
+                          })}
+                          {padBottom > 0 && <tr style={{ height: padBottom }}><td colSpan={5} /></tr>}
+                        </>
                       );
-                    })}
+                    })()}
                   </tbody>
                 </table>
               </div>}

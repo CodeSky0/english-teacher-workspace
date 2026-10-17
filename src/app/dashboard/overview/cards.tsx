@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/states";
@@ -378,15 +379,24 @@ export type CardDef = {
   render: (ov: Overview) => React.ReactNode;
 };
 
+const MStatsCard = memo(StatsCard);
+const MClassesCard = memo(ClassesCard);
+const MAlertsCard = memo(AlertsCard);
+const MTodayScheduleCard = memo(TodayScheduleCard);
+const MWeekScheduleCard = memo(WeekScheduleCard);
+const MRecentDictationsCard = memo(RecentDictationsCard);
+const MWeakWordsCard = memo(WeakWordsCard);
+const MDataOverviewCard = memo(DataOverviewCard);
+
 export const CARD_DEFS: CardDef[] = [
-  { id: "stats", title: "核心指标", icon: LayoutDashboard, render: (ov) => <StatsCard ov={ov} /> },
-  { id: "classes", title: "班级总览", icon: Users, render: (ov) => <ClassesCard ov={ov} /> },
-  { id: "alerts", title: "需要关注的学生", icon: AlertTriangle, render: (ov) => <AlertsCard ov={ov} /> },
-  { id: "todaySchedule", title: "今日课表", icon: CalendarDays, render: (ov) => <TodayScheduleCard ov={ov} /> },
-  { id: "weekSchedule", title: "本周课表", icon: CalendarDays, render: (ov) => <WeekScheduleCard ov={ov} /> },
-  { id: "recentDictations", title: "最近听写", icon: Headphones, render: (ov) => <RecentDictationsCard ov={ov} /> },
-  { id: "weakWords", title: "高频错词 TOP 10", icon: AlertTriangle, render: (ov) => <WeakWordsCard ov={ov} /> },
-  { id: "dataOverview", title: "数据概况", icon: TrendingUp, render: (ov) => <DataOverviewCard ov={ov} /> },
+  { id: "stats", title: "核心指标", icon: LayoutDashboard, render: (ov) => <MStatsCard ov={ov} /> },
+  { id: "classes", title: "班级总览", icon: Users, render: (ov) => <MClassesCard ov={ov} /> },
+  { id: "alerts", title: "需要关注的学生", icon: AlertTriangle, render: (ov) => <MAlertsCard ov={ov} /> },
+  { id: "todaySchedule", title: "今日课表", icon: CalendarDays, render: (ov) => <MTodayScheduleCard ov={ov} /> },
+  { id: "weekSchedule", title: "本周课表", icon: CalendarDays, render: (ov) => <MWeekScheduleCard ov={ov} /> },
+  { id: "recentDictations", title: "最近听写", icon: Headphones, render: (ov) => <MRecentDictationsCard ov={ov} /> },
+  { id: "weakWords", title: "高频错词 TOP 10", icon: AlertTriangle, render: (ov) => <MWeakWordsCard ov={ov} /> },
+  { id: "dataOverview", title: "数据概况", icon: TrendingUp, render: (ov) => <MDataOverviewCard ov={ov} /> },
 ];
 
 export const DEFAULT_CARD_ORDER = CARD_DEFS.map((c) => c.id);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useCurrentClass, useClasses } from "@/hooks/use-classes";
@@ -11,13 +12,16 @@ import { Input, Label } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
-import { ImportDialog } from "@/components/common/import-dialog";
 import { downloadExport } from "@/lib/excel/client";
 import {
   Plus, Trash2, Headphones, ChevronRight, Volume2, Upload, Download,
   Check, X, Search, Library, Loader2, GraduationCap, Printer,
 } from "lucide-react";
 import { toast } from "sonner";
+
+const ImportDialog = dynamic(() => import("@/components/common/import-dialog").then((m) => m.ImportDialog), {
+  ssr: false,
+});
 import { cn } from "@/lib/utils";
 
 type DictList = { id: string; name: string; classId: string | null; dictationDate: string | null };

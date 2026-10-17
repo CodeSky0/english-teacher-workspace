@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, count } from "drizzle-orm";
 import { db } from "@/server/db";
 import { notFound, unprocessable } from "../errors";
 import { cached, bustUser } from "@/server/cache";
@@ -9,6 +9,8 @@ type Table = any;
 
 type CacheConfig = { key: (uid: string) => string; ttl: number };
 
+const DEFAULT_PAGE_SIZE = 0;
+
 export function createResourceRoutes(table: Table, cache?: CacheConfig) {
   const routes = new Hono<{ Variables: { user: { id: string }; session: any } }>();
 
@@ -16,8 +18,10 @@ export function createResourceRoutes(table: Table, cache?: CacheConfig) {
     const user = c.get("user");
     const classId = c.req.query("classId");
     const listId = c.req.query("listId");
+    const page = Math.max(1, Number(c.req.query("page") ?? 1) || 1);
+    const pageSize = Math.max(0, Number(c.req.query("pageSize") ?? DEFAULT_PAGE_SIZE) || 0);
 
-    if (cache && !classId && !listId) {
+    if (cache && !classId && !listId && pageSize === 0) {
       const records = await cached(cache.key(user.id), cache.ttl, () =>
         db.select().from(table).where(and(eq(table.userId, user.id), isNull(table.deletedAt))),
       );
@@ -31,6 +35,19 @@ export function createResourceRoutes(table: Table, cache?: CacheConfig) {
     if (listId && table.listId) {
       conditions.push(eq(table.listId, listId));
     }
+
+    if (pageSize > 0) {
+      const [records, totalRows] = await Promise.all([
+        db.select().from(table).where(and(...conditions)).limit(pageSize).offset((page - 1) * pageSize),
+        db.select({ value: count() }).from(table).where(and(...conditions)),
+      ]);
+      const total = totalRows[0]?.value ?? 0;
+      return c.json({
+        data: records,
+        pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+      });
+    }
+
     const records = await db.select().from(table).where(and(...conditions));
     return c.json({ data: records });
   });

@@ -1,88 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
-import {
-  DndContext,
-  closestCenter,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { apiClient } from "@/lib/api-client";
 import { useClasses } from "@/hooks/use-classes";
 import { PageHeader } from "@/components/common/page-header";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingState, ErrorState } from "@/components/ui/states";
-import { GripVertical, X, Settings, type LucideIcon } from "lucide-react";
+import { Settings } from "lucide-react";
 import { greeting, todayStr, cn } from "@/lib/utils";
 import { CARD_DEFS, DEFAULT_CARD_ORDER, type Overview } from "./cards";
+
+const SortableCards = dynamic(() => import("./sortable-cards").then((m) => m.SortableCards), {
+  ssr: false,
+  loading: () => <LoadingState />,
+});
 
 const STORAGE_KEY = "overview-cards-v1";
 
 type CardConfig = { order: string[]; hidden: string[] };
-
-function SortableCard({
-  id,
-  title,
-  icon: Icon,
-  onHide,
-  children,
-}: {
-  id: string;
-  title: string;
-  icon: LucideIcon;
-  onHide: () => void;
-  children: React.ReactNode;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.6 : 1,
-    zIndex: isDragging ? 20 : undefined,
-  };
-  return (
-    <Card ref={setNodeRef} style={style} className="animate-fade-in-up">
-      <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            className="cursor-grab touch-none text-neutral-4 transition-colors duration-[var(--dur-quick)] hover:text-text active:cursor-grabbing"
-            aria-label="拖拽排序"
-          >
-            <GripVertical className="h-4 w-4" />
-          </button>
-          <Icon className="h-4 w-4 text-primary" />
-          {title}
-        </CardTitle>
-        <button
-          type="button"
-          onClick={onHide}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-4 transition-all duration-[var(--dur-quick)] hover:bg-[#f3dadb]/50 hover:text-[#a64953]"
-          aria-label="隐藏卡片"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </CardHeader>
-      {children}
-    </Card>
-  );
-}
 
 export default function OverviewPage() {
   const { classes, isLoading: classLoading } = useClasses();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["overview"],
     queryFn: () => apiClient.get<{ data: Overview }>("/overview"),
+    staleTime: 90 * 1000,
   });
   const ov = data?.data;
 
@@ -117,13 +62,16 @@ export default function OverviewPage() {
 
   const visibleIds = config.order.filter((id) => !config.hidden.includes(id));
 
-  function handleDragEnd(e: DragEndEvent) {
-    const { active, over } = e;
-    if (!over || active.id === over.id) return;
-    setConfig((cfg) => ({
-      ...cfg,
-      order: arrayMove(cfg.order, cfg.order.indexOf(String(active.id)), cfg.order.indexOf(String(over.id))),
-    }));
+  function handleReorder(activeId: string, overId: string) {
+    setConfig((cfg) => {
+      const oldIndex = cfg.order.indexOf(activeId);
+      const newIndex = cfg.order.indexOf(overId);
+      if (oldIndex === -1 || newIndex === -1) return cfg;
+      const next = [...cfg.order];
+      const [moved] = next.splice(oldIndex, 1);
+      next.splice(newIndex, 0, moved);
+      return { ...cfg, order: next };
+    });
   }
 
   function toggleCard(id: string) {
@@ -181,27 +129,13 @@ export default function OverviewPage() {
       )}
 
       {ov && (
-        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={visibleIds} strategy={verticalListSortingStrategy}>
-            <div className="space-y-4">
-              {visibleIds.map((id) => {
-                const def = CARD_DEFS.find((d) => d.id === id);
-                if (!def) return null;
-                return (
-                  <SortableCard
-                    key={id}
-                    id={id}
-                    title={def.title}
-                    icon={def.icon}
-                    onHide={() => toggleCard(id)}
-                  >
-                    {def.render(ov)}
-                  </SortableCard>
-                );
-              })}
-            </div>
-          </SortableContext>
-        </DndContext>
+        <SortableCards
+          visibleIds={visibleIds}
+          cardDefs={CARD_DEFS}
+          ov={ov}
+          onToggleCard={toggleCard}
+          onReorder={handleReorder}
+        />
       )}
 
       {classes.length > 1 && (

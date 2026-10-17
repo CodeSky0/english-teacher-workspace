@@ -20,10 +20,17 @@ routes.get("/", async (c) => {
   const result: Array<{ type: string; id: string; title: string; deletedAt: Date | null; classId?: string | null }> = [];
 
   const entries = moduleKey ? [[moduleKey, tables[moduleKey]]] : Object.entries(tables);
-  for (const [type, table] of entries) {
-    if (!table) continue;
-    const records = await db.select().from(table).where(and(eq(table.userId, user.id), isNotNull(table.deletedAt)));
-    for (const r of records) {
+  const validEntries = entries.filter(([, table]) => !!table) as [string, any][];
+
+  const allRecords = await Promise.all(
+    validEntries.map(([, table]) =>
+      db.select().from(table).where(and(eq(table.userId, user.id), isNotNull(table.deletedAt))),
+    ),
+  );
+
+  for (let i = 0; i < validEntries.length; i++) {
+    const [type] = validEntries[i];
+    for (const r of allRecords[i]) {
       result.push({
         type,
         id: r.id,

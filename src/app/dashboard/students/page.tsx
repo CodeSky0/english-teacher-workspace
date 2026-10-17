@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
+import dynamic from "next/dynamic";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { apiClient } from "@/lib/api-client";
 import { useCurrentClass } from "@/hooks/use-classes";
 import { PageHeader } from "@/components/common/page-header";
@@ -10,11 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/states";
-import { ImportDialog } from "@/components/common/import-dialog";
 import { downloadExport } from "@/lib/excel/client";
 import { Plus, Search, Pencil, Trash2, Users, Upload, Download, Lock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const ImportDialog = dynamic(() => import("@/components/common/import-dialog").then((m) => m.ImportDialog), {
+  ssr: false,
+});
 
 type Student = {
   id: string;
@@ -54,6 +59,14 @@ export default function StudentsPage() {
       (st) => st.name.toLowerCase().includes(s) || st.enName?.toLowerCase().includes(s) || st.studentNo?.includes(s)
     );
   }, [students, search]);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 44,
+    overscan: 8,
+  });
 
   const createMut = useMutation({
     mutationFn: (data: any) => apiClient.post("/students", { ...data, classId: currentClass?.id }),
@@ -192,39 +205,54 @@ export default function StudentsPage() {
         <CardContent className="p-0">
           {isLoading ? <LoadingState /> : error ? <ErrorState message="加载失败" onRetry={() => refetch()} /> :
            filtered.length === 0 ? <EmptyState icon={<Users className="h-10 w-10" />} title={search ? "未找到匹配学生" : "暂无学生"} description={search ? "尝试其他搜索词" : "点击右上角添加学生"} /> :
-           <div className="overflow-x-auto">
-             <table className="w-full text-sm">
-               <thead>
-                 <tr className="border-b border-line text-left text-muted">
-                   <th className="px-4 py-3 font-medium">姓名</th>
-                   <th className="px-4 py-3 font-medium">英文名</th>
-                   <th className="px-4 py-3 font-medium">性别</th>
-                   <th className="px-4 py-3 font-medium">学号</th>
-                   <th className="px-4 py-3 font-medium">座位号</th>
-                   <th className="px-4 py-3 font-medium text-right">操作</th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {filtered.map((st) => (
-                   <tr key={st.id} className="border-b border-line/50 hover:bg-bg/50">
-                     <td className="px-4 py-2.5 font-medium">{st.name}</td>
-                     <td className="px-4 py-2.5 text-muted">{st.enName || "—"}</td>
-                     <td className="px-4 py-2.5">{st.gender === "male" ? "男" : st.gender === "female" ? "女" : "—"}</td>
-                     <td className="px-4 py-2.5 text-muted">{st.studentNo || "—"}</td>
-                     <td className="px-4 py-2.5 text-muted">{st.seatNo || "—"}</td>
-                     <td className="px-4 py-2.5 text-right">
-                       <button onClick={() => openEdit(st)} className="text-muted hover:text-primary">
-                         <Pencil className="inline h-4 w-4" />
-                       </button>
-                       <button onClick={() => setDeleteId(st.id)} className="ml-3 text-muted hover:text-red-500">
-                         <Trash2 className="inline h-4 w-4" />
-                       </button>
-                     </td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-           </div>}
+           <div ref={scrollRef} className="overflow-auto max-h-[70vh]">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10 bg-panel">
+                  <tr className="border-b border-line text-left text-muted">
+                    <th className="px-4 py-3 font-medium">姓名</th>
+                    <th className="px-4 py-3 font-medium">英文名</th>
+                    <th className="px-4 py-3 font-medium">性别</th>
+                    <th className="px-4 py-3 font-medium">学号</th>
+                    <th className="px-4 py-3 font-medium">座位号</th>
+                    <th className="px-4 py-3 font-medium text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const items = rowVirtualizer.getVirtualItems();
+                    if (items.length === 0) return null;
+                    const padTop = items[0].start;
+                    const padBottom = rowVirtualizer.getTotalSize() - items[items.length - 1].end;
+                    return (
+                      <>
+                        {padTop > 0 && <tr style={{ height: padTop }}><td colSpan={6} /></tr>}
+                        {items.map((vr) => {
+                          const st = filtered[vr.index];
+                          return (
+                            <tr key={st.id} className="border-b border-line/50 hover:bg-bg/50" style={{ height: vr.size }}>
+                              <td className="px-4 py-2.5 font-medium">{st.name}</td>
+                              <td className="px-4 py-2.5 text-muted">{st.enName || "—"}</td>
+                              <td className="px-4 py-2.5">{st.gender === "male" ? "男" : st.gender === "female" ? "女" : "—"}</td>
+                              <td className="px-4 py-2.5 text-muted">{st.studentNo || "—"}</td>
+                              <td className="px-4 py-2.5 text-muted">{st.seatNo || "—"}</td>
+                              <td className="px-4 py-2.5 text-right">
+                                <button onClick={() => openEdit(st)} className="text-muted hover:text-primary">
+                                  <Pencil className="inline h-4 w-4" />
+                                </button>
+                                <button onClick={() => setDeleteId(st.id)} className="ml-3 text-muted hover:text-red-500">
+                                  <Trash2 className="inline h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {padBottom > 0 && <tr style={{ height: padBottom }}><td colSpan={6} /></tr>}
+                      </>
+                    );
+                  })()}
+                </tbody>
+              </table>
+            </div>}
         </CardContent>
       </Card>
 

@@ -135,11 +135,15 @@ routes.post("/import/students", async (c) => {
   });
 
   if (inserts.length) await db.insert(students).values(inserts);
-  for (const u of updates) {
-    await db
-      .update(students)
-      .set({ ...u.values, updatedAt: new Date() })
-      .where(and(eq(students.id, u.id), eq(students.userId, user.id)));
+  if (updates.length) {
+    await Promise.all(
+      updates.map((u) =>
+        db
+          .update(students)
+          .set({ ...u.values, updatedAt: new Date() })
+          .where(and(eq(students.id, u.id), eq(students.userId, user.id))),
+      ),
+    );
   }
 
   return c.json({
@@ -245,11 +249,15 @@ routes.post("/import/vocab", async (c) => {
   }));
 
   if (inserts.length) await db.insert(vocabWords).values(inserts as (typeof vocabWords.$inferInsert)[]);
-  for (const u of updates) {
-    await db
-      .update(vocabWords)
-      .set({ ...u.values, updatedAt: new Date() })
-      .where(and(eq(vocabWords.id, u.id), eq(vocabWords.userId, user.id)));
+  if (updates.length) {
+    await Promise.all(
+      updates.map((u) =>
+        db
+          .update(vocabWords)
+          .set({ ...u.values, updatedAt: new Date() })
+          .where(and(eq(vocabWords.id, u.id), eq(vocabWords.userId, user.id))),
+      ),
+    );
   }
 
   return c.json({
@@ -295,11 +303,15 @@ routes.post("/import/dictation-words", async (c) => {
   }));
 
   if (inserts.length) await db.insert(dictationWords).values(inserts as (typeof dictationWords.$inferInsert)[]);
-  for (const u of updates) {
-    await db
-      .update(dictationWords)
-      .set({ ...u.values, updatedAt: new Date() })
-      .where(and(eq(dictationWords.id, u.id), eq(dictationWords.userId, user.id)));
+  if (updates.length) {
+    await Promise.all(
+      updates.map((u) =>
+        db
+          .update(dictationWords)
+          .set({ ...u.values, updatedAt: new Date() })
+          .where(and(eq(dictationWords.id, u.id), eq(dictationWords.userId, user.id))),
+      ),
+    );
   }
 
   return c.json({
@@ -315,11 +327,13 @@ routes.get("/export/students", async (c) => {
   const conditions = [eq(students.userId, user.id), isNull(students.deletedAt)];
   if (classId) conditions.push(eq(students.classId, classId));
 
-  const rows = await db.select().from(students).where(and(...conditions));
-  const classRows = await db
-    .select({ id: classes.id, name: classes.name })
-    .from(classes)
-    .where(and(eq(classes.userId, user.id), isNull(classes.deletedAt)));
+  const [rows, classRows] = await Promise.all([
+    db.select().from(students).where(and(...conditions)),
+    db
+      .select({ id: classes.id, name: classes.name })
+      .from(classes)
+      .where(and(eq(classes.userId, user.id), isNull(classes.deletedAt))),
+  ]);
   const classNameById = new Map(classRows.map((r) => [r.id, r.name]));
 
   rows.sort((a, b) => {
@@ -352,19 +366,21 @@ routes.get("/export/vocab", async (c) => {
   const user = c.get("user");
   const unitId = c.req.query("unitId");
 
-  const unitRows = await db
-    .select({ id: vocabUnits.id, name: vocabUnits.name })
-    .from(vocabUnits)
-    .where(
-      unitId
-        ? and(eq(vocabUnits.id, unitId), eq(vocabUnits.userId, user.id), isNull(vocabUnits.deletedAt))
-        : and(eq(vocabUnits.userId, user.id), isNull(vocabUnits.deletedAt))
-    );
-  const unitNameById = new Map(unitRows.map((u) => [u.id, u.name]));
-
   const conditions = [eq(vocabWords.userId, user.id), isNull(vocabWords.deletedAt)];
   if (unitId) conditions.push(eq(vocabWords.unitId, unitId));
-  const words = await db.select().from(vocabWords).where(and(...conditions));
+
+  const [unitRows, words] = await Promise.all([
+    db
+      .select({ id: vocabUnits.id, name: vocabUnits.name })
+      .from(vocabUnits)
+      .where(
+        unitId
+          ? and(eq(vocabUnits.id, unitId), eq(vocabUnits.userId, user.id), isNull(vocabUnits.deletedAt))
+          : and(eq(vocabUnits.userId, user.id), isNull(vocabUnits.deletedAt))
+      ),
+    db.select().from(vocabWords).where(and(...conditions)),
+  ]);
+  const unitNameById = new Map(unitRows.map((u) => [u.id, u.name]));
 
   const baseHeaders = ["单词", "音标", "词性", "释义", "英文例句", "中文例句"];
   const headers = unitId ? baseHeaders : ["单元", ...baseHeaders];
@@ -402,14 +418,20 @@ routes.get("/export/dictation/:listId", async (c) => {
     .where(and(eq(dictationLists.id, listId), eq(dictationLists.userId, user.id), isNull(dictationLists.deletedAt)));
   if (!list) return notFound(c, "听写词表不存在");
 
-  const words = await db
-    .select()
-    .from(dictationWords)
-    .where(and(eq(dictationWords.listId, listId), eq(dictationWords.userId, user.id), isNull(dictationWords.deletedAt)));
-
   const studentConditions = [eq(students.userId, user.id), isNull(students.deletedAt)];
   if (list.classId) studentConditions.push(eq(students.classId, list.classId));
-  const studentRows = await db.select().from(students).where(and(...studentConditions));
+
+  const [words, studentRows, results] = await Promise.all([
+    db
+      .select()
+      .from(dictationWords)
+      .where(and(eq(dictationWords.listId, listId), eq(dictationWords.userId, user.id), isNull(dictationWords.deletedAt))),
+    db.select().from(students).where(and(...studentConditions)),
+    db
+      .select()
+      .from(dictationResults)
+      .where(and(eq(dictationResults.listId, listId), eq(dictationResults.userId, user.id), isNull(dictationResults.deletedAt))),
+  ]);
   studentRows.sort((a, b) => {
     const sa = a.seatNo ?? Number.MAX_SAFE_INTEGER;
     const sb = b.seatNo ?? Number.MAX_SAFE_INTEGER;
@@ -417,10 +439,6 @@ routes.get("/export/dictation/:listId", async (c) => {
     return a.name.localeCompare(b.name, "zh-CN");
   });
 
-  const results = await db
-    .select()
-    .from(dictationResults)
-    .where(and(eq(dictationResults.listId, listId), eq(dictationResults.userId, user.id), isNull(dictationResults.deletedAt)));
   const resultMap = new Map<string, boolean | null>();
   for (const r of results) resultMap.set(`${r.studentId}:${r.wordId}`, r.isCorrect);
 
@@ -491,16 +509,18 @@ routes.get("/export/dictation-summary", async (c) => {
   if (lists.length === 0) return unprocessable(c, "该班级还没有听写词表");
   lists.sort((a, b) => (a.dictationDate ?? "").localeCompare(b.dictationDate ?? "") || a.name.localeCompare(b.name, "zh-CN"));
 
-  const studentRows = await db
-    .select()
-    .from(students)
-    .where(and(eq(students.classId, classId), eq(students.userId, user.id), isNull(students.deletedAt)));
-
   const listIds = lists.map((l) => l.id);
-  const results = await db
-    .select()
-    .from(dictationResults)
-    .where(and(eq(dictationResults.userId, user.id), inArray(dictationResults.listId, listIds), isNull(dictationResults.deletedAt)));
+
+  const [studentRows, results] = await Promise.all([
+    db
+      .select()
+      .from(students)
+      .where(and(eq(students.classId, classId), eq(students.userId, user.id), isNull(students.deletedAt))),
+    db
+      .select()
+      .from(dictationResults)
+      .where(and(eq(dictationResults.userId, user.id), inArray(dictationResults.listId, listIds), isNull(dictationResults.deletedAt))),
+  ]);
 
   const correctMap = new Map<string, number>();
   const recordedMap = new Map<string, number>();
@@ -560,16 +580,17 @@ routes.get("/export/wrong-words", async (c) => {
   const listNameById = new Map(lists.map((l) => [l.id, l.name]));
   const listDateById = new Map(lists.map((l) => [l.id, l.dictationDate ?? ""]));
 
-  const words = await db
-    .select()
-    .from(dictationWords)
-    .where(and(eq(dictationWords.userId, user.id), inArray(dictationWords.listId, listIds), isNull(dictationWords.deletedAt)));
+  const [words, results] = await Promise.all([
+    db
+      .select()
+      .from(dictationWords)
+      .where(and(eq(dictationWords.userId, user.id), inArray(dictationWords.listId, listIds), isNull(dictationWords.deletedAt))),
+    db
+      .select()
+      .from(dictationResults)
+      .where(and(eq(dictationResults.userId, user.id), inArray(dictationResults.listId, listIds), isNull(dictationResults.deletedAt))),
+  ]);
   const wordById = new Map(words.map((w) => [w.id, w]));
-
-  const results = await db
-    .select()
-    .from(dictationResults)
-    .where(and(eq(dictationResults.userId, user.id), inArray(dictationResults.listId, listIds), isNull(dictationResults.deletedAt)));
 
   type Bucket = { word: string; meaning: string; wrong: number; recorded: number; students: Set<string>; lastDate: string; listNames: Set<string> };
   const buckets = new Map<string, Bucket>();
@@ -631,29 +652,30 @@ routes.get("/export/classroom", async (c) => {
   if (!classId) return badRequest(c, "缺少 classId");
   if (!(await assertClass(classId, user.id))) return notFound(c, "班级不存在");
 
-  const studentRows = await db
-    .select()
-    .from(students)
-    .where(and(eq(students.classId, classId), eq(students.userId, user.id), isNull(students.deletedAt)));
+  const [studentRows, points, attendance, feedback] = await Promise.all([
+    db
+      .select()
+      .from(students)
+      .where(and(eq(students.classId, classId), eq(students.userId, user.id), isNull(students.deletedAt))),
+    db
+      .select()
+      .from(classroomPoints)
+      .where(and(eq(classroomPoints.classId, classId), eq(classroomPoints.userId, user.id), isNull(classroomPoints.deletedAt))),
+    db
+      .select()
+      .from(attendanceRecords)
+      .where(and(eq(attendanceRecords.classId, classId), eq(attendanceRecords.userId, user.id), isNull(attendanceRecords.deletedAt))),
+    db
+      .select()
+      .from(studentFeedback)
+      .where(and(eq(studentFeedback.classId, classId), eq(studentFeedback.userId, user.id), isNull(studentFeedback.deletedAt))),
+  ]);
   studentRows.sort((a, b) => {
     const sa = a.seatNo ?? Number.MAX_SAFE_INTEGER;
     const sb = b.seatNo ?? Number.MAX_SAFE_INTEGER;
     if (sa !== sb) return sa - sb;
     return a.name.localeCompare(b.name, "zh-CN");
   });
-
-  const points = await db
-    .select()
-    .from(classroomPoints)
-    .where(and(eq(classroomPoints.classId, classId), eq(classroomPoints.userId, user.id), isNull(classroomPoints.deletedAt)));
-  const attendance = await db
-    .select()
-    .from(attendanceRecords)
-    .where(and(eq(attendanceRecords.classId, classId), eq(attendanceRecords.userId, user.id), isNull(attendanceRecords.deletedAt)));
-  const feedback = await db
-    .select()
-    .from(studentFeedback)
-    .where(and(eq(studentFeedback.classId, classId), eq(studentFeedback.userId, user.id), isNull(studentFeedback.deletedAt)));
 
   const pointsByStudent = new Map<string, number>();
   for (const p of points) pointsByStudent.set(p.studentId, (pointsByStudent.get(p.studentId) ?? 0) + (p.points ?? 0));

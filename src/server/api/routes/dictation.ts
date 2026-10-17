@@ -70,11 +70,15 @@ routes.post("/lists/:listId/results", async (c) => {
 
   await db.transaction(async (tx) => {
     if (inserts.length) await tx.insert(dictationResults).values(inserts);
-    for (const u of updates) {
-      await tx
-        .update(dictationResults)
-        .set({ isCorrect: u.isCorrect, updatedAt: new Date() })
-        .where(and(eq(dictationResults.id, u.id), eq(dictationResults.userId, user.id)));
+    if (updates.length) {
+      await Promise.all(
+        updates.map((u) =>
+          tx
+            .update(dictationResults)
+            .set({ isCorrect: u.isCorrect, updatedAt: new Date() })
+            .where(and(eq(dictationResults.id, u.id), eq(dictationResults.userId, user.id))),
+        ),
+      );
     }
     if (deletes.length) {
       await tx.delete(dictationResults).where(inArray(dictationResults.id, deletes));

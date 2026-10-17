@@ -175,6 +175,7 @@ routes.post("/attendance/bulk", async (c) => {
   let created = 0;
   let updated = 0;
   const inserts: (typeof attendanceRecords.$inferInsert)[] = [];
+  const updateOps: { id: string; status: string; remark: string | null }[] = [];
 
   for (const it of items) {
     const studentId = String(it.studentId ?? "").trim();
@@ -187,11 +188,19 @@ routes.post("/attendance/bulk", async (c) => {
       continue;
     }
     if (found.status === status && (found.remark ?? null) === remark) continue;
-    await db
-      .update(attendanceRecords)
-      .set({ status: status as any, remark, updatedAt: new Date() })
-      .where(and(eq(attendanceRecords.id, found.id), eq(attendanceRecords.userId, user.id)));
-    updated++;
+    updateOps.push({ id: found.id, status, remark });
+  }
+
+  if (updateOps.length) {
+    await Promise.all(
+      updateOps.map((u) =>
+        db
+          .update(attendanceRecords)
+          .set({ status: u.status as any, remark: u.remark, updatedAt: new Date() })
+          .where(and(eq(attendanceRecords.id, u.id), eq(attendanceRecords.userId, user.id))),
+      ),
+    );
+    updated = updateOps.length;
   }
 
   if (inserts.length) {
