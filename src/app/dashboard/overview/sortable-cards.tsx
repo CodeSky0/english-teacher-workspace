@@ -37,24 +37,27 @@ function SortableCard({
   };
   return (
     <Card ref={setNodeRef} style={style} className="animate-fade-in-up">
-      <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle className="flex items-center gap-2 text-base">
+      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+        <CardTitle className="flex min-w-0 items-center gap-2.5 text-[15px]">
           <button
             type="button"
             {...attributes}
             {...listeners}
-            className="cursor-grab touch-none text-neutral-4 transition-colors duration-[var(--dur-quick)] hover:text-text active:cursor-grabbing"
+            className="-ml-1 cursor-grab touch-none rounded-md p-0.5 text-neutral-4 transition-colors duration-[var(--dur-quick)] hover:bg-neutral-3/50 hover:text-text active:cursor-grabbing"
             aria-label="拖拽排序"
           >
             <GripVertical className="h-4 w-4" />
           </button>
-          <Icon className="h-4 w-4 text-primary" />
-          {title}
+          {/* 标题图标槽：梅色淡底方块 */}
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] text-primary ring-1 ring-inset ring-primary/15">
+            <Icon className="h-[15px] w-[15px]" />
+          </span>
+          <span className="truncate">{title}</span>
         </CardTitle>
         <button
           type="button"
           onClick={onHide}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-4 transition-all duration-[var(--dur-quick)] hover:bg-[#f3dadb]/50 hover:text-[#a64953]"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-neutral-4 transition-all duration-[var(--dur-quick)] hover:bg-[#f7dfe0]/70 hover:text-[#a64953]"
           aria-label="隐藏卡片"
         >
           <X className="h-3.5 w-3.5" />

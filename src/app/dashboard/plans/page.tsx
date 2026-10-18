@@ -11,7 +11,7 @@ import { Input, Label, Textarea } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
-import { Plus, Pencil, Trash2, ClipboardList } from "lucide-react";
+import { Plus, Pencil, Trash2, ClipboardList, CalendarDays, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
 
@@ -23,6 +23,13 @@ type Plan = {
 
 const STATUS_MAP: Record<string, string> = { pending: "待开始", planning: "备课中", completed: "已完成", taught: "已授课" };
 const STATUS_COLOR: Record<string, "muted" | "default" | "outline"> = { pending: "muted", planning: "default", completed: "outline", taught: "outline" };
+/** 状态 → 左侧色条 + 图标底纹（和色） */
+const STATUS_ACCENT: Record<string, { bar: string; tile: string }> = {
+  pending: { bar: "from-[#cfccc4] to-[#e6e4de]", tile: "bg-gradient-to-b from-[#eeece7] to-[#e5e3dc] text-neutral-6 ring-[#cfccc4]/60" },
+  planning: { bar: "from-[#c56473] to-[#e0a3ac]", tile: "bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] text-primary-d ring-[#c56473]/25" },
+  completed: { bar: "from-[#5e9f7e] to-[#a8cbb8]", tile: "bg-gradient-to-b from-[#e4f0e8] to-[#d5e8dc] text-[#3d7a5e] ring-[#5e9f7e]/25" },
+  taught: { bar: "from-[#3d6896] to-[#9db6cf]", tile: "bg-gradient-to-b from-[#e9f0f6] to-[#dee8f0] text-[#3d6896] ring-[#3d6896]/20" },
+};
 
 export default function PlansPage() {
   const { currentClass } = useCurrentClass();
@@ -67,26 +74,41 @@ export default function PlansPage() {
 
   return (
     <div>
-      <PageHeader title="备棵与反思" description={`共 ${plans.length} 条记录`}
+      <PageHeader title="备课与反思" description={`共 ${plans.length} 条记录`}
         action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" />新建备课</Button>} />
       <Card><CardContent className="p-0">
         {isLoading ? <LoadingState /> : plans.length === 0 ? <EmptyState icon={<ClipboardList className="h-10 w-10" />} title="暂无备课记录" /> :
           <div className="divide-y divide-line">
-            {plans.map((p) => (
-              <div key={p.id} className="flex items-center justify-between p-4 hover:bg-bg/50">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{p.title}</span>
-                    <Badge variant={STATUS_COLOR[p.status]}>{STATUS_MAP[p.status]}</Badge>
+            {plans.map((p) => {
+              const accent = STATUS_ACCENT[p.status] ?? STATUS_ACCENT.pending;
+              return (
+                <div key={p.id} className="group relative flex items-center gap-3.5 p-4 pl-5 transition-[background] duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/55 hover:via-[#f8e4e7]/12 hover:to-transparent">
+                  <span className={`absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-gradient-to-b ${accent.bar} opacity-45 transition-opacity duration-[var(--dur-quick)] group-hover:opacity-100`} />
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.5rem] ring-1 ring-inset ${accent.tile} shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]`}>
+                    <ClipboardList className="h-[18px] w-[18px]" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-medium tracking-[0.01em]">{p.title}</span>
+                      <Badge variant={STATUS_COLOR[p.status]}>{STATUS_MAP[p.status]}</Badge>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted">
+                      <CalendarDays className="h-3.5 w-3.5 opacity-70" />
+                      <span className="tabular-nums">{p.teachDate || "未定日期"}</span>
+                      <span className="text-[#c9c6bd]">·</span>
+                      <Layers className="h-3.5 w-3.5 opacity-70" />
+                      <span>{p.lessonType || "未分类"}</span>
+                      <span className="text-[#c9c6bd]">·</span>
+                      <span>{p.unit || "未指定单元"}</span>
+                    </div>
                   </div>
-                  <p className="mt-0.5 text-xs text-muted">{p.teachDate || "未定日期"} · {p.lessonType || "未分类"} · {p.unit || "未指定单元"}</p>
+                  <div className="flex gap-1 opacity-55 transition-opacity duration-[var(--dur-quick)] group-hover:opacity-100">
+                    <button onClick={() => openEdit(p)} title="编辑" className="rounded-md p-1.5 text-muted transition-colors hover:bg-panel hover:text-primary hover:shadow-[var(--shadow-xs)]"><Pencil className="h-4 w-4" /></button>
+                    <button onClick={() => setDeleteId(p.id)} title="删除" className="rounded-md p-1.5 text-muted transition-colors hover:bg-[#f8e4e7] hover:text-[#a64953] hover:shadow-[var(--shadow-xs)]"><Trash2 className="h-4 w-4" /></button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => openEdit(p)} className="text-muted hover:text-primary"><Pencil className="h-4 w-4" /></button>
-                  <button onClick={() => setDeleteId(p.id)} className="text-muted hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>}
       </CardContent></Card>
 

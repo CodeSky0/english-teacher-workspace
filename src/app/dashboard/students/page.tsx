@@ -208,8 +208,8 @@ export default function StudentsPage() {
            filtered.length === 0 ? <EmptyState icon={<Users className="h-10 w-10" />} title={search ? "未找到匹配学生" : "暂无学生"} description={search ? "尝试其他搜索词" : "点击右上角添加学生"} /> :
            <div ref={scrollRef} className="overflow-auto max-h-[70vh]">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 bg-panel">
-                  <tr className="border-b border-line text-left text-muted">
+                <thead className="sticky top-0 z-10">
+                  <tr className="table-head border-b border-line text-left text-xs text-muted backdrop-blur-sm">
                     <th className="px-4 py-3 font-medium">姓名</th>
                     <th className="px-4 py-3 font-medium">英文名</th>
                     <th className="px-4 py-3 font-medium">性别</th>
@@ -230,19 +230,34 @@ export default function StudentsPage() {
                         {items.map((vr) => {
                           const st = filtered[vr.index];
                           return (
-                            <tr key={st.id} className="border-b border-line/50 hover:bg-bg/50" style={{ height: vr.size }}>
-                              <td className="px-4 py-2.5 font-medium">{st.name}</td>
-                              <td className="px-4 py-2.5 text-muted">{st.enName || "—"}</td>
-                              <td className="px-4 py-2.5">{st.gender === "male" ? "男" : st.gender === "female" ? "女" : "—"}</td>
-                              <td className="px-4 py-2.5 text-muted">{st.studentNo || "—"}</td>
-                              <td className="px-4 py-2.5 text-muted">{st.seatNo || "—"}</td>
+                            <tr key={st.id} className="group border-b border-line/50 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/55 hover:via-[#f8e4e7]/10 hover:to-transparent" style={{ height: vr.size }}>
+                              <td className="px-4 py-2.5">
+                                <div className="flex items-center gap-2.5">
+                                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gradient-to-b from-[#eeece7] to-[#e5e3dc] font-serif text-[12px] text-neutral-7 ring-1 ring-inset ring-[#cfccc4]/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+                                    {st.name.slice(0, 1)}
+                                  </span>
+                                  <span className="truncate font-medium tracking-[0.01em]">{st.name}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2.5 text-muted">{st.enName || <span className="text-[#c9c6bd]">—</span>}</td>
+                              <td className="px-4 py-2.5">
+                                {st.gender === "male" || st.gender === "female" ? (
+                                  <span className={`rounded px-1.5 py-[1px] text-[11px] ring-1 ring-inset ${st.gender === "male" ? "bg-[#e3ecf4] text-[#3d6896] ring-[#3d6896]/18" : "bg-[#f5dde0] text-[#a85463] ring-[#c56473]/18"}`}>
+                                    {st.gender === "male" ? "男" : "女"}
+                                  </span>
+                                ) : <span className="text-[#c9c6bd]">—</span>}
+                              </td>
+                              <td className="px-4 py-2.5 tabular-nums text-muted">{st.studentNo || <span className="text-[#c9c6bd]">—</span>}</td>
+                              <td className="px-4 py-2.5 tabular-nums text-muted">{st.seatNo || <span className="text-[#c9c6bd]">—</span>}</td>
                               <td className="px-4 py-2.5 text-right">
-                                <button onClick={() => openEdit(st)} className="text-muted hover:text-primary">
-                                  <Pencil className="inline h-4 w-4" />
-                                </button>
-                                <button onClick={() => setDeleteId(st.id)} className="ml-3 text-muted hover:text-red-500">
-                                  <Trash2 className="inline h-4 w-4" />
-                                </button>
+                                <div className="inline-flex gap-1 opacity-55 transition-opacity duration-[var(--dur-quick)] group-hover:opacity-100">
+                                  <button onClick={() => openEdit(st)} title="编辑" className="rounded-md p-1.5 text-muted transition-colors hover:bg-panel hover:text-primary hover:shadow-[var(--shadow-xs)]">
+                                    <Pencil className="h-4 w-4" />
+                                  </button>
+                                  <button onClick={() => setDeleteId(st.id)} title="删除" className="rounded-md p-1.5 text-muted transition-colors hover:bg-[#f8e4e7] hover:text-[#a64953] hover:shadow-[var(--shadow-xs)]">
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );

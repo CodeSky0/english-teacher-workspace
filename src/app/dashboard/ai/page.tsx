@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
+import { cn } from "@/lib/utils";
 
 const TEMPLATES = [
   { key: "objectives", name: "教学目标草稿", desc: "生成教学目标框架" },
@@ -68,7 +69,7 @@ export default function AiPage() {
               <div className="grid grid-cols-2 gap-2">
                 {TEMPLATES.map((t) => (
                   <button key={t.key} onClick={() => generateMut.mutate(t.key)} disabled={generateMut.isPending}
-                    className="rounded-lg border border-line p-3 text-left hover:bg-bg/50 disabled:opacity-50">
+                    className="rounded-lg border border-line p-3 text-left transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/50 hover:to-transparent disabled:opacity-50">
                     <p className="text-sm font-medium">{t.name}</p>
                     <p className="text-xs text-muted">{t.desc}</p>
                   </button>
@@ -77,12 +78,32 @@ export default function AiPage() {
             </CardContent>
           </Card>
           <Card className="mt-4">
-            <CardHeader><CardTitle className="text-base">= AI 对话</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">AI 对话</CardTitle></CardHeader>
             <CardContent>
-              <div className="mb-3 max-h-48 space-y-2 overflow-y-auto">
+              <div className="mb-3 max-h-48 space-y-2.5 overflow-y-auto scrollbar-thin pr-1">
                 {messages.map((m, i) => (
-                  <div key={i} className={`rounded-md p-2 text-sm ${m.role === "user" ? "bg-primary-l text-primary-d" : "bg-bg"}`}>
-                    <span className="font-medium">{m.role === "user" ? "我" : "AI"}：</span>{m.content}
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex gap-2",
+                      m.role === "user" ? "justify-end" : "justify-start"
+                    )}
+                  >
+                    {m.role !== "user" && (
+                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-[#cd6c7a] to-[#a64953] text-[10px] font-medium text-white">
+                        AI
+                      </span>
+                    )}
+                    <div
+                      className={cn(
+                        "max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]",
+                        m.role === "user"
+                          ? "rounded-br-sm bg-gradient-to-br from-[#f8e4e7] to-[#f2d6da] text-primary-d"
+                          : "rounded-bl-sm border border-line/70 bg-gradient-to-b from-white to-[#faf9f7] text-text"
+                      )}
+                    >
+                      {m.content}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -101,17 +122,20 @@ export default function AiPage() {
                 {result && <div className="flex items-center gap-2">
                   {isTemplate && <Badge variant="muted">模板生成</Badge>}
                   <Button size="sm" variant="outline" onClick={handleCopy} className="gap-1.5">
-                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-6 w-3.5" />}{copied ? "已复制" : "复制"}
+                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copied ? "已复制" : "复制"}
                   </Button>
                 </div>}
               </div>
             </CardHeader>
             <CardContent>
               {result ? (
-                <pre className="whitespace-pre-wrap text-sm text-text">{result}</pre>
+                <pre className="whitespace-pre-wrap font-sans text-[13px] leading-[1.75] text-text">{result}</pre>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-muted">
-                  <Sparkles className="mb-2 h-8 w-8" />
+                  <div className="relative mb-3">
+                    <div className="absolute inset-0 -m-3 rounded-full bg-primary/[0.06] blur-lg animate-breathe" />
+                    <Sparkles className="relative h-8 w-8 text-primary/60" />
+                  </div>
                   <p className="text-sm">选择模板或输入问题开始生成</p>
                 </div>
               )}

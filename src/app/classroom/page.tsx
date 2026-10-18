@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Dices, Trophy, Timer, Tag, Vote, Grid3x3, Layers, Headphones, X, Plus, Minus, RotateCcw, ChevronLeft, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,49 @@ const TOOLS = [
   { id: "dictation", name: "听写训练", icon: Headphones, color: "var(--c-write)", bg: "var(--c-write-bg)" },
 ] as const;
 
+/** 分段控件：替代朴素的圆角按钮组 */
+function Segmented({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-lg border border-line/70 bg-neutral-2/55 p-0.5 shadow-[inset_0_1px_2px_rgba(36,35,31,0.05)]">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "rounded-[0.4rem] px-3 py-1 text-sm transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+            value === o.value
+              ? "bg-white font-medium text-text shadow-[0_1px_2px_rgba(36,35,31,0.10),inset_0_1px_0_rgba(255,255,255,0.9)]"
+              : "text-muted hover:text-text"
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** 舞台：投影区的大卡片，带光晕与稿纸纹理 */
+function Stage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative mb-8 flex min-h-[220px] items-center justify-center overflow-hidden rounded-2xl border border-line/70 bg-gradient-to-b from-white to-[#fcfbf9] px-6 py-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_2px_10px_-3px_rgba(36,35,31,0.10)]">
+      <div className="pointer-events-none absolute inset-0 grid-veil opacity-50" />
+      <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-[#3d6896]/10 blur-3xl" />
+      <div className="relative">{children}</div>
+    </div>
+  );
+}
+
 export default function ClassroomPage() {
   const router = useRouter();
   const [activeTool, setActiveTool] = useState<string | null>(null);
@@ -39,29 +83,64 @@ export default function ClassroomPage() {
   }, [router, activeTool]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
-      <header className="flex h-14 items-center justify-between border-b border-line bg-panel px-6">
+    <div className="flex min-h-screen flex-col">
+      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-line/70 glass px-6">
         <div className="flex items-center gap-3">
-          {activeTool && <button onClick={() => setActiveTool(null)} className="text-muted hover:text-text"><ChevronLeft className="h-5 w-5" /></button>}
-          <h1 className="text-lg font-semibold">{activeTool ? TOOLS.find((t) => t.id === activeTool)?.name : "课堂互动"}</h1>
+          {activeTool && (
+            <button
+              onClick={() => setActiveTool(null)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors duration-[var(--dur-quick)] hover:bg-neutral-3/60 hover:text-text"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+          <h1 className="font-serif text-lg font-semibold tracking-tight">
+            {activeTool ? TOOLS.find((t) => t.id === activeTool)?.name : "课堂互动"}
+          </h1>
         </div>
-        <button onClick={() => router.push("/dashboard/overview")} className="flex items-center gap-1 text-sm text-muted hover:text-text"><X className="h-4 w-4" />退出 (Esc)</button>
+        <button
+          onClick={() => router.push("/dashboard/overview")}
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-muted transition-colors duration-[var(--dur-quick)] hover:bg-neutral-3/60 hover:text-text"
+        >
+          <X className="h-4 w-4" />退出 (Esc)
+        </button>
       </header>
+
       <div className="flex flex-1 items-center justify-center p-6">
         {!activeTool ? (
           <div className="grid w-full max-w-4xl grid-cols-2 gap-4 md:grid-cols-4">
             {TOOLS.map((tool) => {
               const Icon = tool.icon;
               return (
-                <button key={tool.id} onClick={() => setActiveTool(tool.id)} className="flex flex-col items-center gap-3 rounded-lg border border-line bg-panel p-6 shadow-sm transition-shadow hover:shadow-md">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl" style={{ background: tool.bg, color: tool.color }}><Icon className="h-7 w-7" /></div>
-                  <span className="text-sm font-medium">{tool.name}</span>
+                <button
+                  key={tool.id}
+                  onClick={() => setActiveTool(tool.id)}
+                  className={[
+                    "group relative flex flex-col items-center gap-3 overflow-hidden rounded-xl",
+                    "border border-line/60 bg-gradient-to-b from-white to-[#fcfbf9] p-6",
+                    "shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]",
+                    "transition-all duration-[var(--dur-smooth)] ease-[var(--ease-smooth)]",
+                    "hover:-translate-y-[3px] hover:border-line hover:shadow-paper-lg",
+                  ].join(" ")}
+                >
+                  {/* 悬浮时浮出的主题色光斑 */}
+                  <div
+                    className="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity duration-[var(--dur-smooth)] group-hover:opacity-30"
+                    style={{ background: tool.color }}
+                  />
+                  <div
+                    className="relative flex h-14 w-14 items-center justify-center rounded-xl ring-1 ring-inset ring-black/[0.04] transition-transform duration-[var(--dur-quick)] ease-[var(--ease-spring)] group-hover:scale-110"
+                    style={{ background: tool.bg, color: tool.color }}
+                  >
+                    <Icon className="h-7 w-7" />
+                  </div>
+                  <span className="relative text-sm font-medium">{tool.name}</span>
                 </button>
               );
             })}
           </div>
         ) : (
-          <div className="w-full max-w-3xl">
+          <div className="w-full max-w-3xl animate-fade-in-up">
             {activeTool === "rollcall" && <RollCallTool />}
             {activeTool === "points" && <PointsTool />}
             {activeTool === "timer" && <TimerTool />}
@@ -112,16 +191,34 @@ function RollCallTool() {
 
   return (
     <div className="text-center">
-      <div className="mb-4">
-        <button onClick={() => setNoRepeat(!noRepeat)} className={`rounded-md px-3 py-1 text-sm ${noRepeat ? "bg-primary text-white" : "bg-bg text-muted"}`}>{noRepeat ? "不重复模式" : "可重复模式"}</button>
+      <div className="mb-5">
+        <Segmented
+          options={[
+            { value: "noRepeat", label: "不重复模式" },
+            { value: "repeat", label: "可重复模式" },
+          ]}
+          value={noRepeat ? "noRepeat" : "repeat"}
+          onChange={(v) => setNoRepeat(v === "noRepeat")}
+        />
       </div>
-      <div className="mb-8 flex min-h-[200px] items-center justify-center rounded-xl border-2 border-dashed border-line bg-panel">
+
+      <Stage>
         {picked ? (
-          <div><p className="text-5xl font-bold text-primary">{picked.name}</p>{picked.enName && <p className="mt-2 text-xl text-muted">{picked.enName}</p>}</div>
-        ) : <p className="text-xl text-muted">按空格键抽取</p>}
-      </div>
+          <div key={picked.id} className="animate-scale-in">
+            <p className="font-serif text-5xl font-semibold tracking-tight text-primary">{picked.name}</p>
+            {picked.enName && <p className="mt-2.5 text-xl text-muted">{picked.enName}</p>}
+          </div>
+        ) : (
+          <p className="text-xl text-muted">按空格键抽取</p>
+        )}
+      </Stage>
+
       <Button onClick={roll} size="lg" className="gap-2"><Dices className="h-5 w-5" />抽取下一位</Button>
-      {history.length > 0 && <p className="mt-4 text-sm text-muted">已点名 {history.length} 人</p>}
+      {history.length > 0 && (
+        <p className="mt-4 text-sm text-muted">
+          已点名 <span className="font-medium tabular-nums text-text">{history.length}</span> 人
+        </p>
+      )}
     </div>
   );
 }
@@ -142,13 +239,30 @@ function PointsTool() {
 
   return (
     <div>
-      <div className="mb-4 flex gap-2"><Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="小组名称" /><Button onClick={addGroup}><Plus className="h-4 w-4" /></Button></div>
+      <div className="mb-4 flex gap-2">
+        <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="小组名称" />
+        <Button onClick={addGroup}><Plus className="h-4 w-4" /></Button>
+      </div>
       <div className="space-y-3">
-        {Object.entries(groups).sort((a, b) => b[1] - a[1]).map(([name, pts]) => (
-          <div key={name} className="flex items-center justify-between rounded-lg border border-line bg-panel p-4">
-            <span className="font-medium">{name}</span>
+        {Object.entries(groups).sort((a, b) => b[1] - a[1]).map(([name, pts], i) => (
+          <div
+            key={name}
+            className="relative flex items-center justify-between overflow-hidden rounded-xl border border-line/60 bg-gradient-to-b from-white to-[#fcfbf9] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+          >
             <div className="flex items-center gap-3">
-              <span className="text-2xl font-bold text-primary">{pts}</span>
+              {/* 名次徽标：前三名高亮 */}
+              <span
+                className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-medium tabular-nums",
+                  i < 3 ? "bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] text-primary-d ring-1 ring-inset ring-primary/20" : "bg-neutral-3/55 text-neutral-6"
+                )}
+              >
+                {i + 1}
+              </span>
+              <span className="font-medium">{name}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="font-serif text-2xl font-semibold tabular-nums text-primary">{pts}</span>
               <Button size="sm" variant="outline" onClick={() => adjust(name, 1)}><Plus className="h-4 w-4" /></Button>
               <Button size="sm" variant="outline" onClick={() => adjust(name, -1)}><Minus className="h-4 w-4" /></Button>
             </div>
@@ -185,12 +299,27 @@ function TimerTool() {
 
   return (
     <div className="text-center">
-      <div className="mb-4 flex justify-center gap-2">
-        <button onClick={() => { setMode("up"); reset(); }} className={`rounded-md px-3 py-1 text-sm ${mode === "up" ? "bg-primary text-white" : "bg-bg"}`}>正计时</button>
-        <button onClick={() => { setMode("down"); reset(); }} className={`rounded-md px-3 py-1 text-sm ${mode === "down" ? "bg-primary text-white" : "bg-bg"}`}>倒计时</button>
+      <div className="mb-5">
+        <Segmented
+          options={[
+            { value: "up", label: "正计时" },
+            { value: "down", label: "倒计时" },
+          ]}
+          value={mode}
+          onChange={(v) => { setMode(v as "up" | "down"); reset(); }}
+        />
       </div>
-      {mode === "down" && !running && <div className="mb-4 flex items-center justify-center gap-2"><Input type="number" value={target} onChange={(e) => { const v = parseInt(e.target.value) || 0; setTarget(v); setRemaining(v); }} className="w-24" /><span className="text-sm text-muted">秒</span></div>}
-      <div className="mb-6 text-7xl font-bold tabular-nums text-primary">{String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}</div>
+      {mode === "down" && !running && (
+        <div className="mb-4 flex items-center justify-center gap-2">
+          <Input type="number" value={target} onChange={(e) => { const v = parseInt(e.target.value) || 0; setTarget(v); setRemaining(v); }} className="w-24" />
+          <span className="text-sm text-muted">秒</span>
+        </div>
+      )}
+      <Stage>
+        <div className={cn("font-serif text-7xl font-semibold tabular-nums tracking-tight text-primary", running && "animate-breathe")}>
+          {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
+        </div>
+      </Stage>
       <div className="flex justify-center gap-2">
         {!running ? <Button onClick={start} size="lg">开始</Button> : <Button onClick={() => setRunning(false)} variant="outline" size="lg">暂停</Button>}
         <Button onClick={reset} variant="outline" size="lg" className="gap-1.5"><RotateCcw className="h-4 w-4" />重置</Button>
@@ -207,14 +336,28 @@ function FeedbackTool() {
 
   return (
     <div>
-      <select value={selectedStudent ?? ""} onChange={(e) => setSelectedStudent(e.target.value)} className="mb-4 flex h-10 w-full rounded-md border border-line bg-panel px-3">
+      <select
+        value={selectedStudent ?? ""}
+        onChange={(e) => setSelectedStudent(e.target.value)}
+        className="mb-5 h-10 w-full rounded-lg border border-line bg-gradient-to-b from-white to-[#faf9f7] px-3 text-sm shadow-[inset_0_1px_2px_rgba(36,35,31,0.045)] focus-visible:outline-none focus-visible:border-primary/55"
+      >
         <option value="">选择学生…</option>
         {students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
       </select>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-        {TAGS.map((tag) => (
-          <Button key={tag} variant="outline" disabled={!selectedStudent} onClick={() => addFeedbackMut.mutate({ studentId: selectedStudent, tag, classId: currentClass?.id, type: tag.includes("需要") || tag.includes("走神") ? "negative" : "positive" })}>{tag}</Button>
-        ))}
+        {TAGS.map((tag) => {
+          const negative = tag.includes("需要") || tag.includes("走神");
+          return (
+            <Button
+              key={tag}
+              variant="outline"
+              disabled={!selectedStudent}
+              onClick={() => addFeedbackMut.mutate({ studentId: selectedStudent, tag, classId: currentClass?.id, type: negative ? "negative" : "positive" })}
+            >
+              {tag}
+            </Button>
+          );
+        })}
       </div>
     </div>
   );
@@ -241,11 +384,27 @@ function PollTool() {
           <div className="space-y-3">
             {options.filter((o) => o.trim()).map((opt, i) => {
               const total = votes.reduce((a, b) => a + b, 0) || 1;
+              const pct = (votes[i] / total) * 100;
               return (
-                <div key={i} className="rounded-lg border border-line bg-panel p-4">
-                  <div className="mb-2 flex items-center justify-between"><span className="font-medium">{opt}</span><span className="text-lg font-bold text-primary">{votes[i]}</span></div>
-                  <div className="h-2 overflow-hidden rounded-full bg-bg"><div className="h-full bg-primary" style={{ width: `${(votes[i] / total) * 100}%` }} /></div>
-                  <div className="mt-2 flex gap-2"><Button size="sm" variant="outline" onClick={() => { const v = [...votes]; v[i]++; setVotes(v); }}><Plus className="h-3.5 w-3.5" /></Button><Button size="sm" variant="outline" onClick={() => { const v = [...votes]; v[i] = Math.max(0, v[i] - 1); setVotes(v); }}><Minus className="h-3.5 w-3.5" /></Button></div>
+                <div
+                  key={i}
+                  className="rounded-xl border border-line/60 bg-gradient-to-b from-white to-[#fcfbf9] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="font-medium">{opt}</span>
+                    <span className="font-serif text-lg font-semibold tabular-nums text-primary">{votes[i]}</span>
+                  </div>
+                  {/* 进度条：梅色渐变，带圆角与内阴影 */}
+                  <div className="h-2 overflow-hidden rounded-full bg-neutral-3/60 shadow-[inset_0_1px_2px_rgba(36,35,31,0.06)]">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-[#cd6c7a] to-[#a85463] transition-[width] duration-[var(--dur-slow)] ease-[var(--ease-smooth)]"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { const v = [...votes]; v[i]++; setVotes(v); }}><Plus className="h-3.5 w-3.5" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => { const v = [...votes]; v[i] = Math.max(0, v[i] - 1); setVotes(v); }}><Minus className="h-3.5 w-3.5" /></Button>
+                  </div>
                 </div>
               );
             })}
@@ -264,7 +423,21 @@ function AttendanceTool() {
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const STATUSES = ["unrecorded", "present", "absent", "late", "leave"];
   const STATUS_LABEL: Record<string, string> = { unrecorded: "未记录", present: "到课", absent: "缺勤", late: "迟到", leave: "请假" };
-  const STATUS_COLOR: Record<string, string> = { unrecorded: "bg-bg", present: "bg-green-100", absent: "bg-red-100", late: "bg-yellow-100", leave: "bg-blue-100" };
+  // 和色：到课=若竹 / 缺勤=蘇芳 / 迟到=朽葉 / 请假=縹
+  const STATUS_STYLE: Record<string, string> = {
+    unrecorded: "border-line/60 bg-gradient-to-b from-white to-[#fcfbf9]",
+    present: "border-[#5e9f7e]/35 bg-gradient-to-b from-[#e4f0e8] to-[#d5e8dc]",
+    absent: "border-[#a64953]/30 bg-gradient-to-b from-[#f7dfe0] to-[#f0cfd1]",
+    late: "border-[#a87a3d]/30 bg-gradient-to-b from-[#f7ecda] to-[#f0e0c4]",
+    leave: "border-[#3d6896]/30 bg-gradient-to-b from-[#e3ecf4] to-[#d3e0ec]",
+  };
+  const STATUS_TEXT: Record<string, string> = {
+    unrecorded: "text-neutral-7",
+    present: "text-[#3d7a5e]",
+    absent: "text-[#a64953]",
+    late: "text-[#8a6230]",
+    leave: "text-[#3d6896]",
+  };
   const saveMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/classroom/attendance", { ...d, classId: currentClass?.id, attendanceDate: today }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["attendance"] }); toast.success("已保存"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
 
   const sorted = [...students].sort((a, b) => (a.seatNo ?? 999) - (b.seatNo ?? 999));
@@ -276,10 +449,18 @@ function AttendanceTool() {
         {sorted.map((s) => {
           const status = statusMap[s.id] ?? "unrecorded";
           return (
-            <button key={s.id} onClick={() => { const idx = STATUSES.indexOf(status); const next = STATUSES[(idx + 1) % STATUSES.length]; setStatusMap({ ...statusMap, [s.id]: next }); saveMut.mutate({ studentId: s.id, status: next }); }} className={`rounded-lg border border-line p-3 text-center ${STATUS_COLOR[status]}`}>
+            <button
+              key={s.id}
+              onClick={() => { const idx = STATUSES.indexOf(status); const next = STATUSES[(idx + 1) % STATUSES.length]; setStatusMap({ ...statusMap, [s.id]: next }); saveMut.mutate({ studentId: s.id, status: next }); }}
+              className={cn(
+                "rounded-xl border p-3 text-center transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+                "shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] hover:-translate-y-[2px] hover:shadow-paper-sm",
+                STATUS_STYLE[status]
+              )}
+            >
               <p className="text-sm font-medium">{s.name}</p>
               <p className="text-xs text-muted">{s.seatNo ?? "—"}</p>
-              <p className="mt-1 text-xs">{STATUS_LABEL[status]}</p>
+              <p className={cn("mt-1 text-xs font-medium", STATUS_TEXT[status])}>{STATUS_LABEL[status]}</p>
             </button>
           );
         })}
@@ -322,16 +503,41 @@ function WordCardTool() {
         </div>
       ) : !current ? <p className="text-muted">暂无单词</p> : (
         <div>
-          <div className="mb-4 flex justify-center gap-2"><Button size="sm" variant="outline" onClick={() => setSelectedUnit(null)}>选择单元</Button><button onClick={() => setRandomOrder(!randomOrder)} className={`rounded-md px-3 py-1 text-sm ${randomOrder ? "bg-primary text-white" : "bg-bg"}`}>{randomOrder ? "随机顺序" : "顺序"}</button></div>
-          <div onClick={() => setFlipped(!flipped)} className="mb-6 flex min-h-[240px] cursor-pointer items-center justify-center rounded-xl border-2 border-line bg-panel">
-            {flipped ? <div><p className="text-3xl font-medium">{current.meaning}</p>{current.phoneticUs && <p className="mt-2 text-lg text-muted">/{current.phoneticUs}/</p>}</div> : <p className="text-6xl font-bold text-primary">{current.word}</p>}
+          <div className="mb-5 flex justify-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setSelectedUnit(null)}>选择单元</Button>
+            <Segmented
+              options={[
+                { value: "random", label: "随机顺序" },
+                { value: "order", label: "顺序" },
+              ]}
+              value={randomOrder ? "random" : "order"}
+              onChange={(v) => setRandomOrder(v === "random")}
+            />
+          </div>
+          <div
+            onClick={() => setFlipped(!flipped)}
+            className="relative mb-6 flex min-h-[240px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-line/70 bg-gradient-to-b from-white to-[#fcfbf9] px-6 py-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_2px_10px_-3px_rgba(36,35,31,0.10)] transition-transform duration-[var(--dur-quick)] hover:-translate-y-[2px]"
+          >
+            <div className="pointer-events-none absolute inset-0 grid-veil opacity-50" />
+            <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-[#7c3aed]/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+            <div className="relative">
+              {flipped ? (
+                <div className="animate-scale-in">
+                  <p className="text-3xl font-medium">{current.meaning}</p>
+                  {current.phoneticUs && <p className="mt-2.5 text-lg text-muted">/{current.phoneticUs}/</p>}
+                </div>
+              ) : (
+                <p className="font-serif text-6xl font-semibold tracking-tight text-primary">{current.word}</p>
+              )}
+            </div>
           </div>
           <div className="flex justify-center gap-2">
             <Button variant="outline" onClick={() => { setIndex(Math.max(index - 1, 0)); setFlipped(false); }}>上一张</Button>
             <Button variant="outline" onClick={() => speak(current.word)} className="gap-1.5"><Volume2 className="h-4 w-4" />朗读</Button>
             <Button variant="outline" onClick={() => { setIndex(Math.min(index + 1, order.length - 1)); setFlipped(false); }}>下一张</Button>
           </div>
-          <p className="mt-4 text-sm text-muted">{index + 1} / {order.length}</p>
+          <p className="mt-4 text-sm text-muted tabular-nums">{index + 1} / {order.length}</p>
         </div>
       )}
     </div>
@@ -360,16 +566,24 @@ function DictationTool() {
         <div className="space-y-2">{lists.map((l) => <Button key={l.id} variant="outline" className="w-full" onClick={() => { setSelectedList(l.id); setIndex(0); }}>{l.name}</Button>)}</div>
       ) : !current ? <p className="text-muted">暂无单词</p> : (
         <div>
-          <div className="mb-6 flex min-h-[200px] items-center justify-center rounded-xl border-2 border-line bg-panel">
-            {showWord ? <p className="text-4xl font-bold text-primary">{current.word}</p> : <p className="text-xl text-muted">点击朗读或显示单词</p>}
-          </div>
+          <Stage>
+            {showWord ? (
+              <p key={current.id} className="animate-scale-in font-serif text-4xl font-semibold tracking-tight text-primary">
+                {current.word}
+              </p>
+            ) : (
+              <p className="text-xl text-muted">点击朗读或显示单词</p>
+            )}
+          </Stage>
           <div className="flex justify-center gap-2">
             <Button variant="outline" onClick={() => speak(current.word)} className="gap-1.5"><Volume2 className="h-4 w-4" />朗读</Button>
             <Button variant="outline" onClick={() => setShowWord(!showWord)}>{showWord ? "隐藏" : "显示"}</Button>
             <Button variant="outline" onClick={() => { setResults({ ...results, [current.id]: true }); setIndex(Math.min(index + 1, words.length - 1)); setShowWord(false); }}>正确</Button>
             <Button variant="outline" onClick={() => { setResults({ ...results, [current.id]: false }); setIndex(Math.min(index + 1, words.length - 1)); setShowWord(false); }}>错误</Button>
           </div>
-          <p className="mt-4 text-sm text-muted">{index + 1} / {words.length} · 正确 {Object.values(results).filter(Boolean).length}</p>
+          <p className="mt-4 text-sm text-muted tabular-nums">
+            {index + 1} / {words.length} · 正确 {Object.values(results).filter(Boolean).length}
+          </p>
         </div>
       )}
     </div>

@@ -26,6 +26,12 @@ export default function SchedulePage() {
   const [editCell, setEditCell] = useState<{ cell: Cell | null; day: number; period: number } | null>(null);
   const [subject, setSubject] = useState("");
   const [classroom, setClassroom] = useState("");
+  /** 今日列高亮（挂载后再算，避免 SSR 水合不一致） */
+  const [today, setToday] = useState(0);
+  useEffect(() => {
+    const d = new Date().getDay();
+    setToday(d >= 1 && d <= 5 ? d : 0);
+  }, []);
 
   const { data, isLoading } = useQuery({
     queryKey: ["schedule", currentClass?.id],
@@ -84,17 +90,32 @@ export default function SchedulePage() {
       <Card>
         <CardContent className="p-2 overflow-x-auto">
           {isLoading ? <LoadingState /> : (
-            <table className="w-full border-collapse">
+            <table className="w-full border-separate border-spacing-[3px]">
               <thead>
                 <tr>
-                  <th className="w-16 border border-line bg-bg p-2 text-xs font-medium text-muted">节次</th>
-                  {DAYS.map((d) => <th key={d} className="border border-line bg-bg p-2 text-sm font-medium">{d}</th>)}
+                  <th className="w-16 rounded-lg bg-neutral-2/70 p-2 text-xs font-medium text-muted">节次</th>
+                  {DAYS.map((d, i) => {
+                    const isToday = today === i + 1;
+                    return (
+                      <th key={d}
+                        className={
+                          isToday
+                            ? "rounded-lg bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] p-2 text-sm font-medium text-primary-d ring-1 ring-inset ring-[#c56473]/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
+                            : "rounded-lg bg-neutral-2/70 p-2 text-sm font-medium"
+                        }>
+                        <span className="flex items-center justify-center gap-1">
+                          {d}
+                          {isToday && <span className="h-1.5 w-1.5 rounded-full bg-[#c56473]" />}
+                        </span>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: PERIODS }, (_, i) => i + 1).map((period) => (
                   <tr key={period}>
-                    <td className="border border-line bg-bg p-2 text-center text-xs font-medium text-muted">{period}</td>
+                    <td className="rounded-lg bg-neutral-2/45 p-2 text-center text-xs font-medium text-muted">{period}</td>
                     {DAYS.map((_, dayIdx) => {
                       const day = dayIdx + 1;
                       const cell = cellMap.get(`${day}-${period}`);
@@ -103,8 +124,12 @@ export default function SchedulePage() {
                         <td
                           key={day}
                           onClick={() => openEdit(day, period)}
-                          className="cursor-pointer border border-line p-2 align-top transition-colors hover:bg-bg/50"
-                          style={style ? { background: style.bg } : undefined}
+                          className={`cursor-pointer rounded-lg border p-2 align-top transition-all duration-[var(--dur-quick)] hover:border-primary/30 hover:shadow-paper-xs ${
+                            today === day
+                              ? "border-[#c56473]/30 shadow-[inset_0_0_0_1px_rgba(197,100,115,0.10)]"
+                              : "border-line/40"
+                          }`}
+                          style={style ? { background: style.bg } : { background: today === day ? "rgba(248,228,231,0.35)" : undefined }}
                         >
                           {cell?.subject && (
                             <div style={{ color: style!.color }}>

@@ -126,13 +126,16 @@ export default function VocabPage() {
           {isLoading ? <LoadingState /> : units.length === 0 ? <EmptyState icon={<BookOpen className="h-10 w-10" />} title="暂无词汇单元" /> :
             <div className="divide-y divide-line">
               {units.map((u) => (
-                <div key={u.id} className="flex items-center justify-between p-4 hover:bg-bg/50">
-                  <button onClick={() => setSelectedUnit(u)} className="flex flex-1 items-center gap-2 text-left">
+                <div key={u.id} className="group flex items-center justify-between p-4 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/50 hover:to-transparent">
+                  <button onClick={() => setSelectedUnit(u)} className="flex flex-1 items-center gap-3 text-left">
+                    <span className="icon-slot icon-slot-muted transition-transform duration-[var(--dur-quick)] ease-[var(--ease-spring)] group-hover:scale-105">
+                      <BookOpen />
+                    </span>
                     <span className="font-medium">{u.name}</span>
                     {u.gradeLevel && <Badge variant="muted">{u.gradeLevel}</Badge>}
-                    <ChevronRight className="h-4 w-4 text-muted" />
+                    <ChevronRight className="h-4 w-4 shrink-0 text-neutral-4 transition-all duration-[var(--dur-quick)] group-hover:translate-x-0.5 group-hover:text-primary" />
                   </button>
-                  <button onClick={() => deleteUnitMut.mutate(u.id)} className="text-muted hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+                  <button onClick={() => deleteUnitMut.mutate(u.id)} className="rounded-md p-1 text-muted transition-colors duration-[var(--dur-quick)] hover:bg-[#f7dfe0]/60 hover:text-[#a64953]"><Trash2 className="h-4 w-4" /></button>
                 </div>
               ))}
             </div>}
@@ -152,20 +155,24 @@ export default function VocabPage() {
             {words.length === 0 ? <EmptyState title="暂无单词" /> :
               <div className="divide-y divide-line">
                 {words.map((w) => (
-                  <div key={w.id} className="flex items-start justify-between p-4 hover:bg-bg/50">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-base">{w.word}</span>
-                        <button onClick={() => speak(w.word)} className="text-primary hover:text-primary-d"><Volume2 className="h-4 w-4" /></button>
+                  <div key={w.id} className="flex items-start justify-between gap-3 p-4 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/50 hover:to-transparent">
+                    {/* 首字母字块：让单词列表有辨识度 */}
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-[#e4f0e8] to-[#d5e8dc] font-serif text-sm font-semibold uppercase text-[#3d7a5e] ring-1 ring-inset ring-[#5e9f7e]/20">
+                      {w.word.slice(0, 1)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="font-serif text-base font-semibold">{w.word}</span>
+                        <button onClick={() => speak(w.word)} className="rounded-md p-0.5 text-primary transition-colors duration-[var(--dur-quick)] hover:bg-[#f8e4e7]/70 hover:text-primary-d" aria-label="朗读"><Volume2 className="h-3.5 w-3.5" /></button>
                         {w.phoneticUs && <span className="text-xs text-muted">/{w.phoneticUs}/</span>}
                         {w.partOfSpeech && <Badge variant="muted">{w.partOfSpeech}</Badge>}
                       </div>
                       {w.meaning && <p className="mt-1 text-sm text-muted">{w.meaning}</p>}
-                      {w.exampleEn && <p className="mt-1 text-xs italic text-muted">{w.exampleEn}</p>}
+                      {w.exampleEn && <p className="mt-1 text-xs italic text-neutral-6">{w.exampleEn}</p>}
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => openEditWord(w)} className="text-muted hover:text-primary"><Pencil className="h-4 w-4" /></button>
-                      <button onClick={() => deleteWordMut.mutate(w.id)} className="text-muted hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+                    <div className="flex shrink-0 gap-1">
+                      <button onClick={() => openEditWord(w)} className="rounded-md p-1 text-muted transition-colors duration-[var(--dur-quick)] hover:bg-neutral-3/60 hover:text-primary"><Pencil className="h-4 w-4" /></button>
+                      <button onClick={() => deleteWordMut.mutate(w.id)} className="rounded-md p-1 text-muted transition-colors duration-[var(--dur-quick)] hover:bg-[#f7dfe0]/60 hover:text-[#a64953]"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </div>
                 ))}

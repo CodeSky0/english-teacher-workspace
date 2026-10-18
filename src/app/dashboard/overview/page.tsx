@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useClasses } from "@/hooks/use-classes";
-import { PageHeader } from "@/components/common/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingState, ErrorState } from "@/components/ui/states";
-import { Settings } from "lucide-react";
+import { Settings, Monitor, Headphones } from "lucide-react";
 import { greeting, todayStr, cn } from "@/lib/utils";
 import { CARD_DEFS, DEFAULT_CARD_ORDER, type Overview } from "./cards";
 
@@ -23,6 +23,7 @@ const STORAGE_KEY = "overview-cards-v1";
 type CardConfig = { order: string[]; hidden: string[] };
 
 export default function OverviewPage() {
+  const router = useRouter();
   const { classes, isLoading: classLoading } = useClasses();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["overview"],
@@ -86,13 +87,74 @@ export default function OverviewPage() {
 
   return (
     <div>
-      <PageHeader title="总览" description={`${greeting()}！今天是 ${todayStr()}`} />
+      {/* ── 欢迎横幅：和纸渐变 + 光晕 + 随鼠标聚光 + 快捷入口 ── */}
+      <div
+        onMouseMove={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+          e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+        }}
+        className="group relative mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-[#fdf6f7] via-[#faf9f7] to-[#f4f7fa] edge-lit p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_2px_10px_-3px_rgba(36,35,31,0.10)] animate-fade-in-up"
+      >
+        {/* 跟随鼠标的柔光：让横幅"活"起来 */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 ease-[var(--ease-smooth)] group-hover:opacity-100"
+          style={{ background: "radial-gradient(460px circle at var(--mx, 50%) var(--my, 50%), rgba(197,100,115,0.10), transparent 68%)" }}
+        />
+        <div className="pointer-events-none absolute inset-0 grid-veil opacity-50" />
+        <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-primary/[0.14] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-14 right-1/4 h-36 w-36 rounded-full bg-[#3d6896]/10 blur-3xl" />
+        {/* 和风同心圆 */}
+        <svg className="pointer-events-none absolute right-8 top-1/2 hidden h-28 w-28 -translate-y-1/2 text-primary/[0.13] sm:block" viewBox="0 0 100 100" fill="none" aria-hidden>
+          <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="0.6" />
+          <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="0.6" />
+          <circle cx="50" cy="50" r="18" stroke="currentColor" strokeWidth="0.6" />
+        </svg>
 
-      <div className="mb-4 flex justify-end">
-        <Button variant="outline" size="sm" onClick={() => setCustomizing((v) => !v)}>
-          <Settings className="mr-1.5 h-4 w-4" />
-          自定义卡片
-        </Button>
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[11px] tracking-[0.2em] text-neutral-5 uppercase">
+              English Teacher Workspace
+            </p>
+            <h2 className="mt-1.5 font-serif text-[28px] font-semibold leading-tight tracking-tight text-text">
+              {greeting()}！今天是 {todayStr()}
+            </h2>
+            {ov && (
+              <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+                <span>
+                  共 <span className="font-medium tabular-nums text-text">{ov.totals.classes}</span> 个班级
+                </span>
+                <span className="h-3 w-px bg-line" />
+                <span>
+                  <span className="font-medium tabular-nums text-text">{ov.totals.students}</span> 名学生
+                </span>
+                {ov.totals.openHomework > 0 && (
+                  <>
+                    <span className="h-3 w-px bg-line" />
+                    <span>
+                      <span className="font-medium tabular-nums text-text">{ov.totals.openHomework}</span> 项作业待查
+                    </span>
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => router.push("/classroom")}>
+              <Monitor className="h-4 w-4" />
+              课堂互动
+            </Button>
+            <Button size="sm" className="gap-1.5" onClick={() => router.push("/dashboard/dictation")}>
+              <Headphones className="h-4 w-4" />
+              听写批改
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setCustomizing((v) => !v)}>
+              <Settings className="h-4 w-4" />
+              自定义卡片
+            </Button>
+          </div>
+        </div>
       </div>
 
       {customizing && (
@@ -111,8 +173,8 @@ export default function OverviewPage() {
                     className={cn(
                       "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
                       visible
-                        ? "border-primary/40 bg-primary-l/60 text-primary-d shadow-paper-xs"
-                        : "border-line text-muted hover:bg-neutral-3/50 hover:text-neutral-7",
+                        ? "border-primary/40 bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] font-medium text-primary-d shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                        : "border-line bg-gradient-to-b from-white to-[#faf9f7] text-muted hover:border-neutral-4 hover:text-neutral-7",
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" />

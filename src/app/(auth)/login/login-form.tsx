@@ -10,6 +10,15 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Mail, Lock } from "lucide-react";
 
+/** 输入框左侧的图标槽：小色块容器，比裸图标更整齐 */
+function FieldIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="pointer-events-none absolute left-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-neutral-3/55 text-neutral-6">
+      {children}
+    </span>
+  );
+}
+
 export default function LoginForm({ allowRegister }: { allowRegister: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -35,26 +44,28 @@ export default function LoginForm({ allowRegister }: { allowRegister: boolean })
   }
 
   return (
-    <Card className="w-full border-line/70 shadow-paper-lg">
-      <CardHeader className="space-y-2">
+    <Card className="w-full shadow-paper-lg">
+      <CardHeader className="gap-2 pb-5">
         {/* 移动端品牌标识 */}
-        <div className="flex items-center gap-2.5 lg:hidden">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#a64953] text-sm font-medium text-white shadow-glow">
+        <div className="mb-1 flex items-center gap-2.5 lg:hidden">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#cd6c7a] to-[#a64953] text-sm font-medium text-white shadow-[0_2px_6px_-1px_rgba(168,84,99,0.5),inset_0_1px_0_rgba(255,255,255,0.35)]">
             英
           </span>
           <span className="font-serif text-base font-medium tracking-wide text-neutral-9">
             英语教师工作台
           </span>
         </div>
-        <CardTitle className="text-2xl font-semibold tracking-tight">欢迎回来</CardTitle>
+        <CardTitle className="font-serif text-2xl font-semibold tracking-tight">欢迎回来</CardTitle>
         <CardDescription className="text-copy-14">登录你的账户，继续教学工作</CardDescription>
       </CardHeader>
-      <CardContent className="pt-2">
+      <CardContent className="pt-0">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">邮箱</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-4" />
+              <FieldIcon>
+                <Mail className="h-3.5 w-3.5" />
+              </FieldIcon>
               <Input
                 id="email"
                 type="email"
@@ -62,7 +73,7 @@ export default function LoginForm({ allowRegister }: { allowRegister: boolean })
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="teacher@example.com"
                 required
-                className="pl-9"
+                className="pl-10"
               />
             </div>
           </div>
@@ -74,7 +85,9 @@ export default function LoginForm({ allowRegister }: { allowRegister: boolean })
               </button>
             </div>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-4" />
+              <FieldIcon>
+                <Lock className="h-3.5 w-3.5" />
+              </FieldIcon>
               <Input
                 id="password"
                 type="password"
@@ -82,22 +95,29 @@ export default function LoginForm({ allowRegister }: { allowRegister: boolean })
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••"
                 required
-                className="pl-9"
+                className="pl-10"
               />
             </div>
           </div>
-          <Button type="submit" className="relative w-full h-10 overflow-hidden" disabled={loading}>
+          <Button
+            type="submit"
+            className="relative mt-1 h-10 w-full overflow-hidden text-[15px]"
+            disabled={loading}
+          >
             <span className="btn-glow-sweep absolute inset-0" />
             <span className="relative">{loading ? "登录中…" : "登录"}</span>
           </Button>
         </form>
         {allowRegister && (
-          <p className="mt-6 text-center text-sm text-muted">
-            还没有账户？{" "}
-            <Link href="/register" className="font-medium text-neutral-7 hover:text-primary transition-colors duration-[var(--dur-quick)]">
-              注册
-            </Link>
-          </p>
+          <div className="mt-6">
+            <div className="divider-ink mb-4" />
+            <p className="text-center text-sm text-muted">
+              还没有账户？{" "}
+              <Link href="/register" className="font-medium text-neutral-7 underline-offset-4 hover:text-primary hover:underline transition-colors duration-[var(--dur-quick)]">
+                立即注册
+              </Link>
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -100,7 +100,7 @@ export function ImportDialog({
   return (
     <Dialog open={open} onClose={onClose} title={title} description={target} className="max-w-3xl">
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed border-line bg-bg/40 p-3">
+        <div className="grid-veil flex flex-wrap items-center gap-2 rounded-xl border border-line/70 bg-gradient-to-b from-white to-[#faf9f7] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => fileRef.current?.click()} disabled={parsing}>
             {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             选择 Excel 文件
@@ -184,7 +184,7 @@ export function ImportDialog({
                     {columns.map((c) => (
                       <th key={c.key} className="px-2 py-2 font-medium">
                         {c.label}
-                        {c.required && <span className="text-red-500"> *</span>}
+                        {c.required && <span className="text-[#a64953]"> *</span>}
                       </th>
                     ))}
                   </tr>
@@ -193,14 +193,14 @@ export function ImportDialog({
                   {rows.slice(0, PREVIEW_LIMIT).map((r) => (
                     <tr
                       key={r.index}
-                      className={cn("border-b border-line/50", r.errors.length > 0 && "bg-red-50/60")}
+                      className={cn("border-b border-line/50", r.errors.length > 0 && "bg-[#f7dfe0]/60")}
                     >
                       <td className="px-2 py-1.5 text-muted">{r.index}</td>
                       {columns.map((c) => (
                         <td key={c.key} className="px-2 py-1.5">
                           {r.values[c.key] || "—"}
                           {r.errors.length > 0 && c.required && !r.values[c.key] && (
-                            <span className="ml-1 text-red-500">缺失</span>
+                            <span className="ml-1 text-[#a64953]">缺失</span>
                           )}
                         </td>
                       ))}

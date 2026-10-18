@@ -347,14 +347,20 @@ export default function DictationPage() {
           {isLoading ? <LoadingState /> : lists.length === 0 ? <EmptyState icon={<Headphones className="h-10 w-10" />} title="暂无听写词表" description="新建词表后可导入单词并录入成绩" /> :
             <div className="divide-y divide-line">
               {lists.map((l) => (
-                <div key={l.id} className="flex items-center justify-between p-4 hover:bg-bg/50">
-                  <button onClick={() => setSelectedList(l)} className="flex flex-1 items-center gap-2 text-left">
-                    <span className="font-medium">{l.name}</span>
+                <div key={l.id} className="group flex items-center gap-3.5 p-4 pl-5 transition-[background] duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/55 hover:via-[#f8e4e7]/12 hover:to-transparent">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.5rem] bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] text-primary-d ring-1 ring-inset ring-[#c56473]/22 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+                    <Headphones className="h-[18px] w-[18px]" />
+                  </span>
+                  <button onClick={() => setSelectedList(l)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                    <span className="truncate font-medium tracking-[0.01em]">{l.name}</span>
                     <Badge variant="muted">{l.classId ? (classes.find((c) => c.id === l.classId)?.name ?? "已删除班级") : "未关联班级"}</Badge>
                     {l.dictationDate && <Badge variant="muted">{l.dictationDate}</Badge>}
-                    <ChevronRight className="h-4 w-4 text-muted" />
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted transition-transform duration-[var(--dur-quick)] group-hover:translate-x-0.5 group-hover:text-primary" />
                   </button>
-                  <button onClick={() => deleteListMut.mutate(l.id)} className="text-muted hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+                  <button onClick={() => deleteListMut.mutate(l.id)} title="删除"
+                    className="rounded-md p-1.5 text-muted opacity-55 transition-all duration-[var(--dur-quick)] hover:bg-[#f8e4e7] hover:text-[#a64953] hover:shadow-[var(--shadow-xs)] group-hover:opacity-100">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               ))}
             </div>}
@@ -362,24 +368,37 @@ export default function DictationPage() {
       ) : (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <button onClick={() => setSelectedList(null)} className="text-sm text-primary hover:underline">← 返回</button>
-              <span className="text-muted">|</span>
-              <h3 className="font-semibold">{selectedList.name}</h3>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button onClick={() => setSelectedList(null)}
+                className="group inline-flex items-center gap-1 rounded-full bg-panel px-2.5 py-1 text-xs text-neutral-6 ring-1 ring-inset ring-line shadow-[var(--shadow-xs)] transition-all duration-[var(--dur-quick)] hover:-translate-x-[1px] hover:text-primary-d hover:shadow-[var(--shadow-sm)]">
+                <ChevronRight className="h-3.5 w-3.5 rotate-180 transition-transform duration-[var(--dur-quick)] group-hover:-translate-x-0.5" />
+                返回
+              </button>
+              <h3 className="font-serif text-[17px] tracking-[0.01em]">{selectedList.name}</h3>
               <Badge variant="muted">{words.length} 词</Badge>
               {saving && <span className="flex items-center gap-1 text-xs text-muted"><Loader2 className="h-3 w-3 animate-spin" />保存中…</span>}
             </div>
             <div className="flex flex-wrap gap-2">
-              <div className="flex rounded-md border border-line p-0.5">
+              <div className="inline-flex gap-0.5 rounded-lg border border-line/70 bg-neutral-2/55 p-0.5 shadow-[inset_0_1px_2px_rgba(36,35,31,0.05)]">
                 <button
                   onClick={() => setTab("words")}
-                  className={cn("rounded px-3 py-1 text-xs", tab === "words" ? "bg-primary text-white" : "text-muted hover:text-text")}
+                  className={cn(
+                    "rounded-[0.4rem] px-3 py-1 text-xs transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+                    tab === "words"
+                      ? "bg-white font-medium text-primary-d shadow-[0_1px_2px_rgba(36,35,31,0.10),inset_0_1px_0_rgba(255,255,255,0.9)]"
+                      : "text-muted hover:text-text"
+                  )}
                 >
                   单词管理
                 </button>
                 <button
                   onClick={() => setTab("scores")}
-                  className={cn("rounded px-3 py-1 text-xs", tab === "scores" ? "bg-primary text-white" : "text-muted hover:text-text")}
+                  className={cn(
+                    "rounded-[0.4rem] px-3 py-1 text-xs transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+                    tab === "scores"
+                      ? "bg-white font-medium text-primary-d shadow-[0_1px_2px_rgba(36,35,31,0.10),inset_0_1px_0_rgba(255,255,255,0.9)]"
+                      : "text-muted hover:text-text"
+                  )}
                 >
                   成绩录入
                 </button>
@@ -406,14 +425,14 @@ export default function DictationPage() {
               {words.length === 0 ? <EmptyState title="暂无单词" description="可手动添加、Excel 导入或从词汇单元一键导入" /> :
                 <div className="divide-y divide-line">
                   {words.map((w, i) => (
-                    <div key={w.id} className="flex items-center justify-between p-4 hover:bg-bg/50">
+                    <div key={w.id} className="flex items-center justify-between p-4 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/50 hover:to-transparent">
                       <div className="flex items-center gap-2">
                         <span className="w-6 text-xs text-muted">{i + 1}</span>
                         <span className="font-medium">{w.word}</span>
                         <button onClick={() => speak(w.word)} className="text-primary hover:text-primary-d"><Volume2 className="h-4 w-4" /></button>
                         {w.meaning && <span className="text-sm text-muted">{w.meaning}</span>}
                       </div>
-                      <button onClick={() => deleteWordMut.mutate(w.id)} className="text-muted hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+                      <button onClick={() => deleteWordMut.mutate(w.id)} className="text-muted hover:text-[#a64953]"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   ))}
                 </div>}
@@ -467,16 +486,19 @@ export default function DictationPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-line bg-panel text-left text-muted">
+                        <tr className="table-head border-b border-line text-left text-xs text-muted">
                           <th className="sticky left-0 z-10 bg-panel px-3 py-2 font-medium">学生</th>
                           {words.map((w) => {
                             const st = wordStats.get(w.id);
                             return (
                               <th key={w.id} className="min-w-[64px] px-1 py-2 text-center font-medium">
-                                <div className="flex flex-col items-center">
-                                  <span className="text-text">{w.word}</span>
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <span className="font-serif text-[13px] text-text">{w.word}</span>
                                   {st && st.recorded > 0 && (
-                                    <span className={cn("text-[10px]", st.wrong / st.recorded >= 0.4 ? "text-red-500" : "text-muted")}>
+                                    <span className={cn(
+                                      "rounded px-1 text-[10px] tabular-nums",
+                                      st.wrong / st.recorded >= 0.4 ? "bg-[#f7dfe0] text-[#a64953]" : "bg-neutral-2 text-muted",
+                                    )}>
                                       错 {st.wrong}/{st.recorded}
                                     </span>
                                   )}
@@ -492,7 +514,7 @@ export default function DictationPage() {
                         {filteredStudents.map((st) => {
                           const stat = studentStats.get(st.id);
                           return (
-                            <tr key={st.id} className="border-b border-line/50 hover:bg-bg/40">
+                            <tr key={st.id} className="border-b border-line/50 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/50 hover:to-transparent">
                               <td className="sticky left-0 z-10 bg-panel px-3 py-1.5">
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium">{st.name}</span>
@@ -506,27 +528,34 @@ export default function DictationPage() {
                                     <button
                                       onClick={() => toggleCell(st.id, w.id)}
                                       className={cn(
-                                        "flex h-7 w-12 items-center justify-center rounded border text-xs transition-colors",
-                                        v === true && "border-green-500 bg-green-50 text-green-600",
-                                        v === false && "border-red-400 bg-red-50 text-red-500",
-                                        v === null && "border-line text-muted hover:bg-bg"
+                                        "group/cell flex h-7 w-12 items-center justify-center rounded-md border text-xs",
+                                        "transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+                                        "hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.96]",
+                                        v === true && "border-[#5e9f7e]/45 bg-gradient-to-b from-[#e4f0e8] to-[#d5e8dc] text-[#3d7a5e] shadow-[0_1px_2px_rgba(94,159,126,0.28),inset_0_1px_0_rgba(255,255,255,0.9)]",
+                                        v === false && "border-[#a64953]/45 bg-gradient-to-b from-[#f7dfe0] to-[#f0cfd1] text-[#a64953] shadow-[0_1px_2px_rgba(166,73,83,0.24),inset_0_1px_0_rgba(255,255,255,0.85)]",
+                                        v === null && "border-dashed border-line bg-panel text-muted hover:border-[#c56473]/50 hover:bg-[#f8e4e7]/45 hover:text-primary-d",
                                       )}
                                       title="点击切换：正确 / 错误 / 未批改"
                                     >
-                                      {v === true ? <Check className="h-3.5 w-3.5" /> : v === false ? <X className="h-3.5 w-3.5" /> : ""}
+                                      {v === true ? <Check className="h-3.5 w-3.5" /> : v === false ? <X className="h-3.5 w-3.5" /> :
+                                        <span className="h-1 w-1 rounded-full bg-[#dcd9d1] transition-colors duration-[var(--dur-quick)] group-hover/cell:bg-[#c56473]/60" />}
                                     </button>
                                   </td>
                                 );
                               })}
                               <td className="px-3 py-1.5 text-center">
-                                <span className="font-medium">{stat?.correct ?? 0}</span>
-                                <span className="text-xs text-muted">/{words.length}</span>
-                                <div className="text-xs text-muted">{accuracyText(stat?.correct ?? 0, words.length)}</div>
+                                <div className="flex items-baseline justify-center gap-0.5">
+                                  <span className="font-serif text-[15px] font-semibold tabular-nums text-primary-d">{stat?.correct ?? 0}</span>
+                                  <span className="text-xs tabular-nums text-muted">/{words.length}</span>
+                                </div>
+                                <div className="text-[11px] tabular-nums text-muted">{accuracyText(stat?.correct ?? 0, words.length)}</div>
                               </td>
                               <td className="px-3 py-1.5">
                                 <div className="flex gap-1">
-                                  <button onClick={() => fillStudent(st.id, true)} className="rounded border border-line px-1.5 py-0.5 text-[10px] text-muted hover:text-green-600">全对</button>
-                                  <button onClick={() => fillStudent(st.id, null)} className="rounded border border-line px-1.5 py-0.5 text-[10px] text-muted hover:text-red-500">清空</button>
+                                  <button onClick={() => fillStudent(st.id, true)}
+                                    className="rounded-md px-1.5 py-0.5 text-[10px] text-muted ring-1 ring-inset ring-line transition-colors duration-[var(--dur-quick)] hover:bg-[#e4f0e8] hover:text-[#3d7a5e]">全对</button>
+                                  <button onClick={() => fillStudent(st.id, null)}
+                                    className="rounded-md px-1.5 py-0.5 text-[10px] text-muted ring-1 ring-inset ring-line transition-colors duration-[var(--dur-quick)] hover:bg-[#f7dfe0] hover:text-[#a64953]">清空</button>
                                 </div>
                               </td>
                             </tr>

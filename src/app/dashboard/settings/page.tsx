@@ -67,12 +67,22 @@ export default function SettingsPage() {
       <PageHeader title="设置" description="管理个人信息、数据和示例数据" />
       <div className="space-y-4">
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Settings className="h-4 w-4" />个人信息</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2.5 text-base">
+              <span className="icon-slot"><Settings /></span>
+              个人信息
+            </CardTitle>
+          </CardHeader>
           <CardContent><p className="text-sm text-muted">姓名、职务、默认班级和时区设置可在个人资料中修改。</p></CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Database className="h-4 w-4" />数据管理</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2.5 text-base">
+              <span className="icon-slot"><Database /></span>
+              数据管理
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExport}><Download className="h-4 w-4" />导出 JSON 备份</Button>
@@ -84,7 +94,14 @@ export default function SettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2 text-base text-red-600"><Trash2 className="h-4 w-4" />危险操作</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2.5 text-base text-[#a64953]">
+              <span className="icon-slot" style={{ backgroundImage: "linear-gradient(180deg,#f7dfe0,#f0cfd1)", color: "#a64953", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 0 1px rgba(166,73,83,0.18)" }}>
+                <Trash2 />
+              </span>
+              危险操作
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <Button variant="destructive" size="sm" onClick={() => setConfirmOpen("class")}>清空当前班级数据</Button>
@@ -98,7 +115,7 @@ export default function SettingsPage() {
         {recycleLoading ? <LoadingState /> : recycleItems.length === 0 ? <EmptyState title="回收站为空" /> :
           <div className="max-h-96 overflow-y-auto divide-y divide-line">
             {recycleItems.map((item) => (
-              <div key={`${item.type}-${item.id}`} className="flex items-center justify-between py-2">
+              <div key={`${item.type}-${item.id}`} className="flex items-center justify-between px-1 py-2.5 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/45 hover:to-transparent">
                 <div>
                   <span className="text-sm font-medium">{item.title}</span>
                   <span className="ml-2 text-xs text-muted">{item.type} · {formatDate(item.deletedAt)}</span>
@@ -113,7 +130,7 @@ export default function SettingsPage() {
       </Dialog>
 
       <Dialog open={!!confirmOpen} onClose={() => setConfirmOpen(null)} title="确认操作">
-        <p className="text-sm text-red-600">此操作不可撤销，确定要{confirmOpen === "class" ? "清空当前班级数据" : "清空全部业务数据"}吗？</p>
+        <p className="text-sm text-[#a64953]">此操作不可撤销，确定要{confirmOpen === "class" ? "清空当前班级数据" : "清空全部业务数据"}吗？</p>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="outline" onClick={() => setConfirmOpen(null)}>取消</Button>
           <Button variant="destructive" onClick={() => { toast.info("此功能需要连接数据库后使用"); setConfirmOpen(null); }}>确认</Button>

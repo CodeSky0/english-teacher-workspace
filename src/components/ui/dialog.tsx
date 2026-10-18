@@ -26,18 +26,25 @@ export function Dialog({ open, onClose, title, description, children, className 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="absolute inset-0 bg-neutral-10/40 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 animate-fade-in"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 60% at 50% 40%, rgba(36,35,31,0.26) 0%, rgba(36,35,31,0.44) 100%)",
+          backdropFilter: "blur(3px)",
+          WebkitBackdropFilter: "blur(3px)",
+        }}
         onClick={onClose}
       />
       <div
         className={cn(
-          "relative z-10 w-full max-w-lg rounded-2xl border border-line/70 bg-panel p-6 shadow-paper-xl animate-scale-in",
-          "max-h-[90vh] overflow-y-auto scrollbar-thin",
+          "relative z-10 w-full max-w-lg rounded-2xl bg-panel edge-lit",
+          "shadow-paper-xl inner-lit animate-scale-in",
+          "max-h-[90vh] overflow-y-auto scrollbar-thin p-6",
           className
         )}
       >
         {title && (
-          <h2 className="mb-1 text-lg font-semibold text-text tracking-tight">{title}</h2>
+          <h2 className="mb-1 font-serif text-lg font-semibold text-text tracking-tight">{title}</h2>
         )}
         {description && <p className="mb-4 text-sm text-muted">{description}</p>}
         <button

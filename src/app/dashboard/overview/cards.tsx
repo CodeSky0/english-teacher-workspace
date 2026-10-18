@@ -68,28 +68,42 @@ function StatsCard({ ov }: { ov: Overview }) {
   return (
     <CardContent>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((s) => {
+        {stats.map((s, i) => {
           const Icon = s.icon;
           return (
             <div
               key={s.label}
-              className="group relative overflow-hidden rounded-xl border border-line/60 bg-panel p-4 shadow-paper-xs transition-all duration-[var(--dur-smooth)] ease-[var(--ease-smooth)] hover:shadow-paper-md hover:-translate-y-0.5"
+              style={{ "--i": i } as React.CSSProperties}
+              className={[
+                "group relative overflow-hidden rounded-xl border border-line/60",
+                "bg-gradient-to-b from-white to-[#fcfbf9] p-4",
+                "shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]",
+                "transition-all duration-[var(--dur-smooth)] ease-[var(--ease-smooth)]",
+                "hover:-translate-y-[2px] hover:border-line hover:shadow-paper-md",
+              ].join(" ")}
             >
-              {/* 装饰：右上角色块淡色 */}
+              {/* 右上角色块光斑 */}
               <div
-                className="absolute -right-6 -top-6 h-16 w-16 rounded-full opacity-20 blur-xl transition-opacity duration-[var(--dur-smooth)] group-hover:opacity-40"
+                className="absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-[0.16] blur-2xl transition-opacity duration-[var(--dur-smooth)] group-hover:opacity-40"
                 style={{ backgroundColor: s.color }}
+              />
+              {/* 底部主题色细线，hover 时点亮 */}
+              <div
+                className="absolute inset-x-0 bottom-0 h-[2px] opacity-45 transition-opacity duration-[var(--dur-smooth)] group-hover:opacity-100"
+                style={{ backgroundImage: `linear-gradient(90deg, ${s.color}, ${s.color}00)` }}
               />
               <div className="relative flex items-center gap-3">
                 <div
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-[var(--dur-quick)] ease-[var(--ease-spring)] group-hover:scale-110"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset ring-black/[0.04] transition-transform duration-[var(--dur-quick)] ease-[var(--ease-spring)] group-hover:scale-110"
                   style={{ backgroundColor: s.bg, color: s.color }}
                 >
                   <Icon className="h-5 w-5" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted">{s.label}</p>
-                  <p className="text-2xl font-semibold text-text tabular-nums">{s.value}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-xs text-muted">{s.label}</p>
+                  <p className="font-serif text-[26px] font-semibold leading-tight tabular-nums text-text">
+                    {s.value}
+                  </p>
                 </div>
               </div>
             </div>
@@ -109,7 +123,7 @@ function ClassesCard({ ov }: { ov: Overview }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-line bg-neutral-2/50 text-left text-muted">
+              <tr className="table-head border-b border-line text-left text-xs text-muted">
                 <th className="px-5 py-3 font-medium">班级</th>
                 <th className="px-5 py-3 font-medium">人数</th>
                 <th className="px-5 py-3 font-medium">听写次数</th>
@@ -120,7 +134,10 @@ function ClassesCard({ ov }: { ov: Overview }) {
             </thead>
             <tbody>
               {ov.classes.map((c) => (
-                <tr key={c.id} className="border-b border-line/50 transition-colors duration-[var(--dur-quick)] hover:bg-primary-l/30">
+                <tr
+                  key={c.id}
+                  className="border-b border-line/50 last:border-0 hover:bg-gradient-to-r hover:from-[#f8e4e7]/60 hover:to-transparent transition-colors duration-[var(--dur-quick)]"
+                >
                   <td className="px-5 py-3">
                     <Link href="/dashboard/students" className="font-medium transition-colors duration-[var(--dur-quick)] hover:text-primary">{c.name}</Link>
                     {c.gradeLevel && <span className="ml-2 text-xs text-muted">{c.gradeLevel}</span>}
@@ -163,7 +180,7 @@ function AlertsCard({ ov }: { ov: Overview }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-line bg-neutral-2/50 text-left text-muted">
+              <tr className="table-head border-b border-line text-left text-xs text-muted">
                 <th className="px-5 py-3 font-medium">学生</th>
                 <th className="px-5 py-3 font-medium">班级</th>
                 <th className="px-5 py-3 font-medium">连续不达标</th>
@@ -172,7 +189,10 @@ function AlertsCard({ ov }: { ov: Overview }) {
             </thead>
             <tbody>
               {ov.alerts.map((a) => (
-                <tr key={a.studentId} className="border-b border-line/50 transition-colors duration-[var(--dur-quick)] hover:bg-[#f3dadb]/30">
+                <tr
+                  key={a.studentId}
+                  className="border-b border-line/50 last:border-0 hover:bg-gradient-to-r hover:from-[#f7dfe0]/60 hover:to-transparent transition-colors duration-[var(--dur-quick)]"
+                >
                   <td className="px-5 py-3">
                     <Link href="/dashboard/students" className="font-medium transition-colors duration-[var(--dur-quick)] hover:text-primary">{a.studentName}</Link>
                     {a.studentNo && <span className="ml-2 text-xs text-muted">{a.studentNo}</span>}
@@ -205,7 +225,10 @@ function TodayScheduleCard({ ov }: { ov: Overview }) {
       ) : (
         <div className="divide-y divide-line/60">
           {ov.todaySchedule.map((c, i) => (
-            <div key={`${c.className}-${c.periodNo}-${i}`} className="flex items-center justify-between py-2.5 transition-colors duration-[var(--dur-quick)] hover:bg-neutral-2/40 -mx-2 px-2 rounded-lg">
+            <div
+              key={`${c.className}-${c.periodNo}-${i}`}
+              className="-mx-2 flex items-center justify-between rounded-lg px-2 py-2.5 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-neutral-2/70 hover:to-transparent"
+            >
               <div className="flex items-center gap-2.5">
                 <Badge variant="muted">第 {c.periodNo} 节</Badge>
                 <span className="text-sm font-medium">{c.className}</span>
@@ -244,25 +267,30 @@ function WeekScheduleCard({ ov }: { ov: Overview }) {
   const maxPeriod = Math.max(MAX_PERIODS, ...ov.weekSchedule.map((c) => c.periodNo));
 
   return (
-    <CardContent className="p-3 overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+    <CardContent className="overflow-x-auto p-3">
+      <table className="w-full border-separate border-spacing-[3px] text-sm">
         <thead>
           <tr>
-            <th className="w-12 border border-line/60 bg-neutral-2/60 p-2 text-xs font-medium text-muted rounded-tl-lg">节</th>
+            <th className="w-12 rounded-lg bg-neutral-2/70 p-2 text-xs font-medium text-muted">节</th>
             {WEEK_DAYS.map((d) => (
-              <th key={d} className="border border-line/60 bg-neutral-2/60 p-2 font-medium">{d}</th>
+              <th key={d} className="rounded-lg bg-neutral-2/70 p-2 text-xs font-medium">{d}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {Array.from({ length: maxPeriod }, (_, i) => i + 1).map((period) => (
             <tr key={period}>
-              <td className="border border-line/60 bg-neutral-2/60 p-2 text-center text-xs font-medium text-muted">{period}</td>
+              <td className="rounded-lg bg-neutral-2/45 p-2 text-center text-xs font-medium text-muted">
+                {period}
+              </td>
               {WEEK_DAYS.map((_, dayIdx) => {
                 const day = dayIdx + 1;
                 const cells = cellMap.get(`${day}-${period}`) ?? [];
                 return (
-                  <td key={day} className="border border-line/60 p-1.5 align-top transition-colors duration-[var(--dur-quick)] hover:bg-primary-l/20">
+                  <td
+                    key={day}
+                    className="rounded-lg border border-line/40 bg-white/50 p-1.5 align-top transition-all duration-[var(--dur-quick)] hover:border-primary/30 hover:bg-[#f8e4e7]/40"
+                  >
                     {cells.map((c, i) => {
                       const style = c.subject ? subjectStyle(c.subject) : null;
                       return (
@@ -292,7 +320,10 @@ function RecentDictationsCard({ ov }: { ov: Overview }) {
       ) : (
         <div className="divide-y divide-line/60">
           {ov.recentDictations.map((d) => (
-            <div key={d.id} className="flex items-center justify-between py-2.5 transition-colors duration-[var(--dur-quick)] hover:bg-neutral-2/40 -mx-2 px-2 rounded-lg">
+            <div
+              key={d.id}
+              className="-mx-2 flex items-center justify-between rounded-lg px-2 py-2.5 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-neutral-2/70 hover:to-transparent"
+            >
               <div>
                 <span className="text-sm font-medium">{d.name}</span>
                 <span className="ml-2 text-xs text-muted">{d.className}</span>
@@ -317,7 +348,10 @@ function WeakWordsCard({ ov }: { ov: Overview }) {
       ) : (
         <div className="divide-y divide-line/60">
           {ov.weakWords.map((w) => (
-            <div key={`${w.word}-${w.listName}`} className="flex items-center justify-between py-2.5 transition-colors duration-[var(--dur-quick)] hover:bg-[#f3dadb]/30 -mx-2 px-2 rounded-lg">
+            <div
+              key={`${w.word}-${w.listName}`}
+              className="-mx-2 flex items-center justify-between rounded-lg px-2 py-2.5 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f7dfe0]/60 hover:to-transparent"
+            >
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">{w.word}</span>
                 <span className="text-xs text-muted">{w.listName}</span>
@@ -350,9 +384,12 @@ function DataOverviewCard({ ov }: { ov: Overview }) {
           { label: "听写词表", value: ov.totals.dictationLists },
           { label: "已批改格子", value: ov.totals.dictationResults },
         ].map((d) => (
-          <div key={d.label} className="rounded-xl border border-line/60 bg-neutral-2/40 p-3.5 transition-all duration-[var(--dur-quick)] hover:bg-neutral-3/40">
+          <div
+            key={d.label}
+            className="rounded-xl border border-line/60 bg-gradient-to-b from-neutral-2/50 to-neutral-2/25 p-3.5 transition-all duration-[var(--dur-quick)] hover:border-line hover:bg-neutral-3/40"
+          >
             <p className="text-xs text-muted">{d.label}</p>
-            <p className="mt-0.5 text-xl font-semibold tabular-nums">{d.value}</p>
+            <p className="mt-0.5 font-serif text-xl font-semibold tabular-nums">{d.value}</p>
           </div>
         ))}
       </div>
@@ -361,10 +398,12 @@ function DataOverviewCard({ ov }: { ov: Overview }) {
           <Link
             key={l.href}
             href={l.href}
-            className="group flex items-center justify-between rounded-xl border border-line/60 bg-panel p-3 text-sm font-medium shadow-paper-xs transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)] hover:shadow-paper-sm hover:-translate-y-0.5"
+            className="group flex items-center justify-between rounded-xl border border-line/60 bg-gradient-to-b from-white to-[#fcfbf9] p-3 text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)] hover:-translate-y-[2px] hover:shadow-paper-sm"
           >
             <span className="transition-colors duration-[var(--dur-quick)] group-hover:text-primary">{l.label}</span>
-            <span className="text-neutral-4 transition-transform duration-[var(--dur-quick)] group-hover:translate-x-0.5 group-hover:text-primary">→</span>
+            <span className="text-neutral-4 transition-all duration-[var(--dur-quick)] group-hover:translate-x-0.5 group-hover:text-primary">
+              →
+            </span>
           </Link>
         ))}
       </div>

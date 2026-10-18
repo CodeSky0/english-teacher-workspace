@@ -26,10 +26,10 @@ type AttendanceRow = { id: string; studentId: string; status: string; remark: st
 type FeedbackRow = { id: string; studentId: string; tag: string; type: "positive" | "negative"; feedbackDate: string | null; remark: string | null };
 
 const ATTENDANCE_OPTIONS: { value: string; label: string; cls: string }[] = [
-  { value: "present", label: "出勤", cls: "border-green-500 bg-green-50 text-green-600" },
-  { value: "late", label: "迟到", cls: "border-amber-500 bg-amber-50 text-amber-600" },
-  { value: "leave", label: "请假", cls: "border-blue-500 bg-blue-50 text-blue-600" },
-  { value: "absent", label: "缺勤", cls: "border-red-500 bg-red-50 text-red-500" },
+  { value: "present", label: "出勤", cls: "border-[#5e9f7e]/45 bg-gradient-to-b from-[#e4f0e8] to-[#d5e8dc] text-[#3d7a5e] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]" },
+  { value: "late", label: "迟到", cls: "border-[#a87a3d]/45 bg-gradient-to-b from-[#f9f1e1] to-[#f2e7d2] text-[#8a6230] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]" },
+  { value: "leave", label: "请假", cls: "border-[#3d6896]/45 bg-gradient-to-b from-[#e9f0f6] to-[#dee8f0] text-[#3d6896] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]" },
+  { value: "absent", label: "缺勤", cls: "border-[#a64953]/45 bg-gradient-to-b from-[#f7dfe0] to-[#f0cfd1] text-[#a64953] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]" },
 ];
 
 const POSITIVE_TAGS = ["积极发言", "听写优秀", "作业认真", "乐于助人", "进步明显"];
@@ -144,6 +144,16 @@ export default function ClassroomPage() {
     }
     return m;
   }, [feedbackRows]);
+
+  /** 表现统计榜：按记录数降序，附带用于比例条的最大值 */
+  const fbRanked = useMemo(() => {
+    const rows = students
+      .map((s) => ({ student: s, stat: fbByStudent.get(s.id) }))
+      .filter((r): r is { student: (typeof students)[number]; stat: { positive: number; negative: number } } => !!r.stat)
+      .sort((a, b) => b.stat.positive + b.stat.negative - (a.stat.positive + a.stat.negative));
+    const max = Math.max(1, ...rows.map((r) => r.stat.positive + r.stat.negative));
+    return { rows, max };
+  }, [students, fbByStudent]);
 
   const addPointsMut = useMutation({
     mutationFn: (d: Record<string, unknown>) => apiClient.post("/classroom/points", { ...d, classId }),
@@ -286,7 +296,7 @@ export default function ClassroomPage() {
         }
       />
 
-      <div className="flex gap-1 rounded-md border border-line p-0.5">
+      <div className="inline-flex gap-0.5 rounded-lg border border-line/70 bg-neutral-2/55 p-0.5 shadow-[inset_0_1px_2px_rgba(36,35,31,0.05)]">
         {tabs.map((t) => {
           const Icon = t.icon;
           return (
@@ -294,8 +304,11 @@ export default function ClassroomPage() {
               key={t.key}
               onClick={() => setTab(t.key)}
               className={cn(
-                "flex items-center gap-1.5 rounded px-3 py-1.5 text-sm",
-                tab === t.key ? "bg-primary text-white" : "text-muted hover:text-text"
+                "flex items-center gap-1.5 rounded-[0.4rem] px-3 py-1.5 text-sm",
+                "transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+                tab === t.key
+                  ? "bg-white font-medium text-primary-d shadow-[0_1px_2px_rgba(36,35,31,0.10),inset_0_1px_0_rgba(255,255,255,0.9)]"
+                  : "text-muted hover:text-text"
               )}
             >
               <Icon className="h-4 w-4" />
@@ -320,18 +333,30 @@ export default function ClassroomPage() {
                   <CardDescription>公平抽人回答，避免总是点同一批学生</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex min-h-[160px] flex-col items-center justify-center rounded-lg border border-dashed border-line bg-bg/40">
+                  <div className="relative flex min-h-[170px] flex-col items-center justify-center overflow-hidden rounded-xl border border-line/70 bg-gradient-to-b from-white to-[#fcfbf9] px-6 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+                    <div className="pointer-events-none absolute inset-0 grid-veil opacity-50" />
+                    <div className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
+                    <div className="pointer-events-none absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-[#3d6896]/10 blur-3xl" />
                     {picked ? (
-                      <>
-                        <div className={cn("text-4xl font-bold text-primary", rolling && "animate-pulse")}>{picked.name}</div>
-                        <div className="mt-1 text-sm text-muted">
+                      <div className="relative text-center">
+                        <div
+                          key={picked.id}
+                          className={cn(
+                            "font-serif text-4xl font-semibold tracking-tight text-primary",
+                            !rolling && "animate-scale-in",
+                            rolling && "animate-pulse"
+                          )}
+                        >
+                          {picked.name}
+                        </div>
+                        <div className="mt-2 text-sm text-muted">
                           {picked.enName ? `${picked.enName} · ` : ""}
                           {picked.seatNo != null ? `${picked.seatNo} 号` : "未排座"}
                           {picked.studentNo ? ` · ${picked.studentNo}` : ""}
                         </div>
-                      </>
+                      </div>
                     ) : (
-                      <div className="text-muted">点击「开始抽取」选择学生</div>
+                      <div className="relative text-muted">点击「开始抽取」选择学生</div>
                     )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -393,28 +418,44 @@ export default function ClassroomPage() {
                 <CardContent className="p-0">
                   <div className="divide-y divide-line">
                     {leaderboard.map((row, idx) => (
-                      <div key={row.student.id} className="flex items-center justify-between px-4 py-2 hover:bg-bg/40">
-                        <div className="flex items-center gap-2">
-                          <span className={cn("w-6 text-center text-xs", idx < 3 ? "font-bold text-primary" : "text-muted")}>
+                      <div
+                        key={row.student.id}
+                        className="flex items-center justify-between px-4 py-2 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/50 hover:to-transparent"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          {/* 前三名用梅色徽标，其余为中性序号 */}
+                          <span
+                            className={cn(
+                              "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-medium tabular-nums",
+                              idx < 3
+                                ? "bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] text-primary-d ring-1 ring-inset ring-primary/20"
+                                : "bg-neutral-3/55 text-neutral-6"
+                            )}
+                          >
                             {idx + 1}
                           </span>
                           <span className="font-medium">{row.student.name}</span>
                           {row.student.seatNo != null && <span className="text-xs text-muted">{row.student.seatNo}号</span>}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={cn("w-12 text-right font-semibold", row.total > 0 ? "text-primary" : row.total < 0 ? "text-red-500" : "text-muted")}>
+                          <span
+                            className={cn(
+                              "w-12 text-right font-serif text-base font-semibold tabular-nums",
+                              row.total > 0 ? "text-primary" : row.total < 0 ? "text-[#a64953]" : "text-muted"
+                            )}
+                          >
                             {row.total}
                           </span>
                           <button
                             onClick={() => addPointsMut.mutate({ studentId: row.student.id, points: -pointDelta, reason: pointReason || null })}
-                            className="rounded border border-line px-2 py-0.5 text-muted hover:text-red-500"
+                            className="flex h-6 w-6 items-center justify-center rounded-md border border-line/70 bg-gradient-to-b from-white to-[#faf9f7] text-muted transition-colors duration-[var(--dur-quick)] hover:border-[#a64953]/40 hover:text-[#a64953]"
                             title={`扣 ${pointDelta} 分`}
                           >
                             <Minus className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => addPointsMut.mutate({ studentId: row.student.id, points: pointDelta, reason: pointReason || null })}
-                            className="rounded border border-line px-2 py-0.5 text-muted hover:text-green-600"
+                            className="flex h-6 w-6 items-center justify-center rounded-md border border-line/70 bg-gradient-to-b from-white to-[#faf9f7] text-muted transition-colors duration-[var(--dur-quick)] hover:border-[#5e9f7e]/45 hover:text-[#3d7a5e]"
                             title={`加 ${pointDelta} 分`}
                           >
                             <Plus className="h-3.5 w-3.5" />
@@ -438,8 +479,10 @@ export default function ClassroomPage() {
                             key={v}
                             onClick={() => setPointDelta(v)}
                             className={cn(
-                              "flex-1 rounded border py-1 text-sm",
-                              pointDelta === v ? "border-primary bg-primary-l text-primary-d" : "border-line text-muted"
+                              "flex-1 rounded-lg border py-1 text-sm transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+                              pointDelta === v
+                                ? "border-primary/40 bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] font-medium text-primary-d shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                                : "border-line bg-gradient-to-b from-white to-[#faf9f7] text-muted hover:border-neutral-4 hover:text-text"
                             )}
                           >
                             {v} 分
@@ -469,15 +512,38 @@ export default function ClassroomPage() {
                       <p className="text-sm text-muted">还没有积分记录</p>
                     ) : (
                       <div className="space-y-1.5">
-                        {leaderboard.slice(0, 5).map((r, i) => (
-                          <div key={r.student.id} className="flex items-center justify-between text-sm">
-                            <span className="flex items-center gap-2">
-                              <span className={cn("w-5 text-center text-xs", i === 0 ? "text-primary" : "text-muted")}>{i + 1}</span>
-                              {r.student.name}
-                            </span>
-                            <span className="font-semibold">{r.total}</span>
-                          </div>
-                        ))}
+                        {(() => {
+                          const top = leaderboard.slice(0, 5);
+                          const max = Math.max(1, ...top.map((r) => Math.abs(r.total)));
+                          return top.map((r, i) => (
+                            <div
+                              key={r.student.id}
+                              className="relative flex items-center justify-between overflow-hidden rounded-lg px-2 py-1.5 text-sm"
+                            >
+                              {/* 条形背景按分值占比延伸，一眼看出差距 */}
+                              <div
+                                className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-[#f8e4e7] to-transparent"
+                                style={{ width: `${(Math.abs(r.total) / max) * 100}%` }}
+                              />
+                              <span className="relative flex items-center gap-2.5">
+                                <span
+                                  className={cn(
+                                    "flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-medium tabular-nums",
+                                    i === 0
+                                      ? "bg-gradient-to-b from-[#cd6c7a] to-[#a85463] text-white"
+                                      : "bg-neutral-3/60 text-neutral-6"
+                                  )}
+                                >
+                                  {i + 1}
+                                </span>
+                                <span className="font-medium">{r.student.name}</span>
+                              </span>
+                              <span className="relative font-serif text-base font-semibold tabular-nums text-primary-d">
+                                {r.total}
+                              </span>
+                            </div>
+                          ));
+                        })()}
                       </div>
                     )}
                   </CardContent>
@@ -508,20 +574,25 @@ export default function ClassroomPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-line text-left text-muted">
-                        <th className="px-3 py-2 font-medium">学生</th>
-                        <th className="px-3 py-2 font-medium">状态</th>
-                        <th className="px-3 py-2 font-medium">备注</th>
+                      <tr className="table-head border-b border-line text-left text-xs text-muted">
+                        <th className="px-3 py-2.5 font-medium">学生</th>
+                        <th className="px-3 py-2.5 font-medium">状态</th>
+                        <th className="px-3 py-2.5 font-medium">备注</th>
                       </tr>
                     </thead>
                     <tbody>
                       {students.map((s) => {
                         const cur = attStatus[s.id] ?? "present";
                         return (
-                          <tr key={s.id} className="border-b border-line/50">
+                          <tr key={s.id} className="group border-b border-line/50 transition-[background] duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/45 hover:via-[#f8e4e7]/10 hover:to-transparent">
                             <td className="px-3 py-2">
-                              <span className="font-medium">{s.name}</span>
-                              {s.seatNo != null && <span className="ml-2 text-xs text-muted">{s.seatNo}号</span>}
+                              <div className="flex items-center gap-2.5">
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gradient-to-b from-[#eeece7] to-[#e5e3dc] font-serif text-[12px] text-neutral-7 ring-1 ring-inset ring-[#cfccc4]/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+                                  {s.name.slice(0, 1)}
+                                </span>
+                                <span className="font-medium tracking-[0.01em]">{s.name}</span>
+                                {s.seatNo != null && <span className="rounded bg-neutral-2 px-1.5 py-[1px] text-[11px] tabular-nums text-muted">{s.seatNo}号</span>}
+                              </div>
                             </td>
                             <td className="px-3 py-2">
                               <div className="flex gap-1">
@@ -530,8 +601,10 @@ export default function ClassroomPage() {
                                     key={opt.value}
                                     onClick={() => setAttStatus({ ...attStatus, [s.id]: opt.value })}
                                     className={cn(
-                                      "rounded border px-2 py-0.5 text-xs transition-colors",
-                                      cur === opt.value ? opt.cls : "border-line text-muted hover:bg-bg"
+                                      "rounded-md border px-2 py-0.5 text-xs transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+                                      cur === opt.value
+                                        ? cn(opt.cls, "shadow-[0_1px_2px_rgba(36,35,31,0.10),inset_0_1px_0_rgba(255,255,255,0.9)]")
+                                        : "border-line bg-panel text-muted hover:-translate-y-[1px] hover:bg-neutral-2 hover:text-text hover:shadow-[var(--shadow-xs)]"
                                     )}
                                   >
                                     {opt.label}
@@ -582,13 +655,23 @@ export default function ClassroomPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => { setFbType("positive"); setFbTag(POSITIVE_TAGS[0]); }}
-                        className={cn("flex-1 rounded border py-1 text-sm", fbType === "positive" ? "border-green-500 bg-green-50 text-green-600" : "border-line text-muted")}
+                        className={cn(
+                          "flex-1 rounded-lg border py-1 text-sm transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+                          fbType === "positive"
+                            ? "border-[#5e9f7e]/45 bg-gradient-to-b from-[#e4f0e8] to-[#d5e8dc] font-medium text-[#3d7a5e] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
+                            : "border-line bg-gradient-to-b from-white to-[#faf9f7] text-muted hover:border-neutral-4 hover:text-text"
+                        )}
                       >
                         表扬
                       </button>
                       <button
                         onClick={() => { setFbType("negative"); setFbTag(NEGATIVE_TAGS[0]); }}
-                        className={cn("flex-1 rounded border py-1 text-sm", fbType === "negative" ? "border-red-500 bg-red-50 text-red-500" : "border-line text-muted")}
+                        className={cn(
+                          "flex-1 rounded-lg border py-1 text-sm transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+                          fbType === "negative"
+                            ? "border-[#a64953]/45 bg-gradient-to-b from-[#f7dfe0] to-[#f0cfd1] font-medium text-[#a64953] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
+                            : "border-line bg-gradient-to-b from-white to-[#faf9f7] text-muted hover:border-neutral-4 hover:text-text"
+                        )}
                       >
                         待改进
                       </button>
@@ -635,34 +718,47 @@ export default function ClassroomPage() {
                     <div className="p-4"><EmptyState title="还没有表现记录" /></div>
                   ) : (
                     <div className="divide-y divide-line">
-                      {students.map((s) => {
-                        const stat = fbByStudent.get(s.id);
-                        if (!stat) return null;
+                      {fbRanked.rows.map(({ student: s, stat }) => {
+                        const total = stat.positive + stat.negative;
+                        const posPct = (stat.positive / total) * 100;
                         return (
-                          <div key={s.id} className="flex items-center justify-between px-4 py-2">
-                            <span className="font-medium">{s.name}</span>
-                            <div className="flex items-center gap-2 text-xs">
+                          <div key={s.id} className="group relative flex items-center gap-3 px-4 py-2.5 transition-[background] duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/45 hover:via-[#f8e4e7]/10 hover:to-transparent">
+                            {/* 表扬 / 待改进 比例条 */}
+                            <div className="pointer-events-none absolute bottom-0 left-0 h-[2px] overflow-hidden rounded-full opacity-70 transition-opacity group-hover:opacity-100"
+                              style={{ width: `${(total / fbRanked.max) * 100}%` }}>
+                              <div className="h-full bg-gradient-to-r from-[#5e9f7e] to-[#7fbb9c]" style={{ width: `${posPct}%` }} />
+                              <div className="absolute inset-y-0 right-0 bg-gradient-to-r from-[#d99ba0] to-[#a64953]" style={{ width: `${100 - posPct}%` }} />
+                            </div>
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gradient-to-b from-[#eeece7] to-[#e5e3dc] font-serif text-[12px] text-neutral-7 ring-1 ring-inset ring-[#cfccc4]/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+                              {s.name.slice(0, 1)}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate font-medium tracking-[0.01em]">{s.name}</span>
+                            <div className="flex items-center gap-1.5 text-xs">
                               {stat.positive > 0 && <Badge>表扬 {stat.positive}</Badge>}
-                              {stat.negative > 0 && <Badge variant="outline" className="border-red-400 text-red-500">待改进 {stat.negative}</Badge>}
+                              {stat.negative > 0 && <Badge variant="outline" className="border-[#a64953]/45 text-[#a64953]">待改进 {stat.negative}</Badge>}
                             </div>
                           </div>
                         );
                       })}
                       <div className="px-4 py-3">
-                        <p className="mb-2 text-xs text-muted">最近记录</p>
-                        <div className="space-y-1">
+                        <p className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[#c56473]">最近记录</p>
+                        <div className="space-y-0.5">
                           {feedbackRows.slice().reverse().slice(0, 8).map((f) => {
                             const s = students.find((x) => x.id === f.studentId);
+                            const good = f.type === "positive";
                             return (
-                              <div key={f.id} className="flex items-center justify-between text-xs">
-                                <span className="text-muted">
-                                  {s?.name ?? "已删除"} · {f.tag}
-                                  {f.remark ? ` · ${f.remark}` : ""}
+                              <div key={f.id} className="group flex items-center gap-2.5 rounded-md px-1.5 py-1 text-xs transition-colors duration-[var(--dur-quick)] hover:bg-neutral-2/60">
+                                {/* 时间轴圆点 */}
+                                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${good ? "bg-[#5e9f7e]" : "bg-[#a64953]"} shadow-[0_0_0_2px_rgba(255,255,255,0.9)]`} />
+                                <span className="min-w-0 flex-1 truncate text-neutral-7">
+                                  <span className="font-medium">{s?.name ?? "已删除"}</span>
+                                  <span className="text-[#c9c6bd]"> · </span>
+                                  <span className={good ? "text-[#3d7a5e]" : "text-[#a64953]"}>{f.tag}</span>
+                                  {f.remark ? <span className="text-muted"> · {f.remark}</span> : null}
                                 </span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-muted">{f.feedbackDate ?? ""}</span>
-                                  <button onClick={() => deleteFeedbackMut.mutate(f.id)} className="text-muted hover:text-red-500">删除</button>
-                                </div>
+                                <span className="shrink-0 tabular-nums text-muted">{f.feedbackDate ?? ""}</span>
+                                <button onClick={() => deleteFeedbackMut.mutate(f.id)}
+                                  className="shrink-0 rounded px-1 text-muted opacity-0 transition-all duration-[var(--dur-quick)] hover:text-[#a64953] group-hover:opacity-100">删除</button>
                               </div>
                             );
                           })}
