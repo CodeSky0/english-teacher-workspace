@@ -93,20 +93,33 @@
   }
 
   body {
-    /* 多层背景：暖光晕（梅 / 縹 / 若竹）+ 和纸噪点，fixed 制造滚动视差 */
+    /* 噪点纹理随内容滚动；暖光晕移到 body::before 伪元素作独立合成层，避免 fixed 背景每帧重绘 */
     background-color: var(--bg);
-    background-image:
-      radial-gradient(1200px 620px at 6% -10%, rgba(197, 100, 115, 0.075), transparent 62%),
-      radial-gradient(980px 520px at 102% 2%, rgba(61, 104, 150, 0.065), transparent 60%),
-      radial-gradient(900px 680px at 46% 112%, rgba(94, 159, 126, 0.055), transparent 62%),
-      var(--paper-texture);
-    background-repeat: no-repeat, no-repeat, no-repeat, repeat;
-    background-size: auto, auto, auto, 160px 160px;
-    background-attachment: fixed, fixed, fixed, scroll;
+    background-image: var(--paper-texture);
+    background-repeat: repeat;
+    background-size: 160px 160px;
     color: var(--text);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+  }
+
+  /* 暖光晕视差层：position:fixed 独立合成，滚动时只移动内容层，光晕不重绘。
+     视觉与原 background-attachment:fixed 完全一致，但性能大幅提升。 */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      radial-gradient(1200px 620px at 6% -10%, rgba(197, 100, 115, 0.075), transparent 62%),
+      radial-gradient(980px 520px at 102% 2%, rgba(61, 104, 150, 0.065), transparent 60%),
+      radial-gradient(900px 680px at 46% 112%, rgba(94, 159, 126, 0.055), transparent 62%);
+    background-repeat: no-repeat, no-repeat, no-repeat;
+    background-size: auto, auto, auto;
+    background-attachment: fixed, fixed, fixed;
+    transform: translateZ(0);
   }
 
   ::selection {

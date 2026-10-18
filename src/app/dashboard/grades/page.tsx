@@ -56,7 +56,7 @@ export default function GradesPage() {
     queryFn: () => apiClient.get<{ data: Score[] }>(`/exams/${selectedExam?.id}/scores`),
     enabled: !!selectedExam,
   });
-  const scores = scoresData?.data ?? [];
+  const scores = useMemo(() => scoresData?.data ?? [], [scoresData]);
   const scoreMap = new Map(scores.map((s) => [s.studentId, s]));
 
   const gradesScrollRef = useRef<HTMLDivElement>(null);

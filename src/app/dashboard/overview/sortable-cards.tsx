@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   DndContext,
   closestCenter,
@@ -87,12 +88,14 @@ export function SortableCards({
     onReorder(String(active.id), String(over.id));
   }
 
+  const defMap = useMemo(() => new Map(cardDefs.map((d) => [d.id, d])), [cardDefs]);
+
   return (
     <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={visibleIds} strategy={verticalListSortingStrategy}>
         <div className="space-y-4">
           {visibleIds.map((id) => {
-            const def = cardDefs.find((d) => d.id === id);
+            const def = defMap.get(id);
             if (!def) return null;
             return (
               <SortableCard

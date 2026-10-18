@@ -94,7 +94,7 @@ export default function ClassroomPage() {
     queryFn: () => apiClient.get<{ data: PointRow[] }>(`/classroom/points?classId=${classId}`),
     enabled: !!classId,
   });
-  const points = pointsData?.data ?? [];
+  const points = useMemo(() => pointsData?.data ?? [], [pointsData]);
 
   const { data: attData } = useQuery({
     queryKey: ["classroom-attendance", classId, attDate],
@@ -107,7 +107,7 @@ export default function ClassroomPage() {
     queryFn: () => apiClient.get<{ data: FeedbackRow[] }>(`/classroom/feedback?classId=${classId}`),
     enabled: !!classId && tab === "feedback",
   });
-  const feedbackRows = fbData?.data ?? [];
+  const feedbackRows = useMemo(() => fbData?.data ?? [], [fbData]);
 
   // 服务端考勤 -> 本地网格
   useEffect(() => {

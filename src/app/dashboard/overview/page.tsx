@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -36,6 +36,14 @@ export default function OverviewPage() {
   const [config, setConfig] = useState<CardConfig>({ order: DEFAULT_CARD_ORDER, hidden: [] });
   const [ready, setReady] = useState(false);
   const [customizing, setCustomizing] = useState(false);
+
+  // 欢迎横幅鼠标聚光：rAF 节流，避免 mousemove 高频触发 getBoundingClientRect 重排
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const mouseRafRef = useRef<number | null>(null);
+  const mousePosRef = useRef({ x: 0, y: 0 });
+  useEffect(() => () => {
+    if (mouseRafRef.current != null) cancelAnimationFrame(mouseRafRef.current);
+  }, []);
 
   useEffect(() => {
     try {
@@ -90,10 +98,18 @@ export default function OverviewPage() {
     <div>
       {/* ── 欢迎横幅：和纸渐变 + 光晕 + 随鼠标聚光 + 快捷入口 ── */}
       <div
+        ref={bannerRef}
         onMouseMove={(e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
-          e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+          mousePosRef.current = { x: e.clientX, y: e.clientY };
+          if (mouseRafRef.current != null) return;
+          mouseRafRef.current = requestAnimationFrame(() => {
+            mouseRafRef.current = null;
+            const el = bannerRef.current;
+            if (!el) return;
+            const r = el.getBoundingClientRect();
+            el.style.setProperty("--mx", `${mousePosRef.current.x - r.left}px`);
+            el.style.setProperty("--my", `${mousePosRef.current.y - r.top}px`);
+          });
         }}
         className="group relative mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-[#fdf6f7] via-[#faf9f7] to-[#f4f7fa] edge-lit p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_2px_10px_-3px_rgba(36,35,31,0.10)] animate-fade-in-up"
       >

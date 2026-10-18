@@ -51,7 +51,7 @@ export default function StudentsPage() {
     enabled: !!currentClass,
   });
 
-  const students = data?.data ?? [];
+  const students = useMemo(() => data?.data ?? [], [data]);
 
   const filtered = useMemo(() => {
     if (!search) return students;

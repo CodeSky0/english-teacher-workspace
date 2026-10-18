@@ -44,7 +44,7 @@ export default function ResourcesPage() {
   const [form, setForm] = useState({ title: "", type: "other", unit: "", description: "", link: "" });
 
   const { data, isLoading } = useQuery({ queryKey: ["resources"], queryFn: () => apiClient.get<{ data: Resource[] }>("/resources") });
-  const items = data?.data ?? [];
+  const items = useMemo(() => data?.data ?? [], [data]);
 
   const filtered = useMemo(() => {
     return items.filter((r) => {

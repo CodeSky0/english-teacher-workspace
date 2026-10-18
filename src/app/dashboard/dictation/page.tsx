@@ -82,7 +82,7 @@ export default function DictationPage() {
     queryFn: () => apiClient.get<{ data: DictWord[] }>(`/dictation/words?listId=${selectedList?.id}`),
     enabled: !!selectedList,
   });
-  const words = wordsData?.data ?? [];
+  const words = useMemo(() => wordsData?.data ?? [], [wordsData]);
 
   const { data: unitsData } = useQuery({
     queryKey: ["vocab-units"],
@@ -113,7 +113,7 @@ export default function DictationPage() {
     queryFn: () => apiClient.get<{ data: DictResult[] }>(`/dictation/lists/${selectedList?.id}/results`),
     enabled: !!selectedList && tab === "scores",
   });
-  const results = resultsData?.data ?? [];
+  const results = useMemo(() => resultsData?.data ?? [], [resultsData]);
 
   // 服务端数据 -> 本地网格（有未保存改动时不覆盖）
   useEffect(() => {
