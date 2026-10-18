@@ -40,7 +40,8 @@ export async function bust(...keys: string[]): Promise<void> {
 
 /** 缓存键生成器 */
 export const ck = {
-  overview: (uid: string) => `ov:${uid}`,
+  // tz 为客户端时区偏移（分钟），影响"今日"的判定，需纳入缓存键，避免不同客户端命中错误缓存
+  overview: (uid: string, tz?: string | null) => (tz ? `ov:${uid}:${tz}` : `ov:${uid}`),
   classes: (uid: string) => `cl:${uid}`,
   students: (uid: string) => `st:${uid}`,
   vocabUnits: (uid: string) => `vu:${uid}`,

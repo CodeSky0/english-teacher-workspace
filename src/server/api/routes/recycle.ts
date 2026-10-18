@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and, isNotNull, type SQL, type AnyColumn } from "drizzle-orm";
+import { eq, and, isNotNull, type AnyColumn } from "drizzle-orm";
 import type { AnyPgTable } from "drizzle-orm/pg-core";
 import { db } from "@/server/db";
 import {

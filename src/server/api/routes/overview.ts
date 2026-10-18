@@ -29,7 +29,7 @@ function pct(correct: number, total: number): number | null {
 }
 
 /** 跨班级总览数据 */
-async function computeOverview(uid: string) {
+async function computeOverview(uid: string, tz?: string | null) {
 
   const [classRows, studentRows, unitRows, wordRows, listRows, dictWordRows, resultRows, examRows, homeworkRows, cellRows] =
     await Promise.all([
@@ -214,7 +214,13 @@ async function computeOverview(uid: string) {
   alerts.sort((a, b) => b.streak - a.streak || a.latestAccuracy! - b.latestAccuracy!);
 
   // ---- 今日课表 ----
-  const todayDow = new Date().getDay(); // 1=周一 … 5=周五
+  // 默认按服务端时区；若前端传入客户端 getTimezoneOffset()（分钟，西半球为正），
+  // 则按客户端本地时间判定"今天"，避免服务端部署时区与用户不一致导致"今日"差一天。
+  const tzNum = tz != null && tz !== "" ? Number(tz) : NaN;
+  const todayDow =
+    !Number.isNaN(tzNum)
+      ? new Date(Date.now() - tzNum * 60_000).getUTCDay()
+      : new Date().getDay();
   const todaySchedule = cellRows
     .filter((cell) => cell.dayOfWeek === todayDow)
     .sort((a, b) => a.periodNo - b.periodNo)
@@ -262,7 +268,8 @@ async function computeOverview(uid: string) {
 
 routes.get("/", async (c) => {
   const uid = c.get("user").id;
-  const data = await cached(ck.overview(uid), 90, () => computeOverview(uid));
+  const tz = c.req.query("tz");
+  const data = await cached(ck.overview(uid, tz), 90, () => computeOverview(uid, tz));
   return c.json({ data });
 });
 

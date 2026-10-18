@@ -25,9 +25,10 @@ type CardConfig = { order: string[]; hidden: string[] };
 export default function OverviewPage() {
   const router = useRouter();
   const { classes, isLoading: classLoading } = useClasses();
+  const tz = new Date().getTimezoneOffset();
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["overview"],
-    queryFn: () => apiClient.get<{ data: Overview }>("/overview"),
+    queryKey: ["overview", tz],
+    queryFn: () => apiClient.get<{ data: Overview }>(`/overview?tz=${tz}`),
     staleTime: 90 * 1000,
   });
   const ov = data?.data;

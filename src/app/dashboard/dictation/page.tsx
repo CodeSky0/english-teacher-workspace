@@ -546,9 +546,9 @@ export default function DictationPage() {
                               <td className="px-3 py-1.5 text-center">
                                 <div className="flex items-baseline justify-center gap-0.5">
                                   <span className="font-serif text-[15px] font-semibold tabular-nums text-primary-d">{stat?.correct ?? 0}</span>
-                                  <span className="text-xs tabular-nums text-muted">/{words.length}</span>
+                                  <span className="text-xs tabular-nums text-muted">/{stat?.recorded ?? 0}</span>
                                 </div>
-                                <div className="text-[11px] tabular-nums text-muted">{accuracyText(stat?.correct ?? 0, words.length)}</div>
+                                <div className="text-[11px] tabular-nums text-muted">{accuracyText(stat?.correct ?? 0, stat?.recorded ?? 0)}</div>
                               </td>
                               <td className="px-3 py-1.5">
                                 <div className="flex gap-1">
@@ -620,9 +620,7 @@ export default function DictationPage() {
                           <td className="w-[38%] py-2 align-top">
                             {printMode === "meaning" ? (
                               <span className="font-medium">{w.meaning || w.word}</span>
-                            ) : (
-                              <span className="text-black/40">{w.meaning ? `${w.meaning}` : "—"}</span>
-                            )}
+                            ) : null}
                           </td>
                           <td className="py-2 align-top">
                             <div className="h-6 border-b border-black/30" />
