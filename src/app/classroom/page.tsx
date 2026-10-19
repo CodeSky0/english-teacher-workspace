@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
@@ -11,6 +11,7 @@ import { Dices, Trophy, Timer, Tag, Vote, Grid3x3, Layers, Headphones, X, Plus, 
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
 import { cn } from "@/lib/utils";
+import { ThunderDrum } from "@/components/classroom/thunder-drum";
 
 export const dynamic = "force-dynamic";
 
@@ -169,16 +170,32 @@ function useStudents() {
 function RollCallTool() {
   const { students, currentClass } = useStudents();
   const [picked, setPicked] = useState<Student | null>(null);
+  const [rolling, setRolling] = useState(false);
   const [history, setHistory] = useState<Student[]>([]);
   const [noRepeat, setNoRepeat] = useState(true);
 
+  const rollPool = useMemo(
+    () => (noRepeat ? students.filter((s) => !history.some((h) => h.id === s.id)) : students),
+    [students, history, noRepeat],
+  );
+
   const roll = useCallback(() => {
-    const pool = noRepeat ? students.filter((s) => !history.some((h) => h.id === s.id)) : students;
-    if (pool.length === 0) { toast.info(noRepeat ? "所有人都已点名" : "没有学生"); return; }
-    const next = pool[Math.floor(Math.random() * pool.length)];
-    setPicked(next);
-    setHistory((h) => [...h, next]);
-  }, [students, history, noRepeat]);
+    if (rollPool.length === 0) { toast.info(noRepeat ? "所有人都已点名" : "没有学生"); return; }
+    setRolling(true);
+    let ticks = 0;
+    const total = 16;
+    const timer = setInterval(() => {
+      ticks++;
+      setPicked(rollPool[Math.floor(Math.random() * rollPool.length)]);
+      if (ticks >= total) {
+        clearInterval(timer);
+        const final = rollPool[Math.floor(Math.random() * rollPool.length)];
+        setPicked(final);
+        setRolling(false);
+        setHistory((h) => [...h, final]);
+      }
+    }, 70);
+  }, [rollPool, noRepeat]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.code === "Space") { e.preventDefault(); roll(); } };
@@ -202,18 +219,15 @@ function RollCallTool() {
         />
       </div>
 
-      <Stage>
-        {picked ? (
-          <div key={picked.id} className="animate-scale-in">
-            <p className="font-serif text-5xl font-semibold tracking-tight text-primary">{picked.name}</p>
-            {picked.enName && <p className="mt-2.5 text-xl text-muted">{picked.enName}</p>}
-          </div>
-        ) : (
-          <p className="text-xl text-muted">按空格键抽取</p>
-        )}
-      </Stage>
+      <ThunderDrum
+        picked={picked}
+        rolling={rolling}
+        className="mb-8 rounded-2xl border border-line/70 bg-gradient-to-b from-white to-[#fcfbf9] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_2px_10px_-3px_rgba(36,35,31,0.10)]"
+      />
 
-      <Button onClick={roll} size="lg" className="gap-2"><Dices className="h-5 w-5" />抽取下一位</Button>
+      <Button onClick={roll} size="lg" className="gap-2" disabled={rolling}>
+        <Dices className="h-5 w-5" />{rolling ? "擂鼓中…" : "抽取下一位"}
+      </Button>
       {history.length > 0 && (
         <p className="mt-4 text-sm text-muted">
           已点名 <span className="font-medium tabular-nums text-text">{history.length}</span> 人

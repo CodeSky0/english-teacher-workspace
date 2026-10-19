@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useCurrentClass } from "@/hooks/use-classes";
@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/error";
+import { ThunderDrum } from "@/components/classroom/thunder-drum";
 
 type BulkResult = { data?: { created?: number; updated?: number } };
 
@@ -34,8 +35,6 @@ const ATTENDANCE_OPTIONS: { value: string; label: string; cls: string }[] = [
 
 const POSITIVE_TAGS = ["积极发言", "听写优秀", "作业认真", "乐于助人", "进步明显"];
 const NEGATIVE_TAGS = ["上课走神", "作业缺交", "听写薄弱", "扰乱纪律"];
-
-const SAKURA_KEYS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 function todayStr(): string {
   const d = new Date();
@@ -335,81 +334,11 @@ export default function ClassroomPage() {
                   <CardDescription>公平抽人回答，避免总是点同一批学生</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="relative flex min-h-[300px] flex-col items-center justify-center overflow-hidden rounded-xl border border-line/70 bg-gradient-to-b from-white to-[#fcfbf9] px-6 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
-                    <div className="pointer-events-none absolute inset-0 grid-veil opacity-50" />
-                    <div className="pointer-events-none absolute -left-10 -top-10 h-36 w-36 rounded-full bg-primary/12 blur-3xl" />
-                    <div className="pointer-events-none absolute -bottom-10 -right-10 h-36 w-36 rounded-full bg-[#3d6896]/12 blur-3xl" />
-                    {rolling && (
-                      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                        {SAKURA_KEYS.map((k) => (
-                          <span
-                            key={k}
-                            className="sakura-petal"
-                            style={{
-                              left: `${(k * 9 + 4) % 92}%`,
-                              animationDelay: `${(k * 0.17) % 1.4}s`,
-                              animationDuration: `${1.8 + (k % 4) * 0.35}s`,
-                              ["--sx" as string]: `${((k * 7) % 50) - 25}px`,
-                            } as CSSProperties}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {picked ? (
-                      <div className="relative flex flex-col items-center">
-                        <div className={cn("relative", rolling && "animate-omikuji-shake")}>
-                          <div className="relative flex h-[150px] w-[116px] items-center justify-center overflow-hidden rounded-[16px] border-2 border-[#b8a380]/70 bg-gradient-to-b from-[#f4ead4] via-[#ead8b0] to-[#d4be8e] shadow-[inset_0_2px_5px_rgba(255,255,255,0.55),inset_0_-3px_5px_rgba(120,90,40,0.22)]">
-                            <div className={cn("pointer-events-none absolute top-0 h-7 w-full bg-gradient-to-b from-white/75 to-transparent", rolling && "animate-mouth-glow")} />
-                            <div className="pointer-events-none absolute inset-x-0 top-4 h-px bg-[#a89060]/35" />
-                            <div className="pointer-events-none absolute inset-x-0 bottom-4 h-px bg-[#a89060]/35" />
-                            <div
-                              key={picked.id}
-                              className={cn(
-                                "relative z-10 flex flex-col items-center font-serif font-semibold tracking-tight text-[#3a2a1a]",
-                                rolling ? "animate-omikuji-jump gap-0.5 text-2xl blur-[1.5px]" : "gap-1 text-3xl animate-stick-out"
-                              )}
-                            >
-                              {picked.name.split("").map((ch, i) => (
-                                <span
-                                  key={i}
-                                  className={cn(!rolling && "animate-brush-reveal")}
-                                  style={!rolling ? { animationDelay: `${i * 90}ms` } : undefined}
-                                >
-                                  {ch}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="mx-auto -mt-1 h-2.5 w-[124px] rounded-b-lg bg-gradient-to-b from-[#c8b080]/85 to-[#a89060]/65" />
-                        </div>
-                        {!rolling && (
-                          <div className="relative mt-5 flex flex-col items-center">
-                            <div className="relative">
-                              <div
-                                key={`stamp-${picked.id}`}
-                                className="animate-stamp-drop flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#b83a3a] bg-gradient-to-br from-[#d94545] to-[#b82828] text-[10px] font-bold leading-tight text-white/95 shadow-[0_2px_8px_rgba(184,40,40,0.45)]"
-                              >
-                                当选
-                              </div>
-                              <div className="animate-ink-spread pointer-events-none absolute inset-0 rounded-full bg-[#b83a3a]/25 blur-md" />
-                            </div>
-                            <div className="animate-fade-in-up mt-3 text-sm text-muted">
-                              {picked.enName ? `${picked.enName} · ` : ""}
-                              {picked.seatNo != null ? `${picked.seatNo} 号` : "未排座"}
-                              {picked.studentNo ? ` · ${picked.studentNo}` : ""}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="relative flex flex-col items-center">
-                        <div className="relative flex h-[150px] w-[116px] items-center justify-center rounded-[16px] border-2 border-dashed border-[#b8a380]/55 bg-gradient-to-b from-[#f4ead4]/45 to-[#d4be8e]/30">
-                          <span className="font-serif text-base text-[#a89060]/75">神签</span>
-                        </div>
-                        <div className="mt-5 text-sm text-muted">点击「开始抽取」摇签</div>
-                      </div>
-                    )}
-                  </div>
+                  <ThunderDrum
+                    picked={picked}
+                    rolling={rolling}
+                    className="rounded-xl border border-line/70 bg-gradient-to-b from-white to-[#fcfbf9] px-6 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                  />
                   <div className="flex flex-wrap items-center gap-2">
                     <Button className="gap-1.5" onClick={roll} disabled={rolling}>
                       <Shuffle className="h-4 w-4" />

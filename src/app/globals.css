@@ -437,6 +437,101 @@
     animation: sakura-fall 2s linear infinite;
   }
 
+  /* ===== 雷神鸣鼓 · 随机点名动画 =====
+     融合日本雷神与和风太鼓意象：
+     鼓身旋转加速 → 鼓面姓名疾闪 → 鼓槌重击 → 闪白雷电 → 震动波纹
+     → 金色光柱射出 → 姓名书法显现 → 朱印盖章 + 墨迹晕染
+     灯笼摇晃 + 雷纹脉动 + 樱花飘落 环绕装饰 */
+  @keyframes taiko-spin {
+    0%   { transform: rotate(0deg); }
+    25%  { transform: rotate(120deg); }
+    50%  { transform: rotate(330deg); }
+    75%  { transform: rotate(600deg); }
+    100% { transform: rotate(900deg); }
+  }
+  @keyframes taiko-quake {
+    0%, 100% { transform: translate(0, 0) rotate(0); }
+    20% { transform: translate(-4px, 3px) rotate(-1deg); }
+    40% { transform: translate(4px, -3px) rotate(1deg); }
+    60% { transform: translate(-3px, -4px) rotate(-1deg); }
+    80% { transform: translate(3px, 4px) rotate(1deg); }
+  }
+  @keyframes drumstick-left {
+    0%, 100% { transform: rotate(-22deg); }
+    50% { transform: rotate(-44deg); }
+  }
+  @keyframes drumstick-right {
+    0%, 100% { transform: rotate(22deg); }
+    50% { transform: rotate(44deg); }
+  }
+  @keyframes screen-flash {
+    0%   { opacity: 0; }
+    12%  { opacity: 0.92; }
+    100% { opacity: 0; }
+  }
+  @keyframes lightning-burst {
+    0%   { opacity: 0; transform: scale(0.4); }
+    15%  { opacity: 1; transform: scale(1.15); }
+    35%  { opacity: 0.2; transform: scale(1); }
+    55%  { opacity: 0.85; transform: scale(1.08); }
+    100% { opacity: 0; transform: scale(1.25); }
+  }
+  @keyframes shockwave {
+    0%   { opacity: 0.9; transform: scale(0.15); }
+    100% { opacity: 0; transform: scale(3.4); }
+  }
+  @keyframes light-beam {
+    0%   { opacity: 0; transform: scaleY(0); }
+    40%  { opacity: 0.85; transform: scaleY(1); }
+    100% { opacity: 0.3; transform: scaleY(1); }
+  }
+  @keyframes name-brush {
+    0%   { opacity: 0; filter: blur(14px); transform: scale(1.2) translateY(10px); }
+    50%  { opacity: 0.85; filter: blur(2.5px); transform: scale(1.04) translateY(2px); }
+    100% { opacity: 1; filter: blur(0); transform: scale(1) translateY(0); }
+  }
+  @keyframes lantern-sway {
+    0%, 100% { transform: rotate(-4deg); }
+    50% { transform: rotate(4deg); }
+  }
+  @keyframes raiju-pulse {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 0.7; }
+  }
+  @keyframes name-flicker {
+    0%, 100% { opacity: 0.92; transform: translateY(0) scale(1); }
+    50% { opacity: 0.4; transform: translateY(-3px) scale(0.95); }
+  }
+  @keyframes drum-glow {
+    0%, 100% { opacity: 0.35; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.08); }
+  }
+  @keyframes raimon-drift {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(3px, -2px); }
+  }
+
+  .animate-taiko-spin { animation: taiko-spin 1.5s var(--ease-smooth) both; }
+  .animate-taiko-quake { animation: taiko-quake 0.45s var(--ease-smooth) both; }
+  .animate-drumstick-left { animation: drumstick-left 0.22s var(--ease-smooth) infinite; }
+  .animate-drumstick-right { animation: drumstick-right 0.22s var(--ease-smooth) infinite; }
+  .animate-screen-flash { animation: screen-flash 0.55s var(--ease-smooth) both; }
+  .animate-lightning { animation: lightning-burst 0.6s var(--ease-smooth) both; }
+  .animate-shockwave { animation: shockwave 0.75s var(--ease-smooth) both; }
+  .animate-light-beam { animation: light-beam 0.85s var(--ease-spring) both; }
+  .animate-name-brush { animation: name-brush 0.75s var(--ease-spring) both; }
+  .animate-lantern-sway { animation: lantern-sway 3.8s var(--ease-smooth) infinite; }
+  .animate-raiju-pulse { animation: raiju-pulse 2.6s var(--ease-smooth) infinite; }
+  .animate-name-flicker { animation: name-flicker 0.16s var(--ease-smooth) infinite; }
+  .animate-drum-glow { animation: drum-glow 0.5s var(--ease-smooth) infinite; }
+  .animate-raimon-drift { animation: raimon-drift 9s var(--ease-smooth) infinite; }
+
+  /* 雷纹底纹：和风雷門紋简化旋涡 */
+  .texture-raimon {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23787670' stroke-width='1.1' opacity='0.09'%3E%3Cpath d='M36 14 Q54 14 54 32 Q54 46 40 46 Q30 46 30 36 Q30 28 38 28 Q42 28 42 32'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 72px 72px;
+  }
+
   /* 按钮光泽流动 */
   .btn-glow-sweep {
     background-image: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
