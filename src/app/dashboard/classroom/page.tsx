@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/error";
-import { ThunderDrum } from "@/components/classroom/thunder-drum";
+import { DragonRollCall } from "@/components/classroom/dragon-rollcall";
 
 type BulkResult = { data?: { created?: number; updated?: number } };
 
@@ -334,10 +334,10 @@ export default function ClassroomPage() {
                   <CardDescription>公平抽人回答，避免总是点同一批学生</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <ThunderDrum
+                  <DragonRollCall
                     picked={picked}
                     rolling={rolling}
-                    className="rounded-xl border border-line/70 bg-gradient-to-b from-white to-[#fcfbf9] px-6 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                    className="rounded-xl border border-line/70 px-2 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <Button className="gap-1.5" onClick={roll} disabled={rolling}>
