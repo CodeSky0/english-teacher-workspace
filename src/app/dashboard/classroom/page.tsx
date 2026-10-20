@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/error";
-import { DragonRollCall } from "@/components/classroom/dragon-rollcall";
+import { NebulaRollCall } from "@/components/classroom/nebula-rollcall";
 
 type BulkResult = { data?: { created?: number; updated?: number } };
 
@@ -334,7 +334,7 @@ export default function ClassroomPage() {
                   <CardDescription>公平抽人回答，避免总是点同一批学生</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <DragonRollCall
+                  <NebulaRollCall
                     picked={picked}
                     rolling={rolling}
                     className="rounded-xl border border-line/70 px-2 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"

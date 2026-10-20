@@ -11,7 +11,7 @@ import { Dices, Trophy, Timer, Tag, Vote, Grid3x3, Layers, Headphones, X, Plus, 
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
 import { cn } from "@/lib/utils";
-import { DragonRollCall } from "@/components/classroom/dragon-rollcall";
+import { NebulaRollCall } from "@/components/classroom/nebula-rollcall";
 
 export const dynamic = "force-dynamic";
 
@@ -219,14 +219,14 @@ function RollCallTool() {
         />
       </div>
 
-      <DragonRollCall
+      <NebulaRollCall
         picked={picked}
         rolling={rolling}
         className="mb-8 rounded-2xl border border-line/70 shadow-[0_2px_10px_-3px_rgba(36,35,31,0.10)]"
       />
 
       <Button onClick={roll} size="lg" className="gap-2" disabled={rolling}>
-        <Dices className="h-5 w-5" />{rolling ? "神龙巡游…" : "唤醒神龙"}
+        <Dices className="h-5 w-5" />{rolling ? "星核聚能…" : "唤醒星核"}
       </Button>
       {history.length > 0 && (
         <p className="mt-4 text-sm text-muted">
