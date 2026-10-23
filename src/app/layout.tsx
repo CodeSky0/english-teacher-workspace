@@ -13,7 +13,7 @@ const inter = Inter({
 
 const notoSerif = Noto_Serif_SC({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "600"],
   variable: "--font-serif",
   display: "swap",
   fallback: ["Georgia", "Songti SC", "STSong", "SimSun", "serif"],
