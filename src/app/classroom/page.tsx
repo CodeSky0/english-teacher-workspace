@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+// 别名避免与下方 export const dynamic = "force-dynamic" 冲突
 import nextDynamic from "next/dynamic";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -18,7 +19,7 @@ const NebulaRollCall = nextDynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex min-h-[400px] items-center justify-center text-sm text-muted">
+      <div className="mb-8 flex min-h-[400px] items-center justify-center text-sm text-muted">
         正在准备点名动画…
       </div>
     ),
