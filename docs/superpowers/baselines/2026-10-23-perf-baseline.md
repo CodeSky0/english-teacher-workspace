@@ -171,3 +171,107 @@ Route (app)
 - 公开页性能良好：FCP < 170 ms、LCP < 250 ms、CLS 0.00、无 >50 ms 长任务（本机无节流口径）
 - 关键缺口：dashboard 三页因缺数据库环境全为 500，**登录态加载指标与交互长任务基线缺失**——这是本基线与 Task 6 对比时最大的不确定项，修复阶段应先补环境再补测
 - 渲染阻塞请求与 legacy JS（≈14.6 kB）在两个公开页均存在，与构建基线的 CSS/体积结论一致
+
+## 静态审计结论（2026-10-23）
+
+> 审计方式：Grep 全量检索 + 逐文件人工读码核实（`src/server/api/routes/` 全部 19 个文件、`src/app/dashboard/` 全部 14 个 page.tsx、27 个 `"use client"` 文件的 import、3 个构建 CSS chunk 实际内容解剖）
+> 结论标注：「已确认」= 读码核实存在该问题；「误报」= 检索命中但读码排除。修复模式编号 A1–A4 见任务计划；本次新增 A5（见 §6）。
+
+### 1. 重依赖静态导入（Step 1a）
+
+| 依赖 | 检索结果 | 核实结论 | 证据 |
+|---|---|---|---|
+| recharts | src/ 零引用 | 误报（不进 bundle）。属「已安装未使用」，建议后续清理依赖（package.json:46） | 全库 grep `from "recharts"` 无命中 |
+| @tanstack/react-table | src/ 零引用 | 误报。页面表格为手写 + `@tanstack/react-virtual`（grades 页），无 react-table | 全库 grep 无命中 |
+| @dnd-kit/core | 仅 1 处 | 误报（A1 已应用）：唯一引用 `src/app/dashboard/overview/sortable-cards.tsx:8-14`（"use client"），且该组件已经由 `next/dynamic` + `ssr: false` 动态引入（`src/app/dashboard/overview/page.tsx:16-19`） | 读码核实 |
+| exceljs | 仅 1 处 | 误报：仅服务端 `src/server/excel/workbook.ts:1`；`src/lib/excel/client.ts` 不依赖 exceljs | 与已知事实一致 |
+
+**本项无已确认问题。** 唯一未做代码分割的重组件是 nebula-rollcall，归入 §3。
+
+### 2. "use client" 文件误引服务端模块（Step 1b）
+
+**误报 / 无发现。** 全部 27 个 `"use client"` 文件逐一核查：无任何 `@/server/*`、drizzle、better-auth 服务端、redis 导入。app 目录中引用 `@/server/*` 的 3 个文件（`(auth)/login/page.tsx:1`、`(auth)/register/page.tsx:1`、`dashboard/layout.tsx:2`）均为服务端组件（无 "use client"），属正常用法；`src/lib/auth-client.ts:1` 走 `better-auth/react` 客户端入口，合法。全库亦无相对路径跨层引用 server/db。
+
+### 3. 死代码与未分割重组件（Step 1c）
+
+| 文件 | 体积 | 引用情况 | 结论 |
+|---|---|---|---|
+| `src/components/classroom/dragon-rollcall.tsx` | 15.8 KB | 全库零引用 | 已确认死代码（无引用即不打包，不影响 bundle；建议删除以免误导维护） |
+| `src/components/classroom/thunder-drum.tsx` | 11.6 KB | 全库零引用 | 已确认死代码（同上） |
+| `src/components/classroom/nebula-rollcall.tsx` | 37.9 KB | 被两页**静态顶层导入**：`src/app/classroom/page.tsx:14`、`src/app/dashboard/classroom/page.tsx:20` | **已确认 A1**（37.9 KB > 20KB 阈值；两页 First Load JS 176.7 / 200.3 kB）。修复归 Task 4，此处仅记录 |
+
+### 4. 服务端串行 await 瀑布（Step 1d）
+
+**已确认（轻微，A2）：`src/server/api/routes/backup.ts:38`** — `/backup/export` 先串行 `await db.select().from(user)`，再在第 42 行以 `Promise.all` 并行 16 路数据集查询。userData 与这 16 路查询完全独立，仅用于响应负载 `data.user`（backup.ts:65），可并入同一 Promise.all（16 → 17 路）。属低频管理操作，收益小。
+
+**误报（读码排除，逐类说明）：**
+
+- `overview.ts`：已知事实核实一致——主查询 Promise.all + 90s Redis 缓存，无串行瀑布。
+- `classroom.ts`、`import-export.ts`、`dictation.ts`、`exams.ts`、`homework.ts`、`profile.ts` 等的连续 await 均为**守卫短路模式**（先查归属做 404 短路，再查/写数据），如 `classroom.ts:82-87`（poll 归属校验 → options）、`classroom.ts:168-184`（班级校验 → 既有考勤）；依赖前值（如 `classroom.ts:117-121` 的 pollId 来自 opt）不构成可并行瀑布。
+- `import-export.ts` 三个导入处理器写路径已是「批量 insert（138/252/306 行）+ Promise.all updates（140/254/308 行）」；六个导出处理器全部 `Promise.all`（331/373/425/515/584/656 行）。
+- `backup.ts` import 事务（111-296 行）内顺序 delete/insert 为 **FK 顺序依赖**，不应并行。
+- `schedule.ts`、`vocab.ts`、`recycle.ts`、`ai.ts`、`excel.ts`、`_factory.ts`：单记录 CRUD / 缓存读写 / 单查询，无多查询串行。
+
+### 5. 路由级数据获取瀑布（Step 2）
+
+**机制（已确认）：** `useWorkspace` 为纯内存 zustand、无 persist（`src/stores/workspace.ts:15-24`，`currentClassId` 初始 null）；`useClasses` 在 `/classes` 查询 resolve 后经 useEffect 才 `setCurrentClassId`（`src/hooks/use-classes.ts:23-27`）。因此所有 `enabled: !!classId / !!currentClass` 的下游查询形成「`/classes` 请求 → effect 二次渲染 → 数据请求」的两级瀑布，**每次页面加载都发生**（非仅首访）。
+
+**已确认 A4 的页面**（体积引自本基线构建表）：
+
+| 页面 | 瀑布形态 | 证据 | First Load JS |
+|---|---|---|---|
+| /dashboard/students | classes → students | page.tsx:35,47-51 | 202.6 kB |
+| /dashboard/grades | classes → exams；students/scores 再等用户选中考试 | page.tsx:34,40-58 | 201.0 kB |
+| /dashboard/classroom | classes → students + points（att/fb 按 tab 懒加载） | page.tsx:48-50,77-109 | 200.3 kB |
+| /dashboard/dictation* | 见下「边界说明」 | page.tsx:74-115 | 196.3 kB |
+| /dashboard/plans | 双请求：query 无 `enabled`，先以 `classId=undefined` 请求一次，classId 就绪后 queryKey 变化**二次请求** | page.tsx:42-45 | 190.1 kB |
+| /dashboard/homework | 同 plans 双请求模式 | page.tsx:40-43 | 189.9 kB |
+| /dashboard/schedule | classes → cells | page.tsx:36-40 | 189.2 kB |
+
+\* dictation 边界说明：lists 无条件查询；words/students/results 均由**用户点选词表**触发（`enabled: !!selectedList`，page.tsx:83/99/114），属主从交互而非自动瀑布；仅 `currentClass` 兜底链（page.tsx:94）间接经过 classes。归为「轻微/部分 A4」。
+
+**误报页面：**
+
+- `/dashboard/overview`：`/classes`（班级切换器用）与 `/overview` 相互独立、并行发出（page.tsx:27-33，overview 查询 90s staleTime）。
+- `/dashboard/vocab`：units 无条件，words 由用户选单元触发（page.tsx:39-46），主从模式。
+- `/dashboard/resources`、`/dashboard/research`：单条无条件查询（resources:46、research:43）。
+- `/dashboard/settings`：回收站按需加载（`enabled: recycleOpen`，page.tsx:25-28）。
+- `/dashboard/ai`、`/dashboard/help`：无 useQuery（ai 仅 useMutation，page.tsx:35,41）。
+
+**修复方向（A4 通用）：** workspace store 加 persist（消除 effect 二级跳）；或 `/classes` 与下游数据合并为一次聚合接口；plans/homework 加 `enabled` 消除双请求。
+
+### 6. CSS 151.3 kB 异常根因（已确认 · 新发现 · 编号 A5）
+
+对 `.next/static/chunks/` 三个 CSS chunk 逐一解剖（生产构建实测）：
+
+| chunk | gzip | 原始 | 实际内容 |
+|---|---|---|---|
+| `3ltiua1kplqsx.css` | 132.6 kB | 371,302 字符（362.6 kB） | **404 条 `Noto Serif SC` @font-face**（101 个 unicode-range 子集 × 4 个 weight 400/500/600/700，实测各 weight 恰好 101 条）——不是 Tailwind |
+| `2jxkt8z9xcdm_.css` | 18.0 kB | 113.9 kB | 真正的 Tailwind v4 utilities + yohaku tokens + globals 自定义层（约 1,362 条规则） |
+| `2qghj-87zvt7j.css` | 0.7 kB | 1.9 kB | Inter 可变字体声明（单条 `font-weight:100 900` × 若干子集，作为对照：可变字体声明极紧凑） |
+
+**根因：`src/app/layout.tsx:14-21`** 以 next/font/google 加载 `Noto_Serif_SC` 且 `weight: ["400","500","600","700"]` 四档——每档生成 101 个按 unicode-range 切片的 @font-face 规则，共 404 条 / 362.6 kB raw / 132.6 kB gz，经 root layout 进入**每一条路由**的渲染阻塞 CSS（与运行时基线 RenderBlocking insight 相互印证）。151.3 kB gz 总量中约 87.6% 是字体声明。
+
+**修正本基线上文的一处解读：** 构建基线章节曾把 362.6 kB 归因为「Tailwind main CSS」——不准确，Tailwind 实际仅 18.0 kB gz，大头是字体声明 CSS。
+
+**附带发现：** `@yohaku/design-system@^0.0.2`（package.json:31）在 src/ 中零引用——tokens 已 vendor 到 `src/styles/yohaku-tokens.css`（4.2 KB，注释注明 npm 包缺 typography-scale）；与 recharts 同属「已安装未使用」依赖。
+
+**修复方向（A5）：** Noto Serif SC 减 weight（仅 400 + 700 → 声明减半）或改用可变字体（参照 Inter 模式）→ 预计去除约 66–99 kB gz 渲染阻塞 CSS；浏览器虽按 unicode-range 只下载命中的 woff2 分片，但 404 条声明本身仍全量阻塞渲染。
+
+### 7. 附：nebula-rollcall canvas 动画（已确认 A3，修复归 Task 4）
+
+`src/components/classroom/nebula-rollcall.tsx`：rAF 循环挂载期间持续运行（1029/1032 行 `requestAnimationFrame(frame)`），仅在卸载时 `cancelAnimationFrame`（1035 行）；**无 IntersectionObserver / visibilitychange 暂停**——1036 行断开的 `observer` 实为 ResizeObserver（970 行），与可见性无关。且该组件以 `min-h-[400px]` 内嵌于 dashboard/classroom 页卡片（page.tsx:337），页面打开即持续逐帧渲染。A1（静态导入）+ A3（无暂停）双问题叠加，均在 Task 4 修复范围。
+
+### 静态审计结论速览
+
+| # | 发现 | 结论 | 模式 | 去向 |
+|---|---|---|---|---|
+| 1 | recharts / react-table 未使用；exceljs、@dnd-kit 引用合法 | 误报 | — | 依赖清理（非本轮） |
+| 2 | 客户端误引服务端模块 | 无发现 | — | — |
+| 3 | dragon-rollcall / thunder-drum 死代码 | 已确认 | — | 建议删除 |
+| 4 | nebula-rollcall 37.9 KB 静态导入两页 | 已确认 | A1 | Task 4 |
+| 5 | nebula-rollcall rAF 无可见性暂停 | 已确认 | A3 | Task 4 |
+| 6 | backup.ts export userData 串行于 16 路并行前 | 已确认（轻微） | A2 | 低优先 |
+| 7 | 7 个 dashboard 页 classes→数据 两级瀑布（每次加载）；plans/homework 双请求 | 已确认 | A4 | 后续修复任务 |
+| 8 | 362.6 kB「CSS」实为 Noto Serif SC 四 weight × 101 子集字体声明；Tailwind 仅 18 kB gz | 已确认 | A5（新） | 后续修复任务 |
+| 9 | @yohaku/design-system 零引用 | 已确认 | — | 依赖清理（非本轮） |
