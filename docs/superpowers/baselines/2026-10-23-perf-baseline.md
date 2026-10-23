@@ -121,3 +121,53 @@ Route (app)
 - `next build --webpack` 在本仓库不可用：`next/font` 的 Google 字体加载器（`Noto_Serif_SC`，`src/app/layout.tsx`）抛 `TypeError: Cannot read properties of null (reading '1')`，构建失败 —— 本项目只能以 Turbopack 构建为口径
 - 测量前的 `.next` 中存在旧 webpack 构建的残留 chunk（`framework-*`、`app/layout-*` 等），已删除 `.next` 干净重建后测量；对比时同样应清理后构建
 - 首次构建提示无 build cache（`No build cache found`），本次编译 9.0s + TypeScript 16.6s
+
+## 运行时基线（修复前）
+
+> 测量环境：生产服务器 `pnpm start`（Next.js 16.4.2，`http://localhost:3000`，Ready 508ms，沿用上文同一份 `.next` 生产构建）
+> 测量工具：Chrome DevTools MCP —— `lighthouse_audit`（navigation / desktop；**该版本不含 performance 类别**，FCP/LCP/TBT/CLS 由 performance trace 与页面内 Performance API（buffered LCP / longtask）采集）+ `performance_start_trace`（CLS 与 insight）
+> 测量条件：desktop，无 CPU / 网络节流；"冷加载" = reload + ignoreCache（绕过 HTTP 缓存）；同页多次冷加载取值范围一并记录
+> 测量日期：2026-10-23
+
+### 重要限制：dashboard 路由无法测量（环境缺数据库）
+
+- 仓库无 `.env`（仅 `.env.example`），运行期日志复现构建期警告：
+  - `[db] DATABASE_URL not set — database operations will fail at runtime.`
+  - `[Error [BetterAuthError]: You are using the default secret. Please set BETTER_AUTH_SECRET ...]`
+- 本机 `docker` 命令不存在（`docker-compose.yml` 无法启动 PG/Redis），`localhost:5432` 无监听 → 数据库不可达
+- 实测后果：
+  - `/register` 页面可渲染（静态 200），但提交注册表单返回 toast「**注册失败**」（DB 写入失败）→ 无法获得登录态
+  - `/dashboard/overview`、`/dashboard/classroom`、`/dashboard/dictation` 未登录访问均返回 **HTTP 500**（Next.js 错误页 "This page couldn't load"，digest 与服务器日志 `BetterAuthError` 一致）
+- 因此任务计划中的 dashboard 三页 FCP/LCP/TBT 与两项交互追踪（随机点名动画 ~5s、听写网格点击）**全部无法测量**；补齐环境（`.env` 的 `DATABASE_URL`/`BETTER_AUTH_SECRET`/`BETTER_AUTH_URL` + 可用 PG 实例）后须按同法补测
+- 降级说明：生产服务器本身可正常启动并服务静态页，故未切换 `pnpm dev`（dev 模式同样无法解决数据库缺失，且会引入 dev 开销使数值失真）
+
+### 公开页实测数据
+
+| 页面 | HTTP | FCP（冷加载） | LCP（冷加载） | CLS | TBT | 长任务 >50ms | 冷加载传输 | Lighthouse（desktop） |
+|---|---|---|---|---|---|---|---|---|
+| `/login` | 200 | 148–164 ms（2 次冷加载区间） | 196 ms | 0.00 | ≈0 ms（无长任务） | 0 | ≈605 KB / 23 请求 | A11y 98 · BP 100 · SEO 100 · Agentic 100 |
+| `/register` | 200 | 156 ms | 240 ms | 0.00 | ≈0 ms（无长任务） | 0 | ≈676 KB / 24 请求 | 未单独跑（与 /login 同构） |
+
+补充观察：
+
+- `/login` Lighthouse 唯一失败项：`landmark-one-main`（文档缺少 main landmark，A11y 98 → 100 的差距）
+- `/login` 与 `/register` 的 performance trace 均命中两类 insight：
+  - **RenderBlocking**：存在阻塞首屏渲染的请求（与构建基线"3 个 CSS 共 151.3 kB 全量加载"相互印证）
+  - **LegacyJavaScript**：约 14.6 kB 可避免的转译/ polyfill 体积（对应构建基线中的 nomodule polyfill 38.7 kB gz）
+- `/register` 注册提交在 DB 不可达时失败（toast「注册失败」），该页仅加载性能数据有效
+
+### Dashboard 路由（未能测得，原因记录）
+
+| 页面 | 结果 | 原因 |
+|---|---|---|
+| `/dashboard/overview` | HTTP 500 | 缺 `.env`（`DATABASE_URL`/`BETTER_AUTH_SECRET`），better-auth 会话查询抛 `BetterAuthError`；无 docker、本地无 PG，无法建库注册登录 |
+| `/dashboard/classroom`（含随机点名动画 ~5s 交互追踪） | HTTP 500，交互追踪未执行 | 同上——无登录态 |
+| `/dashboard/dictation`（含网格点击交互追踪） | HTTP 500，交互追踪未执行 | 同上——无登录态 |
+
+参考值（非基线）：`/dashboard/overview` 的 500 错误页本身 FCP 208 ms、长任务 0（资源命中浏览器缓存，transferSize≈0）——错误页无性能信号，**不作为** dashboard 性能基线。
+
+### 运行时结论速览（修复前）
+
+- 公开页性能良好：FCP < 170 ms、LCP < 250 ms、CLS 0.00、无 >50 ms 长任务（本机无节流口径）
+- 关键缺口：dashboard 三页因缺数据库环境全为 500，**登录态加载指标与交互长任务基线缺失**——这是本基线与 Task 6 对比时最大的不确定项，修复阶段应先补环境再补测
+- 渲染阻塞请求与 legacy JS（≈14.6 kB）在两个公开页均存在，与构建基线的 CSS/体积结论一致
