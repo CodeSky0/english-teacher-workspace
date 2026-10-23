@@ -2,7 +2,7 @@
 
 > 优化范围：提交 `77aef5e..eb216f4`（含 `1dc2eb9` 起的 7 项修复 + `3581c4b` 守卫，共 9 个提交，仅客户端/服务端代码，无测量相关改动）
 > 数据来源：`docs/superpowers/baselines/2026-10-23-perf-baseline.md`（同文件含修复后复测数据，构建与运行时均为同一测量方法、干净重建、同机同口径）
-> 回归保障：`pnpm test` 33/33 通过（3 个测试文件）· `pnpm typecheck` 通过 · `pnpm lint` 0 errors（29 warnings 均为修复前已存在的 unused-vars 历史遗留，涉及 `src/db/schema/*`、`src/lib/csv` 等非本次修改文件）
+> 回归保障：`pnpm test` 33/33 通过（3 个测试文件）· `pnpm typecheck` 通过 · `pnpm lint` 0 errors（29 warnings 均为修复前已存在的历史遗留：unused-vars ×18、set-state-in-effect ×8、incompatible-lib ×2、impure-render ×1；与基线提交逐条比对确认无新增）
 
 ## 总览
 
@@ -92,7 +92,7 @@
 |---|---|---|
 | 单元测试 | `pnpm test`（vitest run） | ✅ 3 个文件 33/33 通过，1.96s |
 | 类型检查 | `pnpm typecheck`（tsc --noEmit） | ✅ 无错误 |
-| 代码规范 | `pnpm lint`（eslint .） | ✅ 0 errors（29 warnings 均为修复前已存在的 unused-vars 历史遗留，全部位于本次未修改的文件） |
+| 代码规范 | `pnpm lint`（eslint .） | ✅ 0 errors（29 warnings 均为修复前已存在的历史遗留，与基线提交逐条比对确认无新增） |
 
 ## 遗留与后续建议
 
