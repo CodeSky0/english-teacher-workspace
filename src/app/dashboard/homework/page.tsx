@@ -30,7 +30,7 @@ const STATUS_ACCENT: Record<string, { bar: string; tile: string }> = {
 };
 
 export default function HomeworkPage() {
-  const { currentClass } = useCurrentClass();
+  const { currentClass, isLoading: classesLoading } = useCurrentClass();
   const { classes } = useClasses();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -40,7 +40,7 @@ export default function HomeworkPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["homework", currentClass?.id],
-    queryFn: () => apiClient.get<{ data: Homework[] }>(`/homework${currentClass ? `?classId=${currentClass.id}` : ""}`),
+    queryFn: () => apiClient.get<{ data: Homework[] }>(`/homework?classId=${currentClass?.id}`),
     enabled: !!currentClass?.id,
   });
   const items = data?.data ?? [];
@@ -64,7 +64,7 @@ export default function HomeworkPage() {
       <PageHeader title="作业与练习" description={`共 ${items.length} 条记录`}
         action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" />布置作业</Button>} />
       <Card><CardContent className="p-0">
-        {isLoading ? <LoadingState /> : items.length === 0 ? <EmptyState icon={<BookOpen className="h-10 w-10" />} title="暂无作业" /> :
+        {isLoading || classesLoading ? <LoadingState /> : items.length === 0 ? <EmptyState icon={<BookOpen className="h-10 w-10" />} title="暂无作业" /> :
           <div className="divide-y divide-line">
             {items.map((h) => {
               const accent = STATUS_ACCENT[h.status] ?? STATUS_ACCENT.draft;

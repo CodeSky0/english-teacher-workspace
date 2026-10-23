@@ -40,7 +40,7 @@ export function Sidebar() {
           </span>
           <span
             className={cn(
-              "truncate font-serif text-[15px] font-medium tracking-wide text-neutral-9",
+              "truncate font-serif text-[15px] font-normal tracking-wide text-neutral-9",
               sidebarCollapsed && "hidden"
             )}
           >

@@ -64,7 +64,7 @@ export function AuthBrandPanel() {
             <span className="absolute inset-[3px] rounded-[0.7rem] border border-white/25" />
           </span>
           <div>
-            <span className="block font-serif text-xl font-medium tracking-wide text-neutral-9">
+            <span className="block font-serif text-xl font-normal tracking-wide text-neutral-9">
               英语教师工作台
             </span>
             <span className="mt-0.5 block text-[11px] tracking-[0.18em] text-neutral-5 uppercase">
@@ -78,7 +78,7 @@ export function AuthBrandPanel() {
           {/* 引言符号 */}
           <Quote className="mb-4 h-6 w-6 -scale-y-100 text-primary/35" />
 
-          <h2 className="font-serif text-[40px] font-medium leading-[1.2] tracking-tight text-neutral-9">
+          <h2 className="font-serif text-[40px] font-normal leading-[1.2] tracking-tight text-neutral-9">
             备课 · 教学 · 教研
             <br />
             <span className="text-gradient-ume">一体化工作台</span>
@@ -123,7 +123,7 @@ export function AuthBrandPanel() {
               <p className="text-xs font-medium text-neutral-8">班级平均正确率</p>
               <p className="text-caption-10 text-neutral-5">最近一次听写 · 全年级</p>
             </div>
-            <span className="font-serif text-2xl font-medium tabular-nums text-[#3d7a5e]">92%</span>
+            <span className="font-serif text-2xl font-normal tabular-nums text-[#3d7a5e]">92%</span>
           </div>
 
           <div className="flex items-center gap-4">

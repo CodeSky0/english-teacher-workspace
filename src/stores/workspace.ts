@@ -27,6 +27,7 @@ export const useWorkspace = create<WorkspaceState>()(
       setSaveStatus: (status) => set({ saveStatus: status }),
     }),
     {
+      // 持久化到 localStorage 的 key；变更持久化形态时需增加 version/migrate
       name: "workspace",
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ currentClassId: s.currentClassId }),

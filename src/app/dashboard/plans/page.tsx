@@ -32,7 +32,7 @@ const STATUS_ACCENT: Record<string, { bar: string; tile: string }> = {
 };
 
 export default function PlansPage() {
-  const { currentClass } = useCurrentClass();
+  const { currentClass, isLoading: classesLoading } = useCurrentClass();
   const { classes } = useClasses();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -42,7 +42,7 @@ export default function PlansPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["plans", currentClass?.id],
-    queryFn: () => apiClient.get<{ data: Plan[] }>(`/plans${currentClass ? `?classId=${currentClass.id}` : ""}`),
+    queryFn: () => apiClient.get<{ data: Plan[] }>(`/plans?classId=${currentClass?.id}`),
     enabled: !!currentClass?.id,
   });
 
@@ -78,7 +78,7 @@ export default function PlansPage() {
       <PageHeader title="备课与反思" description={`共 ${plans.length} 条记录`}
         action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" />新建备课</Button>} />
       <Card><CardContent className="p-0">
-        {isLoading ? <LoadingState /> : plans.length === 0 ? <EmptyState icon={<ClipboardList className="h-10 w-10" />} title="暂无备课记录" /> :
+        {isLoading || classesLoading ? <LoadingState /> : plans.length === 0 ? <EmptyState icon={<ClipboardList className="h-10 w-10" />} title="暂无备课记录" /> :
           <div className="divide-y divide-line">
             {plans.map((p) => {
               const accent = STATUS_ACCENT[p.status] ?? STATUS_ACCENT.pending;

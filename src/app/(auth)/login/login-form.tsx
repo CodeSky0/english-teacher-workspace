@@ -51,7 +51,7 @@ export default function LoginForm({ allowRegister }: { allowRegister: boolean })
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#cd6c7a] to-[#a64953] text-sm font-medium text-white shadow-[0_2px_6px_-1px_rgba(168,84,99,0.5),inset_0_1px_0_rgba(255,255,255,0.35)]">
             英
           </span>
-          <span className="font-serif text-base font-medium tracking-wide text-neutral-9">
+          <span className="font-serif text-base font-normal tracking-wide text-neutral-9">
             英语教师工作台
           </span>
         </div>
