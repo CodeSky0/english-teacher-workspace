@@ -275,3 +275,82 @@ Route (app)
 | 7 | 7 个 dashboard 页 classes→数据 两级瀑布（每次加载）；plans/homework 双请求 | 已确认 | A4 | 后续修复任务 |
 | 8 | 362.6 kB「CSS」实为 Noto Serif SC 四 weight × 101 子集字体声明；Tailwind 仅 18 kB gz | 已确认 | A5（新） | 后续修复任务 |
 | 9 | @yohaku/design-system 零引用 | 已确认 | — | 依赖清理（非本轮） |
+
+---
+
+# 修复后复测（2026-10-23 · Task 6）
+
+> 复测命令：`pnpm build`（构建前删除 `.next` 干净重建，与基线同口径）；提交范围 `77aef5e..eb216f4`（9 个提交，见对比报告）
+> 构建警告与基线一致（无 build cache、DATABASE_URL/BETTER_AUTH 缺失警告）；编译 9.6s + TypeScript 17.2s
+> 代码仅测量、未改动；chunk hash 每次构建会变，对比看每路由合计值
+
+## 路由 First Load JS（修复后）
+
+计算方法与基线完全相同：共享集 = `build-manifest.json` 的 `rootMainFiles` ∪ 所有路由 `entryJSFiles` 交集，路由 First Load JS =（共享集 ∪ 该路由 entryJSFiles）逐个 gzip 求和（不含 polyfill 与 CSS）。
+
+共享集（6 chunks，gzip 合计 132.4 kB）与基线**逐字节一致**（chunk hash 未变）：react-dom 70.3 + App Router 运行时 43.0 + next/dist 入口 8.2 + turbopack 运行时 3.8 + React 辅助 3.6 + 根 layout 入口 3.4。
+
+| Route | 路由自身 Size | First Load JS（后） | First Load JS（前） | Δ | Δ% |
+|---|---|---|---|---|---|
+| /dashboard/students | 71.1 kB | 203.5 kB | 202.6 kB | +0.9 kB | +0.5% |
+| /dashboard/grades | 69.5 kB | 201.8 kB | 201.0 kB | +0.8 kB | +0.4% |
+| /dashboard/classroom | 64.2 kB | **196.6 kB** | 200.3 kB | **−3.7 kB** | **−1.8%** |
+| /dashboard/dictation | 64.7 kB | 197.1 kB | 196.3 kB | +0.8 kB | +0.4% |
+| /dashboard/overview | 62.7 kB | 195.1 kB | 194.2 kB | +0.9 kB | +0.5% |
+| /dashboard/vocab | 61.2 kB | 193.6 kB | 192.7 kB | +0.9 kB | +0.5% |
+| /dashboard/resources | 59.3 kB | 191.7 kB | 190.8 kB | +0.9 kB | +0.5% |
+| /dashboard/research | 58.6 kB | 191.0 kB | 190.1 kB | +0.9 kB | +0.5% |
+| /dashboard/plans | 58.6 kB | 191.0 kB | 190.1 kB | +0.9 kB | +0.5% |
+| /dashboard/homework | 58.4 kB | 190.8 kB | 189.9 kB | +0.9 kB | +0.5% |
+| /dashboard/settings | 57.9 kB | 190.3 kB | 189.5 kB | +0.8 kB | +0.4% |
+| /dashboard/schedule | 57.7 kB | 190.1 kB | 189.2 kB | +0.9 kB | +0.5% |
+| /dashboard/ai | 57.6 kB | 190.0 kB | 189.1 kB | +0.9 kB | +0.5% |
+| /dashboard/help | 53.9 kB | 186.3 kB | 185.4 kB | +0.9 kB | +0.5% |
+| /classroom | 40.8 kB | **173.2 kB** | 176.7 kB | **−3.5 kB** | **−2.0%** |
+| /register | 42.9 kB | 175.3 kB | 175.4 kB | −0.1 kB | −0.0% |
+| /login | 42.9 kB | 175.3 kB | 175.3 kB | −0.0 kB | −0.0% |
+| / | 17.4 kB | 149.8 kB | 149.8 kB | −0.0 kB | −0.0% |
+| /_not-found | 17.4 kB | 149.8 kB | 149.8 kB | −0.0 kB | −0.0% |
+| /_global-error | 0 B | 132.4 kB | 132.4 kB | −0.0 kB | −0.0% |
+
+**解读（诚实口径）：JS 不是本轮修复的主要收益点。**
+
+- 仅两个 classroom 路由下降（−3.5 / −3.7 kB gz）：nebula-rollcall（37.9 KB 源码 → min 后 18.5 KB → gzip ≈5.5 kB）移出 First Load JS，扣除 dynamic 包装器后净减如此。已验证懒加载 chunk（`3l40vdn-v6dkk.js`，18.5 KB raw）不在任何路由 entryJSFiles 中。
+- 其余 dashboard 路由 +0.8~0.9 kB（+0.4~0.5%）：persist 中间件（7d2ff7d）、enabled 门控（c0e7db0）、班级删除守卫（3581c4b）等新增运行时代码的体积代价。属「字节换请求/换正确性」的合理交换。
+- JS 大头（react-dom 70.3 + App Router 运行时 43.0 kB gz）本轮修复不针对框架体积，故共享部分零变化。
+
+### 每路由加载的 CSS（修复后，所有路由相同）
+
+| chunk（`.next/static/chunks/`） | gzip | 原始 | 内容 |
+|---|---|---|---|
+| `0cks901yr4k6k.css` | **66.2 kB** | 181.4 kB | Noto Serif SC @font-face **202 条**（实测 400/600 各 101 条；基线为 404 条） |
+| `02rkecx14bz5e.css` | 18.1 kB | 114.0 kB | Tailwind v4 utilities + tokens（与基线 18.0/113.9 持平） |
+| `2qghj-87zvt7j.css` | 0.7 kB | 1.9 kB | Inter 可变字体（与基线一致） |
+| **合计** | **84.9 kB** | **297.3 kB** | 基线 151.3 / 478.4 → **−66.4 kB gz（−43.9%）** |
+
+对应源码变更：`src/app/layout.tsx` 的 `Noto_Serif_SC` weight 从 `["400","500","600","700"]` 精简为 `["400","600"]`（32b1b01 精简 + eb216f4 与实际渲染对齐）。
+
+## 运行时基线（修复后）
+
+> 测量环境与方法与基线相同：生产服务器 `pnpm start`（Ready 301ms，沿用上文同一份修复后 `.next` 构建）+ Chrome DevTools MCP 页面内 Performance API（buffered LCP / longtask / layout-shift + paint entries），冷加载 = reload + ignoreCache，desktop 无节流
+> 同样的限制：无 `.env`/数据库，dashboard 路由仍为 HTTP 500，登录态指标与交互追踪**未测量**（用户批准跳过）
+
+### 公开页实测数据（修复后）
+
+| 页面 | HTTP | FCP（冷加载） | LCP（冷加载） | CLS | 长任务 >50ms | 冷加载传输 | CSS 传输 |
+|---|---|---|---|---|---|---|---|
+| `/login` | 200 | 148–152 ms（3 次冷加载区间） | 200 ms | 0.00 | 0 | ≈546 KB / 24 请求 | **85.8 kB**（3 个文件） |
+| `/register` | 200 | 140 ms | 208 ms | 0.00 | 0 | ≈617 KB / 25 请求 | 85.8 kB（同 3 文件） |
+
+对比基线（修复前）：
+
+- `/login`：FCP 148–164 → 148–152 ms；LCP 196 → 200 ms（±4 ms，本机噪声范围内，两者均已远低于 2.5s 阈值）；传输 ≈605 → ≈546 KB（CSS −66 kB + woff2 分片命中集不同）
+- `/register`：FCP 156 → 140 ms；LCP 240 → 208 ms（−32 ms）；传输 ≈676 → ≈617 KB
+- CSS 传输：151.3 kB gz（构建口径）/ 每页实测 3 个 CSS → 修复后实测 **85.8 kB/页**（1.0 + 66.4 + 18.4），与构建产物计算值 84.9 kB 吻合——字体声明 CSS 减半得到运行时验证
+- LCP 采集说明：`/login` 3 次冷加载中 1 次有效捕获 LCP 条目（后两次 buffered 观测器未回放条目，原因未查明，FCP/CLS/长任务均正常）；`/register` 单次冷加载正常捕获
+
+### 运行时结论速览（修复后）
+
+- 公开页保持优良：FCP < 155 ms、LCP < 210 ms、CLS 0.00、无长任务；`/register` LCP 改善 32 ms
+- 渲染阻塞 CSS 大幅下降（−66 kB gz），RenderBlocking insight 的主因（字体声明）已消除大半
+- dashboard 登录态指标仍缺失（环境限制同基线），persist/门控/并行化/rAF 暂停四项修复的运行时收益待补环境后按同法补测
