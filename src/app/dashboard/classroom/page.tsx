@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useCurrentClass } from "@/hooks/use-classes";
@@ -17,7 +18,18 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/error";
-import { NebulaRollCall } from "@/components/classroom/nebula-rollcall";
+
+const NebulaRollCall = dynamic(
+  () => import("@/components/classroom/nebula-rollcall").then((m) => m.NebulaRollCall),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[400px] items-center justify-center text-sm text-muted">
+        正在准备点名动画…
+      </div>
+    ),
+  },
+);
 
 type BulkResult = { data?: { created?: number; updated?: number } };
 

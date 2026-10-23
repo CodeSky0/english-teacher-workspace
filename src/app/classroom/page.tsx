@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import nextDynamic from "next/dynamic";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
@@ -11,7 +12,18 @@ import { Dices, Trophy, Timer, Tag, Vote, Grid3x3, Layers, Headphones, X, Plus, 
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
 import { cn } from "@/lib/utils";
-import { NebulaRollCall } from "@/components/classroom/nebula-rollcall";
+
+const NebulaRollCall = nextDynamic(
+  () => import("@/components/classroom/nebula-rollcall").then((m) => m.NebulaRollCall),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[400px] items-center justify-center text-sm text-muted">
+        正在准备点名动画…
+      </div>
+    ),
+  },
+);
 
 export const dynamic = "force-dynamic";
 
