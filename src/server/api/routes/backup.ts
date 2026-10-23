@@ -63,7 +63,7 @@ routes.get("/export", async (c) => {
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
     data: {
-      user: userData,
+      user: userData[0] ?? null,
       classes: classesData,
       students: studentsData,
       timetableCells: cellsData,
