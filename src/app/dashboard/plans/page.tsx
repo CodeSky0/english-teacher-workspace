@@ -43,6 +43,7 @@ export default function PlansPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["plans", currentClass?.id],
     queryFn: () => apiClient.get<{ data: Plan[] }>(`/plans${currentClass ? `?classId=${currentClass.id}` : ""}`),
+    enabled: !!currentClass?.id,
   });
 
   const plans = data?.data ?? [];

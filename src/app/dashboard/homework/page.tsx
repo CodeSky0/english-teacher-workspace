@@ -41,6 +41,7 @@ export default function HomeworkPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["homework", currentClass?.id],
     queryFn: () => apiClient.get<{ data: Homework[] }>(`/homework${currentClass ? `?classId=${currentClass.id}` : ""}`),
+    enabled: !!currentClass?.id,
   });
   const items = data?.data ?? [];
 
