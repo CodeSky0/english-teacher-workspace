@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 interface WorkspaceState {
   currentClassId: string | null;
@@ -12,14 +13,23 @@ interface WorkspaceState {
   setSaveStatus: (status: WorkspaceState["saveStatus"]) => void;
 }
 
-export const useWorkspace = create<WorkspaceState>((set) => ({
-  currentClassId: null,
-  sidebarOpen: false,
-  sidebarCollapsed: false,
-  saveStatus: "idle",
-  setCurrentClassId: (id) => set({ currentClassId: id }),
-  setSidebarOpen: (open) => set({ sidebarOpen: open }),
-  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-  setSaveStatus: (status) => set({ saveStatus: status }),
-}));
+export const useWorkspace = create<WorkspaceState>()(
+  persist(
+    (set) => ({
+      currentClassId: null,
+      sidebarOpen: false,
+      sidebarCollapsed: false,
+      saveStatus: "idle",
+      setCurrentClassId: (id) => set({ currentClassId: id }),
+      setSidebarOpen: (open) => set({ sidebarOpen: open }),
+      toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+      setSaveStatus: (status) => set({ saveStatus: status }),
+    }),
+    {
+      name: "workspace",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (s) => ({ currentClassId: s.currentClassId }),
+    },
+  ),
+);
