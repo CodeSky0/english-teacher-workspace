@@ -35,11 +35,11 @@ type BackupData = {
 
 routes.get("/export", async (c) => {
   const u = c.get("user");
-  const [userData] = await db.select().from(user).where(eq(user.id, u.id));
 
-  const [classesData, studentsData, cellsData, plansData, researchData,
+  const [userData, classesData, studentsData, cellsData, plansData, researchData,
     homeworkData, examsData, scoresData, vocabUnitsData, vocabWordsData,
     dictListsData, dictWordsData, resourcesData, attendanceData, pointsData, feedbackData] = await Promise.all([
+    db.select().from(user).where(eq(user.id, u.id)),
     db.select().from(schema.classes).where(and(eq(schema.classes.userId, u.id), isNull(schema.classes.deletedAt))),
     db.select().from(schema.students).where(and(eq(schema.students.userId, u.id), isNull(schema.students.deletedAt))),
     db.select().from(schema.timetableCells).where(and(eq(schema.timetableCells.userId, u.id), isNull(schema.timetableCells.deletedAt))),
