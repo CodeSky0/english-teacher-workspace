@@ -21,7 +21,8 @@ export function useClasses() {
   const { currentClassId, setCurrentClassId } = useWorkspace();
 
   useEffect(() => {
-    if (data?.data?.length && !currentClassId) {
+    // 未选择班级，或持久化的班级已被删除时，回退到首个班级
+    if (data?.data?.length && (!currentClassId || !data.data.some((c) => c.id === currentClassId))) {
       setCurrentClassId(data.data[0].id);
     }
   }, [data, currentClassId, setCurrentClassId]);
