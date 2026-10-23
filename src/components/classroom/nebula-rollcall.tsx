@@ -93,7 +93,7 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
     let cy = 0;
     let baseR = 60;
     let maxR = 400;
-    let raf = 0;
+    let raf: number | null = null;
     let lastTs = performance.now();
     let lastDt = 16;
     let warpFlow = 0;
@@ -970,6 +970,19 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
 
+    // 离开视口时暂停 rAF 循环，回到视口时恢复
+    let visible = true;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        visible = entry.isIntersecting;
+        if (visible && raf === null) {
+          raf = requestAnimationFrame(frame);
+        }
+      },
+      { threshold: 0.05 },
+    );
+    io.observe(canvas);
+
     document.fonts?.ready.then(() => {
       if (phaseRef.current !== "reveal") return;
       const elapsed = performance.now() - revealAt;
@@ -1026,14 +1039,19 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       drawFlash(now);
       drawVignette();
 
+      if (!visible) {
+        raf = null;
+        return;
+      }
       raf = requestAnimationFrame(frame);
     }
 
     raf = requestAnimationFrame(frame);
 
     return () => {
-      cancelAnimationFrame(raf);
+      if (raf !== null) cancelAnimationFrame(raf);
       observer.disconnect();
+      io.disconnect();
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", onPointerLeave);
     };
