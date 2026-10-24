@@ -9,12 +9,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState, LoadingState } from "@/components/ui/states";
-import { Settings, Database, Trash2, Download, Upload, RotateCcw, Sparkles } from "lucide-react";
+import { Settings, Database, Trash2, Download, Upload, RotateCcw, Sparkles, ScrollText, History } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/error";
 
 type RecycleItem = { type: string; id: string; title: string; deletedAt: string | null; classId?: string | null };
+type AuditLog = { id: string; action: string; resourceType: string; resourceId: string | null; detail: unknown; createdAt: string };
+type ImportJob = { id: string; module: string; mode: string; status: string; fileName: string | null; totalRows: string | null; successCount: string | null; skipCount: string | null; failCount: string | null; createdAt: string };
+
+const ACTION_LABEL: Record<string, string> = {
+  create: "创建", update: "更新", delete: "删除", restore: "恢复", purge: "彻底删除",
+  import: "导入", export: "导出", backup: "备份", login: "登录",
+};
+const RESOURCE_LABEL: Record<string, string> = {
+  student: "学生", class: "班级", dictation: "听写", dictation_word: "听写单词",
+  exam: "考试", lesson_plan: "教案", vocab: "词汇", backup: "备份", resource: "资源",
+};
+const JOB_STATUS_STYLE: Record<string, string> = {
+  pending: "bg-neutral-3 text-muted",
+  processing: "bg-[#dde7f0] text-[#3d6896]",
+  completed: "bg-[#dcebe2] text-[#3d7a5e]",
+  failed: "bg-[#f3dadb] text-[#a64953]",
+};
 
 export default function SettingsPage() {
   const qc = useQueryClient();
@@ -28,6 +45,17 @@ export default function SettingsPage() {
     enabled: recycleOpen,
   });
   const recycleItems = recycleData?.data ?? [];
+
+  const { data: auditData, isLoading: auditLoading } = useQuery({
+    queryKey: ["audit-logs"],
+    queryFn: () => apiClient.get<{ data: AuditLog[] }>("/audit/logs?limit=30"),
+  });
+  const { data: jobsData } = useQuery({
+    queryKey: ["import-jobs"],
+    queryFn: () => apiClient.get<{ data: ImportJob[] }>("/audit/jobs?limit=10"),
+  });
+  const auditLogs = auditData?.data ?? [];
+  const importJobs = jobsData?.data ?? [];
 
   const restoreMut = useMutation({
     mutationFn: ({ type, id }: { type: string; id: string }) => apiClient.post(`/recycle/restore/${type}/${id}`),
@@ -90,6 +118,44 @@ export default function SettingsPage() {
               <input ref={fileRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setRecycleOpen(true)}><RotateCcw className="h-4 w-4" />回收站</Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2.5 text-base">
+              <span className="icon-slot"><ScrollText /></span>
+              操作日志
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {auditLoading ? <LoadingState /> : auditLogs.length === 0 ? <EmptyState title="暂无操作记录" /> : (
+              <div className="max-h-72 overflow-y-auto divide-y divide-line">
+                {auditLogs.map((log) => (
+                  <div key={log.id} className="flex items-center gap-3 px-1 py-2 text-sm transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/35 hover:to-transparent">
+                    <span className="shrink-0 rounded-md bg-[#f5dde0] px-2 py-0.5 text-xs font-medium text-primary-d">{ACTION_LABEL[log.action] ?? log.action}</span>
+                    <span className="text-muted">{RESOURCE_LABEL[log.resourceType] ?? log.resourceType}</span>
+                    <span className="ml-auto text-xs tabular-nums text-muted">{formatDate(log.createdAt)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {importJobs.length > 0 && (
+              <div className="mt-4">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted"><History className="h-3.5 w-3.5" />最近导入任务</p>
+                <div className="space-y-1.5">
+                  {importJobs.map((job) => (
+                    <div key={job.id} className="flex items-center gap-2 rounded-md bg-neutral-1/60 px-2.5 py-1.5 text-xs">
+                      <span className="font-medium">{job.module === "student" ? "学生" : job.module === "vocab" ? "词汇" : "听写单词"}</span>
+                      <span className={`rounded px-1.5 py-0.5 font-medium ${JOB_STATUS_STYLE[job.status] ?? JOB_STATUS_STYLE.pending}`}>{job.status === "completed" ? "完成" : job.status === "failed" ? "失败" : job.status === "processing" ? "处理中" : "等待"}</span>
+                      {job.successCount && <span className="text-muted">成功 {job.successCount}</span>}
+                      {job.failCount && job.failCount !== "0" && <span className="text-[#a64953]">失败 {job.failCount}</span>}
+                      <span className="ml-auto tabular-nums text-muted">{formatDate(job.createdAt)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

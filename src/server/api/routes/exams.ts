@@ -87,7 +87,7 @@ routes.patch("/scores/:scoreId", async (c) => {
   if (!body) return unprocessable(c, "请求体不合法");
   const { id: _id, userId: _uid, createdAt: _ca, updatedAt: _ua, deletedAt: _da, examId: _eid, ...updateData } = body;
   const { listeningScore, speakingScore, writtenScore, totalIsManual } = updateData;
-  if (totalIsManual === false && listeningScore != null && speakingScore != null && writtenScore != null) {
+  if (totalIsManual !== true && listeningScore != null && speakingScore != null && writtenScore != null) {
     const sum = Number(listeningScore) + Number(speakingScore) + Number(writtenScore);
     if (Number.isFinite(sum)) updateData.totalScore = String(sum);
   }

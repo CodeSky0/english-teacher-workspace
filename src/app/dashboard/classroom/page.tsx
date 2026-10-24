@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
@@ -29,6 +29,11 @@ const NebulaRollCall = dynamic(
       </div>
     ),
   },
+);
+
+const PollPanel = dynamic(
+  () => import("@/components/classroom/poll-panel").then((m) => m.PollPanel),
+  { ssr: false },
 );
 
 type BulkResult = { data?: { created?: number; updated?: number } };
@@ -69,6 +74,11 @@ export default function ClassroomPage() {
   const [rolling, setRolling] = useState(false);
   const [noRepeat, setNoRepeat] = useState(true);
   const [pickHistory, setPickHistory] = useState<string[]>([]);
+  const rollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => { if (rollTimerRef.current) clearInterval(rollTimerRef.current); };
+  }, []);
 
   // ---- 考勤 ----
   const [attDate, setAttDate] = useState(todayStr());
@@ -229,12 +239,14 @@ export default function ClassroomPage() {
       setPicked(rollPool[Math.floor(Math.random() * rollPool.length)]);
       if (ticks >= total) {
         clearInterval(timer);
+        rollTimerRef.current = null;
         const final = rollPool[Math.floor(Math.random() * rollPool.length)];
         setPicked(final);
         setRolling(false);
         setPickHistory((prev) => (prev.includes(final.id) ? prev : [...prev, final.id]));
       }
     }, 70);
+    rollTimerRef.current = timer;
   }
 
   function resetPicks() {
@@ -773,6 +785,7 @@ export default function ClassroomPage() {
           )}
         </>
       )}
+      {currentClass && <PollPanel classId={currentClass.id} />}
     </div>
   );
 }

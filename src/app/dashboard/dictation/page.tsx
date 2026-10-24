@@ -131,7 +131,7 @@ export default function DictationPage() {
     setTab("words");
     if (selectedList?.classId) setScoreClassId(selectedList.classId);
     else if (currentClass?.id) setScoreClassId(currentClass.id);
-  }, [selectedList?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedList?.id, currentClass?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const flush = useCallback(async () => {
     if (!selectedList) return;
@@ -259,6 +259,7 @@ export default function DictationPage() {
 
   function speak(text: string) {
     if (!("speechSynthesis" in window)) { toast.error("浏览器不支持语音合成"); return; }
+    speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; speechSynthesis.speak(u);
   }
 

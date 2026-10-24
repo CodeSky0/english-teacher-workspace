@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { eq, and, isNotNull, type AnyColumn } from "drizzle-orm";
 import type { AnyPgTable } from "drizzle-orm/pg-core";
 import { db } from "@/server/db";
+import { bustUser } from "@/server/cache";
 import {
   classes, students, timetableCells, lessonPlans, teachingResearch,
   homework, exams, vocabUnits, vocabWords, dictationLists, teachingResources,
@@ -88,6 +89,7 @@ routes.post("/restore/:type/:id", async (c) => {
     .where(and(eq(t.id, id), eq(t.userId, user.id), isNotNull(t.deletedAt)))
     .returning();
   if (!record) return c.json({ error: { code: "NOT_FOUND", message: "记录不存在" } }, 404);
+  await bustUser(user.id);
   return c.json({ data: record });
 });
 
@@ -102,6 +104,7 @@ routes.delete("/:type/:id", async (c) => {
     .where(and(eq(t.id, id), eq(t.userId, user.id), isNotNull(t.deletedAt)))
     .returning();
   if (!record) return c.json({ error: { code: "NOT_FOUND", message: "记录不存在" } }, 404);
+  await bustUser(user.id);
   return c.json({ data: record });
 });
 

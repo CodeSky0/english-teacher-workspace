@@ -29,7 +29,8 @@ const updateSchema = z.object({
 
 routes.patch("/", async (c) => {
   const u = c.get("user");
-  const body = await c.req.json();
+  const body = await c.req.json().catch(() => null);
+  if (!body) return c.json({ error: { code: "UNPROCESSABLE", message: "请求体不合法" } }, 422);
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: "INVALID", message: "参数不合法", details: parsed.error } }, 422);
   const [updated] = await db.update(user).set({ ...parsed.data, updatedAt: new Date() }).where(eq(user.id, u.id)).returning();
@@ -39,7 +40,8 @@ routes.patch("/", async (c) => {
 
 routes.post("/verify-password", async (c) => {
   const u = c.get("user");
-  const body = await c.req.json();
+  const body = await c.req.json().catch(() => null);
+  if (!body) return c.json({ error: { code: "UNPROCESSABLE", message: "请求体不合法" } }, 422);
   const parsed = z.object({ password: z.string().min(1) }).safeParse(body);
   if (!parsed.success) return c.json({ error: "密码不能为空" }, 400);
   const { password } = parsed.data;

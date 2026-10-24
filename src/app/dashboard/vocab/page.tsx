@@ -12,7 +12,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
 import { downloadExport } from "@/lib/excel/client";
-import { Plus, Pencil, Trash2, BookOpen, Volume2, ChevronRight, Upload, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, BookOpen, Volume2, ChevronRight, Upload, Download, Sparkles, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
 
@@ -35,6 +35,8 @@ export default function VocabPage() {
   const [importUnitId, setImportUnitId] = useState("");
   const [newUnitName, setNewUnitName] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiExerciseType, setAiExerciseType] = useState("mixed");
 
   const { data: unitsData, isLoading } = useQuery({ queryKey: ["vocab-units"], queryFn: () => apiClient.get<{ data: VocabUnit[] }>("/vocab/units") });
   const units = unitsData?.data ?? [];
@@ -51,6 +53,12 @@ export default function VocabPage() {
   const createWordMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/vocab/words", { ...d, unitId: selectedUnit?.id }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已添加"); setWordDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
   const updateWordMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiClient.patch(`/vocab/words/${id}`, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已保存"); setWordDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
   const deleteWordMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/vocab/words/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["vocab-words"] }); toast.success("已删除"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+
+  const aiExerciseMut = useMutation({
+    mutationFn: (d: Record<string, unknown>) => apiClient.post<{ data: { content: string; isTemplate: boolean; note?: string } }>("/ai/exercise", d),
+    onSuccess: (res) => { setAiResult(res.data.content); toast.success(res.data.note || "练习题已生成"); },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+  });
 
   function openImport() {
     setImportUnitId(selectedUnit?.id ?? "");
@@ -93,6 +101,7 @@ export default function VocabPage() {
 
   function speak(text: string) {
     if (!("speechSynthesis" in window)) { toast.error("浏览器不支持语音合成"); return; }
+    speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "en-US";
     speechSynthesis.speak(u);
@@ -149,7 +158,14 @@ export default function VocabPage() {
               <h3 className="font-semibold">{selectedUnit.name}</h3>
               <Badge variant="muted">{words.length} 词</Badge>
             </div>
-            <Button onClick={openCreateWord} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />添加单词</Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" className="gap-1.5"
+                onClick={() => aiExerciseMut.mutate({ unitId: selectedUnit.id, exerciseType: aiExerciseType, count: 10 })}
+                disabled={aiExerciseMut.isPending || words.length === 0}>
+                <Sparkles className="h-3.5 w-3.5" />{aiExerciseMut.isPending ? "出题中…" : "AI 出题"}
+              </Button>
+              <Button onClick={openCreateWord} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />添加单词</Button>
+            </div>
           </div>
           <Card><CardContent className="p-0">
             {words.length === 0 ? <EmptyState title="暂无单词" /> :
@@ -180,6 +196,32 @@ export default function VocabPage() {
           </CardContent></Card>
         </div>
       )}
+
+      <Dialog open={!!aiResult} onClose={() => setAiResult(null)} title="AI 生成练习题" className="max-w-2xl">
+        {aiResult && (
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <select value={aiExerciseType} onChange={(e) => setAiExerciseType(e.target.value)} className="flex h-8 rounded-md border border-line bg-panel px-2 text-xs">
+                <option value="mixed">混合题型</option>
+                <option value="choice">选择题</option>
+                <option value="fill">填空题</option>
+                <option value="match">匹配题</option>
+                <option value="sentence">造句题</option>
+              </select>
+              <Button variant="outline" size="sm" className="gap-1.5"
+                onClick={() => { try { navigator.clipboard?.writeText(aiResult); toast.success("已复制"); } catch { toast.error("复制失败"); } }}>
+                <Copy className="h-3.5 w-3.5" />复制
+              </Button>
+              <Button variant="secondary" size="sm" className="gap-1.5"
+                onClick={() => aiExerciseMut.mutate({ unitId: selectedUnit?.id, exerciseType: aiExerciseType, count: 10 })}
+                disabled={aiExerciseMut.isPending}>
+                <Sparkles className="h-3.5 w-3.5" />重新生成
+              </Button>
+            </div>
+            <pre className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-lg bg-neutral-1/60 p-4 text-sm leading-relaxed">{aiResult}</pre>
+          </div>
+        )}
+      </Dialog>
 
       <ImportDialog
         open={importOpen}

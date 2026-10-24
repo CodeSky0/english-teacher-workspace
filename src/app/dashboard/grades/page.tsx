@@ -16,6 +16,7 @@ import { Plus, GraduationCap, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
 import { ScoreDistribution } from "./score-distribution";
+import { AnalyticsPanel } from "./analytics-panel";
 
 type Exam = { id: string; name: string; classId: string; examDate: string | null; type: string | null; remark: string | null };
 type Score = { id: string; examId: string; studentId: string; listeningScore: string | null; speakingScore: string | null; writtenScore: string | null; totalScore: string | null; totalIsManual: boolean };
@@ -118,6 +119,7 @@ export default function GradesPage() {
         action={<Button onClick={() => setExamDialog(true)} className="gap-1.5"><Plus className="h-4 w-4" />创建考试</Button>} />
 
       {!selectedExam ? (
+        <>
         <Card><CardContent className="p-0">
           {examsLoading ? <LoadingState /> : exams.length === 0 ? <EmptyState icon={<GraduationCap className="h-10 w-10" />} title="暂无考试" description="点击右上角创建考试" /> :
             <div className="divide-y divide-line">
@@ -136,6 +138,8 @@ export default function GradesPage() {
               ))}
             </div>}
         </CardContent></Card>
+        <AnalyticsPanel classId={currentClass.id} />
+        </>
       ) : (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">

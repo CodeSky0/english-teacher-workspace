@@ -115,7 +115,7 @@ routes.post("/poll-options", async (c) => {
 routes.patch("/poll-options/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const [opt] = await db.select().from(classroomPollOptions).where(eq(classroomPollOptions.id, id));
+  const [opt] = await db.select().from(classroomPollOptions).where(and(eq(classroomPollOptions.id, id), isNull(classroomPollOptions.deletedAt)));
   if (!opt) return notFound(c);
   const [poll] = await db.select({ id: classroomPolls.id })
     .from(classroomPolls)
@@ -133,7 +133,7 @@ routes.patch("/poll-options/:id", async (c) => {
 routes.delete("/poll-options/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const [opt] = await db.select().from(classroomPollOptions).where(eq(classroomPollOptions.id, id));
+  const [opt] = await db.select().from(classroomPollOptions).where(and(eq(classroomPollOptions.id, id), isNull(classroomPollOptions.deletedAt)));
   if (!opt) return notFound(c);
   const [poll] = await db.select({ id: classroomPolls.id })
     .from(classroomPolls)

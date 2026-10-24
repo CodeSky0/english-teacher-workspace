@@ -44,10 +44,14 @@ export default function AiPage() {
   });
 
   function handleCopy() {
-    navigator.clipboard.writeText(result);
-    setCopied(true);
-    toast.success("已复制");
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      navigator.clipboard?.writeText(result);
+      setCopied(true);
+      toast.success("已复制");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("复制失败");
+    }
   }
 
   function handleChat() {

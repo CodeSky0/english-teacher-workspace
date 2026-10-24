@@ -84,8 +84,10 @@ export function download(filename: string, content: string, mimeType = "text/csv
 }
 
 export function sanitizeCSVValue(value: string): string {
-  if (value.startsWith("=") || value.startsWith("+") || value.startsWith("-") || value.startsWith("@")) {
-    return `'${value}`;
+  if (value == null) return "";
+  const str = String(value);
+  if (str.startsWith("=") || str.startsWith("+") || str.startsWith("-") || str.startsWith("@")) {
+    return `'${str}`;
   }
-  return value;
+  return str;
 }

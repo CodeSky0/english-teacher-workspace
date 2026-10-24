@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { PageHeader } from "@/components/common/page-header";
@@ -10,7 +10,7 @@ import { Input, Label, Textarea } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
-import { Plus, Pencil, Trash2, FolderOpen, ExternalLink, Search, FileText, ClipboardCheck, Music, Video, BookMarked, Microscope, X } from "lucide-react";
+import { Plus, Pencil, Trash2, FolderOpen, ExternalLink, Search, FileText, ClipboardCheck, Music, Video, BookMarked, Microscope, X, Upload, Eye, FileX, ImageIcon, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
 import { cn } from "@/lib/utils";
@@ -18,11 +18,11 @@ import { cn } from "@/lib/utils";
 type Resource = {
   id: string; title: string; type: "courseware" | "lesson_plan" | "exam" | "audio" | "video" | "reading" | "research" | "other";
   unit: string | null; description: string | null; link: string | null;
+  fileName: string | null; blobUrl: string | null; mimeType: string | null; fileSize: number | null;
 };
 
 const TYPE_MAP: Record<string, string> = { courseware: "课件", lesson_plan: "教案", exam: "试题", audio: "音频", video: "视频", reading: "阅读材料", research: "教研材料", other: "其他" };
 
-/** 类型 → 和色图标块（底 / 字 / 环） */
 const TYPE_ACCENT: Record<string, { tile: string; icon: typeof FileText }> = {
   courseware: { tile: "bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] text-[#c56473] ring-[#c56473]/22", icon: FileText },
   lesson_plan: { tile: "bg-gradient-to-b from-[#e9f0f6] to-[#dee8f0] text-[#3d6896] ring-[#3d6896]/20", icon: ClipboardCheck },
@@ -34,6 +34,18 @@ const TYPE_ACCENT: Record<string, { tile: string; icon: typeof FileText }> = {
   other: { tile: "bg-gradient-to-b from-[#eeece7] to-[#e5e3dc] text-neutral-6 ring-[#cfccc4]/60", icon: FolderOpen },
 };
 
+function formatSize(bytes: number | null): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function isAudio(mime: string | null) { return !!mime && mime.startsWith("audio/"); }
+function isVideo(mime: string | null) { return !!mime && mime.startsWith("video/"); }
+function isPdf(mime: string | null) { return mime === "application/pdf"; }
+function isImage(mime: string | null) { return !!mime && mime.startsWith("image/"); }
+
 export default function ResourcesPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -42,6 +54,14 @@ export default function ResourcesPage() {
   const [editing, setEditing] = useState<Resource | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", type: "other", unit: "", description: "", link: "" });
+
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadMeta, setUploadMeta] = useState({ title: "", type: "", unit: "", description: "" });
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [previewRes, setPreviewRes] = useState<Resource | null>(null);
 
   const { data, isLoading } = useQuery({ queryKey: ["resources"], queryFn: () => apiClient.get<{ data: Resource[] }>("/resources") });
   const items = useMemo(() => data?.data ?? [], [data]);
@@ -57,6 +77,16 @@ export default function ResourcesPage() {
   const createMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/resources", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["resources"] }); toast.success("已添加"); setDialogOpen(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
   const updateMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiClient.patch(`/resources/${id}`, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["resources"] }); toast.success("已保存"); setDialogOpen(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
   const deleteMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/resources/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["resources"] }); toast.success("已删除"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const uploadMut = useMutation({
+    mutationFn: (vars: { file: File; fields: Record<string, string> }) => apiClient.upload("/resources/upload", vars.file, vars.fields),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["resources"] }); toast.success("上传成功"); setUploadOpen(false); setUploadFile(null); setUploadMeta({ title: "", type: "", unit: "", description: "" }); },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+  });
+  const removeFileMut = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/resources/${id}/file`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["resources"] }); toast.success("已移除文件"); },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+  });
 
   function openCreate() { setEditing(null); setForm({ title: "", type: "other", unit: "", description: "", link: "" }); setDialogOpen(true); }
   function openEdit(r: Resource) { setEditing(r); setForm({ title: r.title, type: r.type, unit: r.unit ?? "", description: r.description ?? "", link: r.link ?? "" }); setDialogOpen(true); }
@@ -67,11 +97,39 @@ export default function ResourcesPage() {
     if (editing) await updateMut.mutateAsync({ id: editing.id, data: payload }); else await createMut.mutateAsync(payload);
   }
 
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) { setUploadFile(file); setUploadMeta((m) => ({ ...m, title: m.title || file.name.replace(/\.[^.]+$/, "") })); }
+  }, []);
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) { setUploadFile(file); setUploadMeta((m) => ({ ...m, title: m.title || file.name.replace(/\.[^.]+$/, "") })); }
+    e.target.value = "";
+  }
+
+  async function handleUpload() {
+    if (!uploadFile) { toast.error("请先选择文件"); return; }
+    await uploadMut.mutateAsync({
+      file: uploadFile,
+      fields: {
+        title: uploadMeta.title || uploadFile.name,
+        type: uploadMeta.type || "",
+        unit: uploadMeta.unit,
+        description: uploadMeta.description,
+      },
+    });
+  }
+
   return (
     <div>
       <PageHeader title="资源库" description={`共 ${items.length} 条资源`}
-        action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" />添加资源</Button>} />
-      {/* 筛选条：搜索框 + 和色类型芯片 */}
+        action={<div className="flex gap-2">
+          <Button variant="outline" onClick={() => setUploadOpen(true)} className="gap-1.5"><Upload className="h-4 w-4" />上传文件</Button>
+          <Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" />添加资源</Button>
+        </div>} />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
@@ -108,6 +166,8 @@ export default function ResourcesPage() {
             {filtered.map((r) => {
               const accent = TYPE_ACCENT[r.type] ?? TYPE_ACCENT.other;
               const Icon = accent.icon;
+              const hasFile = !!r.blobUrl;
+              const showPreview = hasFile && (isAudio(r.mimeType) || isVideo(r.mimeType) || isPdf(r.mimeType) || isImage(r.mimeType));
               return (
                 <div key={r.id} className="group relative flex items-center gap-3.5 p-4 pl-5 transition-[background] duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/55 hover:via-[#f8e4e7]/12 hover:to-transparent">
                   <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.5rem] ring-1 ring-inset shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]", accent.tile)}>
@@ -118,10 +178,15 @@ export default function ResourcesPage() {
                       <span className="truncate font-medium tracking-[0.01em]">{r.title}</span>
                       <Badge variant="muted">{TYPE_MAP[r.type]}</Badge>
                       {r.unit && <Badge variant="outline">{r.unit}</Badge>}
+                      {hasFile && <span className="text-xs tabular-nums text-muted">{formatSize(r.fileSize)}</span>}
                     </div>
                     {r.description && <p className="mt-1 line-clamp-1 text-xs text-muted">{r.description}</p>}
+                    {hasFile && isAudio(r.mimeType) && (
+                      <audio controls preload="none" src={r.blobUrl ?? undefined} className="mt-2 h-8 w-full max-w-md" />
+                    )}
                   </div>
                   <div className="flex items-center gap-1 opacity-55 transition-opacity duration-[var(--dur-quick)] group-hover:opacity-100">
+                    {showPreview && <button onClick={() => setPreviewRes(r)} title="预览" className="rounded-md p-1.5 text-muted transition-colors hover:bg-panel hover:text-primary hover:shadow-[var(--shadow-xs)]"><Eye className="h-4 w-4" /></button>}
                     {r.link && <a href={r.link} target="_blank" rel="noopener noreferrer" title="打开链接" className="rounded-md p-1.5 text-muted transition-colors hover:bg-panel hover:text-primary hover:shadow-[var(--shadow-xs)]"><ExternalLink className="h-4 w-4" /></a>}
                     <button onClick={() => openEdit(r)} title="编辑" className="rounded-md p-1.5 text-muted transition-colors hover:bg-panel hover:text-primary hover:shadow-[var(--shadow-xs)]"><Pencil className="h-4 w-4" /></button>
                     <button onClick={() => setDeleteId(r.id)} title="删除" className="rounded-md p-1.5 text-muted transition-colors hover:bg-[#f8e4e7] hover:text-[#a64953] hover:shadow-[var(--shadow-xs)]"><Trash2 className="h-4 w-4" /></button>
@@ -145,8 +210,70 @@ export default function ResourcesPage() {
           </div>
           <div className="space-y-1.5"><Label>简介</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} /></div>
           <div className="space-y-1.5"><Label>链接</Label><Input value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })} placeholder="https://…" /></div>
+          {editing?.blobUrl && (
+            <div className="rounded-lg border border-line bg-neutral-1/50 p-3">
+              <div className="flex items-center gap-2 text-sm">
+                <FileText className="h-4 w-4 text-muted" />
+                <span className="truncate">{editing.fileName}</span>
+                <span className="ml-auto text-xs text-muted">{formatSize(editing.fileSize)}</span>
+              </div>
+              <Button variant="outline" size="sm" className="mt-2 gap-1.5" onClick={() => removeFileMut.mutate(editing.id)} disabled={removeFileMut.isPending}>
+                <FileX className="h-3.5 w-3.5" />移除文件
+              </Button>
+            </div>
+          )}
           <Button onClick={handleSubmit} disabled={createMut.isPending || updateMut.isPending} className="w-full">保存</Button>
         </div>
+      </Dialog>
+
+      <Dialog open={uploadOpen} onClose={() => setUploadOpen(false)} title="上传文件" description="支持音频、视频、PDF、图片、课件等，最大 50MB">
+        <div className="space-y-4">
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={cn(
+              "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-all duration-[var(--dur-smooth)]",
+              dragging ? "border-primary bg-[#f5dde0]/60 scale-[1.01]" : "border-line bg-neutral-1/40 hover:border-primary/50 hover:bg-[#f5dde0]/30",
+            )}
+          >
+            <Upload className={cn("h-8 w-8 transition-colors", dragging ? "text-primary" : "text-muted")} />
+            <p className="mt-2 text-sm font-medium">{uploadFile ? uploadFile.name : "点击或拖拽文件到此处"}</p>
+            <p className="mt-1 text-xs text-muted">{uploadFile ? `${formatSize(uploadFile.size)} · ${uploadFile.type || "未知类型"}` : "音频 / 视频 / PDF / 图片 / 课件"}</p>
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect}
+              accept="audio/*,video/*,.pdf,image/*,.ppt,.pptx,.doc,.docx" />
+          </div>
+          {uploadFile && (
+            <>
+              <div className="space-y-1.5"><Label>标题</Label><Input value={uploadMeta.title} onChange={(e) => setUploadMeta({ ...uploadMeta, title: e.target.value })} placeholder={uploadFile.name} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label>类型（可选）</Label>
+                  <select value={uploadMeta.type} onChange={(e) => setUploadMeta({ ...uploadMeta, type: e.target.value })} className="flex h-9 w-full rounded-md border border-line bg-panel px-3 text-sm">
+                    <option value="">自动判断</option>
+                    {Object.entries(TYPE_MAP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5"><Label>所属单元</Label><Input value={uploadMeta.unit} onChange={(e) => setUploadMeta({ ...uploadMeta, unit: e.target.value })} placeholder="如 Unit 1" /></div>
+              </div>
+              <div className="space-y-1.5"><Label>简介</Label><Textarea value={uploadMeta.description} onChange={(e) => setUploadMeta({ ...uploadMeta, description: e.target.value })} rows={2} /></div>
+            </>
+          )}
+          <Button onClick={handleUpload} disabled={!uploadFile || uploadMut.isPending} className="w-full gap-1.5">
+            <Upload className="h-4 w-4" />{uploadMut.isPending ? "上传中…" : "上传"}
+          </Button>
+        </div>
+      </Dialog>
+
+      <Dialog open={!!previewRes} onClose={() => setPreviewRes(null)} title={previewRes?.title} className="max-w-3xl">
+        {previewRes?.blobUrl && (
+          <div className="overflow-hidden rounded-lg">
+            {isAudio(previewRes.mimeType) && <audio controls src={previewRes.blobUrl} className="w-full" />}
+            {isVideo(previewRes.mimeType) && <video controls src={previewRes.blobUrl} className="max-h-[70vh] w-full" />}
+            {isPdf(previewRes.mimeType) && <iframe src={previewRes.blobUrl} className="h-[70vh] w-full border-0" title={previewRes.title} />}
+            {isImage(previewRes.mimeType) && <img src={previewRes.blobUrl} alt={previewRes.title} className="max-h-[70vh] w-full object-contain" />}
+          </div>
+        )}
       </Dialog>
 
       <Dialog open={!!deleteId} onClose={() => setDeleteId(null)} title="确认删除">

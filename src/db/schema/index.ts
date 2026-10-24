@@ -10,3 +10,4 @@ export * from "./dictation";
 export * from "./resources";
 export * from "./classroom";
 export * from "./audit";
+export * from "./semester";

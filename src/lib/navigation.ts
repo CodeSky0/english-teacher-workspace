@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   CalendarDays,
+  CalendarRange,
   ClipboardList,
   Users,
   GraduationCap,
@@ -34,6 +35,7 @@ export const navGroups: NavGroup[] = [
   {
     group: "教学准备",
     items: [
+      { label: "学期规划", href: "/dashboard/semester", icon: CalendarRange },
       { label: "教学课表", href: "/dashboard/schedule", icon: CalendarDays },
       { label: "备课与反思", href: "/dashboard/plans", icon: ClipboardList },
       { label: "教学教研", href: "/dashboard/research", icon: PenLine },

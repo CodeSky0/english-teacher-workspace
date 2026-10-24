@@ -11,7 +11,7 @@ import { Input, Label, Textarea } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
-import { Plus, Pencil, Trash2, ClipboardList, CalendarDays, Layers } from "lucide-react";
+import { Plus, Pencil, Trash2, ClipboardList, CalendarDays, Layers, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
 
@@ -61,6 +61,15 @@ export default function PlansPage() {
   const deleteMut = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/plans/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["plans"] }); toast.success("已删除"); },
+  });
+
+  const aiPlanMut = useMutation({
+    mutationFn: (d: Record<string, unknown>) => apiClient.post<{ data: { content: string; isTemplate: boolean; note?: string } }>("/ai/lesson-plan", d),
+    onSuccess: (res) => {
+      setForm((f) => ({ ...f, teachingProcess: res.data.content }));
+      toast.success(res.data.note || "AI 教案已生成");
+    },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 
   function openCreate() { setEditing(null); setForm({ title: "", classId: currentClass?.id ?? "", teachDate: "", status: "pending", unit: "", lessonType: "", objectives: "", teachingProcess: "", reflection: "" }); setDialogOpen(true); }
@@ -135,7 +144,17 @@ export default function PlansPage() {
             <div className="space-y-1"><Label>课型</Label><Input value={form.lessonType} onChange={(e) => setForm({ ...form, lessonType: e.target.value })} placeholder="如 阅读课" /></div>
           </div>
           <div className="space-y-1"><Label>教学目标</Label><Textarea value={form.objectives} onChange={(e) => setForm({ ...form, objectives: e.target.value })} rows={3} /></div>
-          <div className="space-y-1"><Label>教学过程</Label><Textarea value={form.teachingProcess} onChange={(e) => setForm({ ...form, teachingProcess: e.target.value })} rows={5} /></div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label>教学过程</Label>
+              <Button variant="secondary" size="sm" className="gap-1.5"
+                onClick={() => aiPlanMut.mutate({ title: form.title, unit: form.unit, classId: form.classId, lessonType: form.lessonType, objectives: form.objectives })}
+                disabled={aiPlanMut.isPending || !form.title.trim()}>
+                <Sparkles className="h-3.5 w-3.5" />{aiPlanMut.isPending ? "生成中…" : "AI 生成教案"}
+              </Button>
+            </div>
+            <Textarea value={form.teachingProcess} onChange={(e) => setForm({ ...form, teachingProcess: e.target.value })} rows={5} />
+          </div>
           <div className="space-y-1"><Label>教学反思</Label><Textarea value={form.reflection} onChange={(e) => setForm({ ...form, reflection: e.target.value })} rows={3} /></div>
           <Button onClick={handleSubmit} disabled={createMut.isPending || updateMut.isPending} className="w-full">保存</Button>
         </div>

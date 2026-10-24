@@ -23,6 +23,10 @@ import { aiRoutes } from "./routes/ai";
 import { excelRoutes } from "./routes/excel";
 import { importExportRoutes } from "./routes/import-export";
 import { overviewRoutes } from "./routes/overview";
+import { auditRoutes } from "./routes/audit";
+import { analyticsRoutes } from "./routes/analytics";
+import { pollRoutes } from "./routes/poll";
+import { semesterRoutes } from "./routes/semester";
 import type { AppEnv, RouteUser } from "./env";
 
 const app = new Hono<AppEnv>();
@@ -58,7 +62,8 @@ app.get("/api/health", async (c) => {
 });
 
 app.use("/api/*", async (c, next) => {
-  if (c.req.path === "/api/health") return next();
+  const path = c.req.path;
+  if (path === "/api/health" || path.startsWith("/api/poll/")) return next();
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!session) return unauthorized(c);
   c.set("user", session.user as unknown as RouteUser);
@@ -84,9 +89,13 @@ api.route("/backup", backupRoutes);
 api.route("/ai", aiRoutes);
 api.route("/excel", excelRoutes);
 api.route("/overview", overviewRoutes);
+api.route("/audit", auditRoutes);
+api.route("/analytics", analyticsRoutes);
+api.route("/semester", semesterRoutes);
 // 导入/导出路由自带 /import、/export 前缀，直接挂在 api 根上
 api.route("/", importExportRoutes);
 
 app.route("/api", api);
+app.route("/api/poll", pollRoutes);
 
 export { app };

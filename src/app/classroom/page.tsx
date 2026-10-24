@@ -186,6 +186,7 @@ function RollCallTool() {
   const [rolling, setRolling] = useState(false);
   const [history, setHistory] = useState<Student[]>([]);
   const [noRepeat, setNoRepeat] = useState(true);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const rollPool = useMemo(
     () => (noRepeat ? students.filter((s) => !history.some((h) => h.id === s.id)) : students),
@@ -202,12 +203,14 @@ function RollCallTool() {
       setPicked(rollPool[Math.floor(Math.random() * rollPool.length)]);
       if (ticks >= total) {
         clearInterval(timer);
+        timerRef.current = null;
         const final = rollPool[Math.floor(Math.random() * rollPool.length)];
         setPicked(final);
         setRolling(false);
         setHistory((h) => [...h, final]);
       }
     }, 70);
+    timerRef.current = timer;
   }, [rollPool, noRepeat]);
 
   useEffect(() => {
@@ -215,6 +218,10 @@ function RollCallTool() {
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [roll]);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
 
   if (!currentClass) return <p className="text-center text-muted">请先选择班级</p>;
   if (students.length === 0) return <p className="text-center text-muted">暂无学生</p>;
@@ -506,7 +513,7 @@ function WordCardTool() {
   const units = unitsData?.data ?? [];
   const { data: wordsData } = useQuery({ queryKey: ["vocab-words", selectedUnit], queryFn: () => apiClient.get<{ data: VocabWord[] }>(`/vocab/words?unitId=${selectedUnit}`), enabled: !!selectedUnit });
   const words = wordsData?.data ?? [];
-  const order = randomOrder ? [...words].sort(() => Math.random() - 0.5) : words;
+  const order = useMemo(() => (randomOrder ? [...words].sort(() => Math.random() - 0.5) : words), [words, randomOrder]);
   const current = order[index];
 
   useEffect(() => {
@@ -520,7 +527,7 @@ function WordCardTool() {
     return () => document.removeEventListener("keydown", handler);
   }, [current, flipped, order.length]);
 
-  function speak(text: string) { if ("speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; speechSynthesis.speak(u); } }
+  function speak(text: string) { if ("speechSynthesis" in window) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; speechSynthesis.speak(u); } }
 
   return (
     <div className="text-center">
@@ -585,7 +592,7 @@ function DictationTool() {
   const words = wordsData?.data ?? [];
   const current = words[index];
 
-  function speak(text: string) { if ("speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; speechSynthesis.speak(u); } }
+  function speak(text: string) { if ("speechSynthesis" in window) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; speechSynthesis.speak(u); } }
 
   return (
     <div className="text-center">

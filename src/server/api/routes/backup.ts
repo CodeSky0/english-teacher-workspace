@@ -6,6 +6,7 @@ import { user } from "@/db/schema/auth";
 import * as schema from "@/db/schema";
 import type { RouteEnv } from "../env";
 import { getErrorMessage } from "@/lib/error";
+import { audit } from "@/server/audit";
 
 const routes = new Hono<RouteEnv>();
 
@@ -38,7 +39,7 @@ routes.get("/export", async (c) => {
 
   const [userData, classesData, studentsData, cellsData, plansData, researchData,
     homeworkData, examsData, scoresData, vocabUnitsData, vocabWordsData,
-    dictListsData, dictWordsData, resourcesData, attendanceData, pointsData, feedbackData] = await Promise.all([
+    dictListsData, dictWordsData, dictResultsData, resourcesData, attendanceData, pointsData, feedbackData] = await Promise.all([
     db.select().from(user).where(eq(user.id, u.id)),
     db.select().from(schema.classes).where(and(eq(schema.classes.userId, u.id), isNull(schema.classes.deletedAt))),
     db.select().from(schema.students).where(and(eq(schema.students.userId, u.id), isNull(schema.students.deletedAt))),
@@ -52,6 +53,7 @@ routes.get("/export", async (c) => {
     db.select().from(schema.vocabWords).where(and(eq(schema.vocabWords.userId, u.id), isNull(schema.vocabWords.deletedAt))),
     db.select().from(schema.dictationLists).where(and(eq(schema.dictationLists.userId, u.id), isNull(schema.dictationLists.deletedAt))),
     db.select().from(schema.dictationWords).where(and(eq(schema.dictationWords.userId, u.id), isNull(schema.dictationWords.deletedAt))),
+    db.select().from(schema.dictationResults).where(and(eq(schema.dictationResults.userId, u.id), isNull(schema.dictationResults.deletedAt))),
     db.select().from(schema.teachingResources).where(and(eq(schema.teachingResources.userId, u.id), isNull(schema.teachingResources.deletedAt))),
     db.select().from(schema.attendanceRecords).where(and(eq(schema.attendanceRecords.userId, u.id), isNull(schema.attendanceRecords.deletedAt))),
     db.select().from(schema.classroomPoints).where(and(eq(schema.classroomPoints.userId, u.id), isNull(schema.classroomPoints.deletedAt))),
@@ -76,6 +78,7 @@ routes.get("/export", async (c) => {
       vocabWords: vocabWordsData,
       dictationLists: dictListsData,
       dictationWords: dictWordsData,
+      dictationResults: dictResultsData,
       teachingResources: resourcesData,
       attendance: attendanceData,
       classroomPoints: pointsData,
@@ -83,13 +86,14 @@ routes.get("/export", async (c) => {
     },
   };
 
+  void audit(u.id, "export", "backup", undefined, { mode: "full" });
   return c.json(backup);
 });
 
 routes.post("/import", async (c) => {
   const u = c.get("user");
-  const body = await c.req.json();
-  if (body.app !== "english-teacher-workspace") {
+  const body = await c.req.json().catch(() => null);
+  if (!body || body.app !== "english-teacher-workspace") {
     return c.json({ error: { code: "INVALID", message: "不是有效的工作台备份文件" } }, 422);
   }
   if (body.schemaVersion !== 1) {
@@ -303,6 +307,7 @@ routes.post("/import", async (c) => {
       return counts;
     });
 
+    void audit(u.id, "import", "backup", undefined, { mode, counts: result });
     return c.json({ data: { counts: result, mode } });
   } catch (e: unknown) {
     return c.json({ error: { code: "IMPORT_FAILED", message: getErrorMessage(e, "导入失败") } }, 500);

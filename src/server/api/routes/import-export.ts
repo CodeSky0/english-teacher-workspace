@@ -8,6 +8,7 @@ import { classroomPoints, attendanceRecords, studentFeedback } from "@/db/schema
 import { buildXlsx, xlsxResponse, type SheetSpec } from "@/server/excel/workbook";
 import { normalizeGender, genderLabel } from "@/lib/excel/fields";
 import { badRequest, notFound, unprocessable } from "../errors";
+import { audit, createImportJob, finishImportJob } from "@/server/audit";
 import type { RouteEnv } from "../env";
 
 const routes = new Hono<RouteEnv>();
@@ -147,9 +148,9 @@ routes.post("/import/students", async (c) => {
     );
   }
 
-  return c.json({
-    data: { created: inserts.length, updated: updates.length, skipped, errors, total: rows.length },
-  });
+  const result = { created: inserts.length, updated: updates.length, skipped, errors, total: rows.length };
+  void audit(user.id, "import", "student", classId, { mode, ...result });
+  return c.json({ data: result });
 });
 
 // ---------------------------------------------------------------- 导入：单词
@@ -261,17 +262,17 @@ routes.post("/import/vocab", async (c) => {
     );
   }
 
-  return c.json({
-    data: {
-      unitId: unit.id,
-      unitName: unit.name,
-      created: inserts.length,
-      updated: updates.length,
-      skipped,
-      errors,
-      total: rows.length,
-    },
-  });
+  const result = {
+    unitId: unit.id,
+    unitName: unit.name,
+    created: inserts.length,
+    updated: updates.length,
+    skipped,
+    errors,
+    total: rows.length,
+  };
+  void audit(user.id, "import", "vocab", unit.id, { mode: parseMode(body.mode), ...result });
+  return c.json({ data: result });
 });
 
 routes.post("/import/dictation-words", async (c) => {
@@ -315,9 +316,9 @@ routes.post("/import/dictation-words", async (c) => {
     );
   }
 
-  return c.json({
-    data: { listId, created: inserts.length, updated: updates.length, skipped, errors, total: rows.length },
-  });
+  const result = { listId, created: inserts.length, updated: updates.length, skipped, errors, total: rows.length };
+  void audit(user.id, "import", "dictation_word", listId, { mode: parseMode(body.mode), ...result });
+  return c.json({ data: result });
 });
 
 // ---------------------------------------------------------------- 导出

@@ -1,0 +1,1 @@
+ALTER TABLE "classroom_poll_votes" ADD COLUMN "voter_key" text;

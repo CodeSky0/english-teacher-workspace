@@ -114,6 +114,7 @@ export const classroomPollVotes = pgTable(
     pollId: uuid("poll_id").notNull().references(() => classroomPolls.id, { onDelete: "cascade" }),
     optionId: uuid("option_id").notNull().references(() => classroomPollOptions.id, { onDelete: "cascade" }),
     studentId: uuid("student_id"),
+    voterKey: text("voter_key"),
   },
   (t) => ({
     pollIdx: index("poll_votes_poll_idx").on(t.pollId),

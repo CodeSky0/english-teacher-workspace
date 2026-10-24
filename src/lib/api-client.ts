@@ -34,9 +34,12 @@ async function request<T>(path: string, options?: RequestInit, timeout = DEFAULT
     throw new ApiError("NETWORK", "网络错误，请检查连接", 0);
   }
   clear();
-  const json = await res.json().catch(() => ({ error: { code: "PARSE_ERROR", message: "解析响应失败" } }));
+  const json = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new ApiError(json.error?.code || "UNKNOWN", json.error?.message || "请求失败", res.status);
+    throw new ApiError(json?.error?.code || "UNKNOWN", json?.error?.message || "请求失败", res.status);
+  }
+  if (json == null || (typeof json === "object" && json !== null && "error" in json && !("data" in json))) {
+    throw new ApiError("PARSE_ERROR", "解析响应失败", res.status);
   }
   return json as T;
 }
@@ -54,9 +57,9 @@ async function assertOk(res: Response, fallback: string) {
 export const apiClient = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, data?: unknown) =>
-    request<T>(path, { method: "POST", body: data ? JSON.stringify(data) : undefined }),
+    request<T>(path, { method: "POST", body: data !== undefined ? JSON.stringify(data) : undefined }),
   patch: <T>(path: string, data?: unknown) =>
-    request<T>(path, { method: "PATCH", body: data ? JSON.stringify(data) : undefined }),
+    request<T>(path, { method: "PATCH", body: data !== undefined ? JSON.stringify(data) : undefined }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 
   /** multipart 上传（Excel 解析），不设置 Content-Type，交给浏览器自动带 boundary */
@@ -75,7 +78,9 @@ export const apiClient = {
     }
     clear();
     await assertOk(res, "上传失败");
-    return (await res.json()) as T;
+    const json = await res.json().catch(() => null);
+    if (json == null) throw new ApiError("PARSE_ERROR", "解析响应失败", res.status);
+    return json as T;
   },
 
   /** 下载二进制文件（Excel 导出），返回实际保存的文件名 */
