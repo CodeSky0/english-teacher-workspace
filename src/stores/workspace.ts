@@ -20,7 +20,16 @@ export const useWorkspace = create<WorkspaceState>()(
       sidebarOpen: false,
       sidebarCollapsed: false,
       saveStatus: "idle",
-      setCurrentClassId: (id) => set({ currentClassId: id }),
+      setCurrentClassId: (id) => {
+        set({ currentClassId: id });
+        if (typeof document !== "undefined") {
+          if (id) {
+            document.cookie = `classId=${id}; path=/; max-age=2592000; samesite=lax`;
+          } else {
+            document.cookie = "classId=; path=/; max-age=0";
+          }
+        }
+      },
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),

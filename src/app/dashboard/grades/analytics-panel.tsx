@@ -14,7 +14,6 @@ import { Dialog } from "@/components/ui/dialog";
 import { Sparkles, Radar as RadarIcon, TrendingUp, BarChart3, MessageSquare, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
-import { generateStudentReport } from "@/lib/report";
 
 type ClassProfile = {
   className: string; studentCount: number; examCount: number;
@@ -199,6 +198,7 @@ function RemarkDialog({
         apiClient.get<{ data: { studentName: string; dimensions: { listening: number; speaking: number; writing: number; total: number }; dictationRate: number; examCount: number } }>(`/analytics/student/${selected}/profile`),
         apiClient.get<{ data: { examId: string; examName: string; examDate: string | null; listeningScore: string | null; speakingScore: string | null; writtenScore: string | null; totalScore: string | null }[] }>(`/analytics/student/${selected}/scores`).catch(() => ({ data: [] as { examId: string; examName: string; examDate: string | null; listeningScore: string | null; speakingScore: string | null; writtenScore: string | null; totalScore: string | null }[] })),
       ]);
+      const { generateStudentReport } = await import("@/lib/report");
       generateStudentReport({
         studentName: profileRes.data.studentName,
         className: "",

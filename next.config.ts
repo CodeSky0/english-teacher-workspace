@@ -28,6 +28,9 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // React Compiler：自动 memoization，减少手写 useMemo/useCallback/React.memo
+  reactCompiler: true,
+
   images: {
     // 项目暂无图片资源；保留 webp/avif 默认格式，收窄 remotePatterns 避免 SSRF
     formats: ["image/avif", "image/webp"],

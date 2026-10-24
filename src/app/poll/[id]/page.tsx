@@ -1,22 +1,22 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/states";
 import { CheckCircle2, Vote, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/error";
 
 type PollOption = { id: string; label: string; voteCount: number };
 type Poll = { id: string; question: string; type: string; options: PollOption[] };
 
 export default function PollPage({ params }: { params: Promise<{ id: string }> }) {
   const [pollId, setPollId] = useState<string>("");
-  const [poll, setPoll] = useState<Poll | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [voted, setVoted] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const voterKeyRef = useRef<string>("");
 
   useEffect(() => {
@@ -29,60 +29,47 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
     }
   }, []);
 
-  const fetchPoll = useCallback(async () => {
-    if (!pollId) return;
-    try {
-      const res = await fetch(`/api/poll/${pollId}`);
-      if (!res.ok) {
-        const json = await res.json().catch(() => null);
-        setError(json?.error?.message || "投票不存在");
-        setLoading(false);
-        return;
+  const qc = useQueryClient();
+
+  const { data: pollData, isLoading, error } = useQuery({
+    queryKey: ["poll", pollId],
+    queryFn: () => apiClient.get<{ data: Poll }>(`/poll/${pollId}`),
+    enabled: !!pollId,
+    refetchInterval: 2500,
+  });
+
+  const poll = pollData?.data ?? null;
+  const errorMsg = error ? getErrorMessage(error, "投票不存在") : null;
+
+  const voteMut = useMutation({
+    mutationFn: (optionId: string) =>
+      apiClient.post<{ data: { options: PollOption[] } }>(`/poll/${pollId}/vote`, {
+        optionId,
+        voterKey: voterKeyRef.current,
+      }),
+    onSuccess: (res) => {
+      setVoted(true);
+      if (res.data?.options) {
+        qc.setQueryData<{ data: Poll }>(["poll", pollId], (old) =>
+          old ? { ...old, data: { ...old.data, options: res.data.options } } : old
+        );
       }
-      const json = await res.json();
-      setPoll(json.data);
-      setError(null);
-      setLoading(false);
-    } catch {
-      setError("网络错误");
-      setLoading(false);
-    }
-  }, [pollId]);
+    },
+  });
 
-  useEffect(() => {
-    fetchPoll();
-    const interval = setInterval(fetchPoll, 2500);
-    return () => clearInterval(interval);
-  }, [fetchPoll]);
-
-  async function handleVote(optionId: string) {
+  function handleVote(optionId: string) {
     if (!pollId || voted) return;
     setSelected(optionId);
-    try {
-      const res = await fetch(`/api/poll/${pollId}/vote`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ optionId, voterKey: voterKeyRef.current }),
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setVoted(true);
-        if (json.data?.options) {
-          setPoll((p) => (p ? { ...p, options: json.data.options } : p));
-        }
-      }
-    } catch {
-      // 忽略，轮询会刷新
-    }
+    voteMut.mutate(optionId);
   }
 
   const totalVotes = poll?.options.reduce((sum, o) => sum + o.voteCount, 0) ?? 0;
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center"><LoadingState /></div>;
-  if (error) return (
+  if (isLoading) return <div className="flex min-h-screen items-center justify-center"><LoadingState /></div>;
+  if (errorMsg) return (
     <div className="flex min-h-screen items-center justify-center">
       <Card className="max-w-md"><CardContent className="py-12 text-center">
-        <p className="text-lg font-medium text-[#a64953]">{error}</p>
+        <p className="text-lg font-medium text-[#a64953]">{errorMsg}</p>
         <p className="mt-2 text-sm text-muted">请向老师确认投票链接是否正确</p>
       </CardContent></Card>
     </div>

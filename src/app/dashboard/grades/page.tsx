@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
+import dynamic from "next/dynamic";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { apiClient } from "@/lib/api-client";
@@ -16,7 +17,11 @@ import { Plus, GraduationCap, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
 import { ScoreDistribution } from "./score-distribution";
-import { AnalyticsPanel } from "./analytics-panel";
+
+const AnalyticsPanel = dynamic(() => import("./analytics-panel").then((m) => m.AnalyticsPanel), {
+  ssr: false,
+  loading: () => <LoadingState />,
+});
 
 type Exam = { id: string; name: string; classId: string; examDate: string | null; type: string | null; remark: string | null };
 type Score = { id: string; examId: string; studentId: string; listeningScore: string | null; speakingScore: string | null; writtenScore: string | null; totalScore: string | null; totalIsManual: boolean };
@@ -188,7 +193,7 @@ export default function GradesPage() {
           {totals.length > 0 && <ScoreDistribution totals={totals} />}
           <Card><CardContent className="p-0">
             {students.length === 0 ? <EmptyState title="暂无学生" /> :
-              <div ref={gradesScrollRef} className="overflow-auto max-h-[70vh]">
+              <div ref={gradesScrollRef} className="overflow-auto max-h-[70vh]" style={{ contain: "layout style" }}>
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 z-10"><tr className="table-head border-b border-line text-left text-xs text-muted backdrop-blur-sm">
                     <th className="px-4 py-3 font-medium">姓名</th>

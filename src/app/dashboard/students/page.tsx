@@ -206,7 +206,7 @@ export default function StudentsPage() {
         <CardContent className="p-0">
           {isLoading ? <LoadingState /> : error ? <ErrorState message="加载失败" onRetry={() => refetch()} /> :
            filtered.length === 0 ? <EmptyState icon={<Users className="h-10 w-10" />} title={search ? "未找到匹配学生" : "暂无学生"} description={search ? "尝试其他搜索词" : "点击右上角添加学生"} /> :
-           <div ref={scrollRef} className="overflow-auto max-h-[70vh]">
+            <div ref={scrollRef} className="overflow-auto max-h-[70vh]" style={{ contain: "layout style" }}>
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr className="table-head border-b border-line text-left text-xs text-muted backdrop-blur-sm">
