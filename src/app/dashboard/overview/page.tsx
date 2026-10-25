@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingState, ErrorState } from "@/components/ui/states";
 import { ProgressRing } from "@/components/charts/progress-ring";
 import { Sparkline } from "@/components/charts/sparkline";
+import { TypewriterQuote } from "@/components/common/typewriter-quote";
 import { Settings, Monitor, Headphones, Sparkles, Users, BookOpen, CalendarDays } from "lucide-react";
 import { greeting, todayStr, cn } from "@/lib/utils";
 import { CARD_DEFS, DEFAULT_CARD_ORDER, type Overview } from "./cards";
@@ -157,11 +158,9 @@ export default function OverviewPage() {
             </div>
 
             <h2 className="mt-3.5 max-w-2xl font-serif text-[32px] font-semibold leading-[1.16] tracking-tight text-white sm:text-[38px] lg:text-[46px]">
-              {greeting()}，
-              <span className="bg-[linear-gradient(100deg,#ffe9d8_0%,#ffc9c4_38%,#dcc9ff_70%,#bfe4ff_100%)] bg-clip-text text-transparent">
-                把课上成一束光。
-              </span>
+              {greeting()}
             </h2>
+            <TypewriterQuote className="mt-2 max-w-2xl font-serif text-[15px] italic leading-relaxed text-white/70 sm:text-[17px]" />
 
             {ov && (
               <div className="mt-5 flex flex-wrap items-center gap-x-2.5 gap-y-2 text-sm text-white/75 sm:gap-x-4">
