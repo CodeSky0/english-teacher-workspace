@@ -7,9 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { useCurrentClass } from "@/hooks/use-classes";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dices, Trophy, Timer, Tag, Vote, Grid3x3, Layers, Headphones, X, Plus, Minus, RotateCcw, ChevronLeft, Volume2 } from "lucide-react";
+import { Dices, Trophy, Timer, Tag, Vote, Grid3x3, Layers, Headphones, X, Plus, Minus, RotateCcw, ChevronLeft, Volume2, ArrowLeft, Keyboard, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
 import { cn } from "@/lib/utils";
@@ -19,7 +17,7 @@ const NebulaRollCall = nextDynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="mb-8 flex min-h-[400px] items-center justify-center text-sm text-muted">
+      <div className="mb-8 flex min-h-[400px] items-center justify-center text-sm text-white/40">
         正在准备点名动画…
       </div>
     ),
@@ -33,17 +31,77 @@ type VocabWord = { id: string; word: string; meaning: string | null; phoneticUs:
 type VocabUnit = { id: string; name: string };
 
 const TOOLS = [
-  { id: "rollcall", name: "随机点名", icon: Dices, color: "var(--c-listen)", bg: "var(--c-listen-bg)" },
-  { id: "points", name: "小组积分", icon: Trophy, color: "var(--c-exam)", bg: "var(--c-exam-bg)" },
-  { id: "timer", name: "课堂计时器", icon: Timer, color: "var(--c-grammar)", bg: "var(--c-grammar-bg)" },
-  { id: "feedback", name: "学生评价", icon: Tag, color: "var(--c-vocab)", bg: "var(--c-vocab-bg)" },
-  { id: "poll", name: "课堂投票", icon: Vote, color: "var(--c-speak)", bg: "var(--c-speak-bg)" },
-  { id: "attendance", name: "座位考勤", icon: Grid3x3, color: "var(--c-read)", bg: "var(--c-read-bg)" },
-  { id: "wordcard", name: "单词卡", icon: Layers, color: "var(--c-homework)", bg: "var(--c-homework-bg)" },
-  { id: "dictation", name: "听写训练", icon: Headphones, color: "var(--c-write)", bg: "var(--c-write-bg)" },
+  { id: "rollcall", name: "随机点名", en: "Roll Call", icon: Dices, color: "#e5a4b1", tint: "rgba(197,100,115,0.18)" },
+  { id: "points", name: "小组积分", en: "Group Points", icon: Trophy, color: "#e0bd84", tint: "rgba(168,122,61,0.18)" },
+  { id: "timer", name: "课堂计时器", en: "Timer", icon: Timer, color: "#9fc3e6", tint: "rgba(61,104,150,0.20)" },
+  { id: "feedback", name: "学生评价", en: "Feedback", icon: Tag, color: "#c3a8dd", tint: "rgba(124,58,237,0.16)" },
+  { id: "poll", name: "课堂投票", en: "Live Poll", icon: Vote, color: "#e9b7a0", tint: "rgba(197,100,115,0.14)" },
+  { id: "attendance", name: "座位考勤", en: "Attendance", icon: Grid3x3, color: "#a5d3b6", tint: "rgba(94,159,126,0.18)" },
+  { id: "wordcard", name: "单词卡", en: "Word Cards", icon: Layers, color: "#e8c9a0", tint: "rgba(168,122,61,0.14)" },
+  { id: "dictation", name: "听写训练", en: "Dictation", icon: Headphones, color: "#b9c9e2", tint: "rgba(61,104,150,0.14)" },
 ] as const;
 
-/** 分段控件：替代朴素的圆角按钮组 */
+/** 深色输入框：投影模式下避免刺眼的白色控件 */
+const DARK_FIELD =
+  "h-11 w-full rounded-xl border border-white/12 bg-white/[0.055] px-3.5 text-sm text-white/90 " +
+  "placeholder:text-white/30 shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)] " +
+  "transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)] " +
+  "hover:border-white/20 focus-visible:outline-none focus-visible:border-[#c56473]/60 " +
+  "focus-visible:bg-white/[0.085] focus-visible:ring-2 focus-visible:ring-[#c56473]/20";
+
+type ActionVariant = "primary" | "soft" | "ghost" | "outline";
+
+/** 投影模式按钮：≥48px 触控友好，梅色釉面主按钮 */
+function ActionButton({
+  children,
+  onClick,
+  variant = "primary",
+  size = "md",
+  className,
+  disabled,
+  type = "button",
+  title,
+  ariaLabel,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  variant?: ActionVariant;
+  size?: "md" | "lg" | "icon";
+  className?: string;
+  disabled?: boolean;
+  type?: "button" | "submit";
+  title?: string;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={ariaLabel}
+      className={cn(
+        "inline-flex items-center justify-center gap-2 rounded-xl font-medium text-white/90",
+        "transition-[transform,box-shadow,background-color,border-color] duration-[var(--dur-smooth)] ease-[var(--ease-smooth)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e5a4b1]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#070a14]",
+        "disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97]",
+        variant === "primary" &&
+          "bg-[linear-gradient(180deg,#d1707f_0%,#c56473_52%,#a85463_100%)] shadow-[0_10px_28px_-12px_rgba(197,100,115,0.8),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(0,0,0,0.18)] hover:-translate-y-[1px] hover:brightness-[1.06]",
+        variant === "soft" && "border border-white/12 bg-white/[0.075] hover:border-white/25 hover:bg-white/[0.11]",
+        variant === "outline" && "border border-white/18 bg-transparent hover:border-white/30 hover:bg-white/[0.06]",
+        variant === "ghost" && "text-white/55 hover:bg-white/[0.07] hover:text-white/90",
+        size === "md" && "h-11 px-4 text-sm",
+        size === "lg" && "h-12 px-6 text-[15px]",
+        size === "icon" && "h-11 w-11",
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** 分段控件（投影模式） */
 function Segmented({
   options,
   value,
@@ -54,17 +112,17 @@ function Segmented({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="inline-flex rounded-lg border border-line/70 bg-neutral-2/55 p-0.5 shadow-[inset_0_1px_2px_rgba(36,35,31,0.05)]">
+    <div className="inline-flex rounded-xl border border-white/12 bg-white/[0.05] p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-sm">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
           className={cn(
-            "rounded-[0.4rem] px-3 py-1 text-sm transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+            "min-h-[36px] rounded-lg px-3.5 text-sm transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
             value === o.value
-              ? "bg-white font-medium text-text shadow-[0_1px_2px_rgba(36,35,31,0.10),inset_0_1px_0_rgba(255,255,255,0.9)]"
-              : "text-muted hover:text-text"
+              ? "bg-white/[0.14] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,0.15)_inset,0_4px_10px_-6px_rgba(0,0,0,0.8)]"
+              : "text-white/45 hover:text-white/80"
           )}
         >
           {o.label}
@@ -74,13 +132,14 @@ function Segmented({
   );
 }
 
-/** 舞台：投影区的大卡片，带光晕与稿纸纹理 */
+/** 舞台：投影区的大卡片，深色玻璃 + 极光 */
 function Stage({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative mb-8 flex min-h-[220px] items-center justify-center overflow-hidden rounded-2xl border border-line/70 bg-gradient-to-b from-white to-[#fcfbf9] px-6 py-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_2px_10px_-3px_rgba(36,35,31,0.10)]">
-      <div className="pointer-events-none absolute inset-0 grid-veil opacity-50" />
-      <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-[#3d6896]/10 blur-3xl" />
+    <div className="relative mb-7 flex min-h-[230px] items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(165deg,rgba(255,255,255,0.055),rgba(255,255,255,0.012))] px-6 py-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_30px_70px_-45px_rgba(0,0,0,0.95)] backdrop-blur-md">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:22px_22px] opacity-60" />
+      <div className="pointer-events-none absolute -left-14 -top-14 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(197,100,115,0.24),transparent_66%)]" />
+      <div className="pointer-events-none absolute -bottom-16 -right-12 h-52 w-52 rounded-full bg-[radial-gradient(circle,rgba(61,104,150,0.24),transparent_68%)]" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(94,159,126,0.14),transparent_70%)]" />
       <div className="relative">{children}</div>
     </div>
   );
@@ -88,6 +147,7 @@ function Stage({ children }: { children: React.ReactNode }) {
 
 export default function ClassroomPage() {
   const router = useRouter();
+  const { currentClass } = useCurrentClass();
   const [activeTool, setActiveTool] = useState<string | null>(null);
 
   useEffect(() => {
@@ -96,76 +156,154 @@ export default function ClassroomPage() {
     return () => document.removeEventListener("keydown", handler);
   }, [router, activeTool]);
 
+  const active = activeTool ? TOOLS.find((t) => t.id === activeTool) : null;
+
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-line/70 glass px-6">
-        <div className="flex items-center gap-3">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#070a14] text-white/85">
+      {/* ══════════ 氛围层：极光 + 天光 + 暗角 ══════════ */}
+      <div className="pointer-events-none fixed inset-0" aria-hidden>
+        <div className="absolute -left-[14%] -top-[18%] h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(197,100,115,0.26),transparent_65%)] animate-drift" />
+        <div className="absolute -right-[12%] top-[4%] h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle,rgba(61,104,150,0.30),transparent_66%)] animate-drift" style={{ animationDelay: "-9s" }} />
+        <div className="absolute -bottom-[22%] left-[22%] h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(94,159,126,0.20),transparent_68%)] animate-drift" style={{ animationDelay: "-16s" }} />
+        <div className="absolute left-[42%] top-[38%] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.14),transparent_70%)] animate-drift" style={{ animationDelay: "-22s" }} />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_-10%,rgba(255,255,255,0.09),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_38%,rgba(2,3,8,0.72)_100%)]" />
+      </div>
+
+      {/* ══════════ 顶栏 ══════════ */}
+      <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#070a14]/72 px-4 backdrop-blur-xl sm:px-6">
+        <div className="flex min-w-0 items-center gap-2.5">
           {activeTool && (
             <button
               onClick={() => setActiveTool(null)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors duration-[var(--dur-quick)] hover:bg-neutral-3/60 hover:text-text"
+              aria-label="返回工具列表"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white/55 transition-colors duration-[var(--dur-quick)] hover:bg-white/[0.08] hover:text-white"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
           )}
-          <h1 className="font-serif text-lg font-semibold tracking-tight">
-            {activeTool ? TOOLS.find((t) => t.id === activeTool)?.name : "课堂互动"}
-          </h1>
+          <div className="min-w-0">
+            <p className="eyebrow truncate text-[9px] text-white/35">
+              {active ? active.en : "Classroom Mode"}
+            </p>
+            <h1 className="truncate font-serif text-[17px] font-semibold leading-tight tracking-tight text-white/92">
+              {active ? active.name : "课堂互动"}
+            </h1>
+          </div>
         </div>
-        <button
-          onClick={() => router.push("/dashboard/overview")}
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-muted transition-colors duration-[var(--dur-quick)] hover:bg-neutral-3/60 hover:text-text"
-        >
-          <X className="h-4 w-4" />退出 (Esc)
-        </button>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[11px] text-white/45 sm:inline-flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#8fcfae] shadow-[0_0_8px_rgba(143,207,174,0.8)] animate-breathe" />
+            {currentClass?.name ?? "未选择班级"}
+          </span>
+          <ActionButton variant="ghost" size="md" onClick={() => router.push("/dashboard/overview")} className="gap-1.5">
+            <X className="h-4 w-4" />
+            <span className="hidden sm:inline">退出</span>
+            <kbd className="hidden rounded border border-white/15 bg-white/[0.06] px-1 py-0.5 text-[9px] tracking-wide text-white/40 md:inline">Esc</kbd>
+          </ActionButton>
+        </div>
       </header>
 
-      <div className="flex flex-1 items-center justify-center p-6">
-        {!activeTool ? (
-          <div className="grid w-full max-w-4xl grid-cols-2 gap-4 md:grid-cols-4">
-            {TOOLS.map((tool) => {
+      {/* ══════════ 内容 ══════════ */}
+      {!activeTool ? (
+        <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-5 py-9 sm:px-8">
+          {/* 右侧轨道光核：静默呼吸，作为投影模式的首屏焦点 */}
+          <div aria-hidden className="pointer-events-none absolute right-1 top-8 hidden h-56 w-56 lg:block">
+            <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(229,164,177,0.22),transparent_62%)] animate-breathe" />
+            <div className="absolute inset-0 rounded-full border border-white/[0.09]" />
+            <div className="absolute inset-7 rounded-full border border-dashed border-white/[0.10] animate-drift" />
+            <div className="absolute inset-14 rounded-full border border-white/[0.12]" />
+            <div className="absolute inset-0 animate-drift" style={{ animationDelay: "-8s" }}>
+              <span className="absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#f3d7ad] shadow-[0_0_16px_rgba(243,215,173,0.9)]" />
+              <span className="absolute bottom-[14%] right-[10%] h-1.5 w-1.5 rounded-full bg-[#9fc3e6] shadow-[0_0_12px_rgba(159,195,230,0.9)]" />
+              <span className="absolute left-[6%] top-[38%] h-1 w-1 rounded-full bg-[#a5d3b6] shadow-[0_0_10px_rgba(165,211,182,0.9)]" />
+            </div>
+            <div className="absolute inset-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#fff6e6] shadow-[0_0_22px_rgba(255,246,230,0.95)]" />
+            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] uppercase tracking-[0.28em] text-white/20">Aurora Core</span>
+          </div>
+
+          <div className="relative animate-fade-in-up">
+            <span className="eyebrow flex items-center gap-2 text-white/40">
+              Classroom Mode
+              <span className="h-px w-10 bg-[linear-gradient(90deg,rgba(229,164,177,0.5),transparent)]" />
+            </span>
+            <h2 className="mt-2.5 font-serif text-[30px] font-semibold leading-[1.2] tracking-tight text-white/95 sm:text-[40px]">
+              把课堂投成
+              <span className="bg-[linear-gradient(110deg,#f2b6c1_0%,#ddc9f0_38%,#a9c8e8_70%,#a9d6be_100%)] bg-clip-text text-transparent">
+                一束光
+              </span>
+              。
+            </h2>
+            <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-white/45">
+              八个课堂小工具 · 触控与投屏友好 · 空格键即可抽取
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-white/40">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">
+                <Sparkles className="h-3 w-3 text-[#e5a4b1]" />
+                8 个课堂工具
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">
+                <Keyboard className="h-3 w-3 text-[#9fc3e6]" />
+                Esc 退出 · 空格抽取
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#8fcfae]" />
+                投影模式
+              </span>
+            </div>
+          </div>
+
+          <div className="stagger mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {TOOLS.map((tool, i) => {
               const Icon = tool.icon;
               return (
                 <button
                   key={tool.id}
                   onClick={() => setActiveTool(tool.id)}
-                  className={[
-                    "group relative flex flex-col items-center gap-3 overflow-hidden rounded-xl",
-                    "border border-line/60 bg-gradient-to-b from-white to-[#fcfbf9] p-6",
-                    "shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]",
-                    "transition-all duration-[var(--dur-smooth)] ease-[var(--ease-smooth)]",
-                    "hover:-translate-y-[3px] hover:border-line hover:shadow-paper-lg",
-                  ].join(" ")}
+                  style={{ "--i": i } as React.CSSProperties}
+                  className="group relative flex min-h-[118px] flex-col items-start overflow-hidden rounded-2xl border border-white/10 bg-white/[0.045] p-4 text-left backdrop-blur-md transition-all duration-[var(--dur-smooth)] ease-[var(--ease-smooth)] hover:-translate-y-[3px] hover:border-white/22 hover:bg-white/[0.075] hover:shadow-[0_24px_50px_-30px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.1)] active:scale-[0.99]"
                 >
-                  {/* 悬浮时浮出的主题色光斑 */}
-                  <div
-                    className="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity duration-[var(--dur-smooth)] group-hover:opacity-30"
+                  <span
+                    className="pointer-events-none absolute -right-7 -top-7 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity duration-[var(--dur-smooth)] group-hover:opacity-70"
                     style={{ background: tool.color }}
                   />
-                  <div
-                    className="relative flex h-14 w-14 items-center justify-center rounded-xl ring-1 ring-inset ring-black/[0.04] transition-transform duration-[var(--dur-quick)] ease-[var(--ease-spring)] group-hover:scale-110"
-                    style={{ background: tool.bg, color: tool.color }}
+                  <span
+                    className="relative flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset ring-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-transform duration-[var(--dur-quick)] ease-[var(--ease-spring)] group-hover:scale-105"
+                    style={{ background: tool.tint, color: tool.color }}
                   >
-                    <Icon className="h-7 w-7" />
-                  </div>
-                  <span className="relative text-sm font-medium">{tool.name}</span>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="relative mt-3 block text-[14.5px] font-medium leading-tight text-white/90">{tool.name}</span>
+                  <span className="relative mt-1 block text-[9px] uppercase tracking-[0.2em] text-white/32">{tool.en}</span>
                 </button>
               );
             })}
           </div>
-        ) : (
-          <div className="w-full max-w-3xl animate-fade-in-up">
-            {activeTool === "rollcall" && <RollCallTool />}
-            {activeTool === "points" && <PointsTool />}
-            {activeTool === "timer" && <TimerTool />}
-            {activeTool === "feedback" && <FeedbackTool />}
-            {activeTool === "poll" && <PollTool />}
-            {activeTool === "attendance" && <AttendanceTool />}
-            {activeTool === "wordcard" && <WordCardTool />}
-            {activeTool === "dictation" && <DictationTool />}
+
+          <p className="mt-6 flex items-center gap-1.5 text-[11px] text-white/25">
+            <ArrowLeft className="h-3 w-3" />
+            返回后台请按 Esc 或点击右上角退出
+          </p>
+        </main>
+      ) : (
+        <main className="relative mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-5 py-6 sm:px-8">
+          <div className="relative min-h-[26rem] overflow-hidden rounded-[26px] border border-white/10 bg-[linear-gradient(168deg,rgba(255,255,255,0.065),rgba(255,255,255,0.018))] p-5 shadow-[0_40px_90px_-50px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl sm:p-7">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(197,100,115,0.22),transparent_68%)]" />
+            <div className="pointer-events-none absolute -bottom-20 -left-14 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(61,104,150,0.22),transparent_68%)]" />
+            <div className="relative flex min-h-[21rem] animate-fade-in-up flex-col justify-center">
+              {activeTool === "rollcall" && <RollCallTool />}
+              {activeTool === "points" && <PointsTool />}
+              {activeTool === "timer" && <TimerTool />}
+              {activeTool === "feedback" && <FeedbackTool />}
+              {activeTool === "poll" && <PollTool />}
+              {activeTool === "attendance" && <AttendanceTool />}
+              {activeTool === "wordcard" && <WordCardTool />}
+              {activeTool === "dictation" && <DictationTool />}
+            </div>
           </div>
-        )}
-      </div>
+        </main>
+      )}
     </div>
   );
 }
@@ -223,12 +361,12 @@ function RollCallTool() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
-  if (!currentClass) return <p className="text-center text-muted">请先选择班级</p>;
-  if (students.length === 0) return <p className="text-center text-muted">暂无学生</p>;
+  if (!currentClass) return <p className="py-10 text-center text-white/45">请先选择班级</p>;
+  if (students.length === 0) return <p className="py-10 text-center text-white/45">暂无学生</p>;
 
   return (
     <div className="text-center">
-      <div className="mb-5">
+      <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
         <Segmented
           options={[
             { value: "noRepeat", label: "不重复模式" },
@@ -237,21 +375,38 @@ function RollCallTool() {
           value={noRepeat ? "noRepeat" : "repeat"}
           onChange={(v) => setNoRepeat(v === "noRepeat")}
         />
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-white/40">
+          <Keyboard className="h-3 w-3" />
+          空格抽取
+        </span>
       </div>
 
       <NebulaRollCall
         picked={picked}
         rolling={rolling}
-        className="mb-8 rounded-2xl border border-line/70 shadow-[0_2px_10px_-3px_rgba(36,35,31,0.10)]"
+        className="mb-6 rounded-2xl border border-white/12 shadow-[0_30px_80px_-50px_rgba(0,0,0,0.95)]"
       />
 
-      <Button onClick={roll} size="lg" className="gap-2" disabled={rolling}>
+      <ActionButton onClick={roll} size="lg" className="gap-2" disabled={rolling}>
         <Dices className="h-5 w-5" />{rolling ? "星核聚能…" : "唤醒星核"}
-      </Button>
+      </ActionButton>
       {history.length > 0 && (
-        <p className="mt-4 text-sm text-muted">
-          已点名 <span className="font-medium tabular-nums text-text">{history.length}</span> 人
-        </p>
+        <div className="mt-5">
+          <p className="text-sm text-white/40">
+            已点名 <span className="font-display text-[15px] font-semibold tabular-nums text-white/80">{history.length}</span> 人
+          </p>
+          <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
+            {history.map((s, i) => (
+              <span
+                key={`${s.id}-${i}`}
+                className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-2.5 py-1 text-[11px] text-white/60"
+              >
+                <span className="font-display text-[10px] tabular-nums text-[#e5a4b1]">{i + 1}</span>
+                {s.name}
+              </span>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -273,36 +428,39 @@ function PointsTool() {
 
   return (
     <div>
-      <div className="mb-4 flex gap-2">
-        <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="小组名称" />
-        <Button onClick={addGroup}><Plus className="h-4 w-4" /></Button>
+      <div className="mb-5 flex gap-2">
+        <input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="小组名称" className={DARK_FIELD} />
+        <ActionButton onClick={addGroup} className="shrink-0 gap-1.5"><Plus className="h-4 w-4" />建组</ActionButton>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {Object.entries(groups).sort((a, b) => b[1] - a[1]).map(([name, pts], i) => (
           <div
             key={name}
-            className="relative flex items-center justify-between overflow-hidden rounded-xl border border-line/60 bg-gradient-to-b from-white to-[#fcfbf9] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+            className="relative flex items-center justify-between gap-3 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.06),rgba(255,255,255,0.015))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]"
           >
-            <div className="flex items-center gap-3">
-              {/* 名次徽标：前三名高亮 */}
+            <div className="flex min-w-0 items-center gap-3">
               <span
                 className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-medium tabular-nums",
-                  i < 3 ? "bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] text-primary-d ring-1 ring-inset ring-primary/20" : "bg-neutral-3/55 text-neutral-6"
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-display text-[13px] font-semibold tabular-nums ring-1 ring-inset",
+                  i < 3
+                    ? "bg-[linear-gradient(160deg,rgba(229,164,177,0.28),rgba(197,100,115,0.16))] text-[#f3c8d1] ring-[#e5a4b1]/30"
+                    : "bg-white/[0.06] text-white/50 ring-white/10"
                 )}
               >
                 {i + 1}
               </span>
-              <span className="font-medium">{name}</span>
+              <span className="truncate font-medium text-white/85">{name}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="font-serif text-2xl font-semibold tabular-nums text-primary">{pts}</span>
-              <Button size="sm" variant="outline" onClick={() => adjust(name, 1)}><Plus className="h-4 w-4" /></Button>
-              <Button size="sm" variant="outline" onClick={() => adjust(name, -1)}><Minus className="h-4 w-4" /></Button>
+            <div className="flex shrink-0 items-center gap-2.5">
+              <span className="font-display text-[28px] font-semibold leading-none tabular-nums text-[#f3d7ad] drop-shadow-[0_0_16px_rgba(224,189,132,0.25)]">{pts}</span>
+              <ActionButton size="icon" variant="soft" onClick={() => adjust(name, 1)} title="加 1 分" ariaLabel={`给 ${name} 加 1 分`}><Plus className="h-4 w-4" /></ActionButton>
+              <ActionButton size="icon" variant="soft" onClick={() => adjust(name, -1)} title="减 1 分" ariaLabel={`给 ${name} 减 1 分`}><Minus className="h-4 w-4" /></ActionButton>
             </div>
           </div>
         ))}
-        {Object.keys(groups).length === 0 && <p className="text-center text-muted">请先创建小组</p>}
+        {Object.keys(groups).length === 0 && (
+          <p className="py-10 text-center text-sm text-white/35">请先创建小组，再为小组加减分</p>
+        )}
       </div>
     </div>
   );
@@ -333,7 +491,7 @@ function TimerTool() {
 
   return (
     <div className="text-center">
-      <div className="mb-5">
+      <div className="mb-5 flex flex-wrap items-center justify-center gap-2">
         <Segmented
           options={[
             { value: "up", label: "正计时" },
@@ -345,18 +503,27 @@ function TimerTool() {
       </div>
       {mode === "down" && !running && (
         <div className="mb-4 flex items-center justify-center gap-2">
-          <Input type="number" value={target} onChange={(e) => { const v = parseInt(e.target.value) || 0; setTarget(v); setRemaining(v); }} className="w-24" />
-          <span className="text-sm text-muted">秒</span>
+          <input
+            type="number"
+            value={target}
+            onChange={(e) => { const v = parseInt(e.target.value) || 0; setTarget(v); setRemaining(v); }}
+            className={cn(DARK_FIELD, "w-28 text-center")}
+          />
+          <span className="text-sm text-white/40">秒</span>
         </div>
       )}
       <Stage>
-        <div className={cn("font-serif text-7xl font-semibold tabular-nums tracking-tight text-primary", running && "animate-breathe")}>
+        <div className={cn("relative font-display text-[76px] font-semibold leading-none tabular-nums tracking-tight sm:text-[92px]", running ? "animate-breathe text-[#f6ecdc]" : "text-white/90")}>
           {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
         </div>
       </Stage>
-      <div className="flex justify-center gap-2">
-        {!running ? <Button onClick={start} size="lg">开始</Button> : <Button onClick={() => setRunning(false)} variant="outline" size="lg">暂停</Button>}
-        <Button onClick={reset} variant="outline" size="lg" className="gap-1.5"><RotateCcw className="h-4 w-4" />重置</Button>
+      <div className="flex justify-center gap-2.5">
+        {!running ? (
+          <ActionButton onClick={start} size="lg">开始</ActionButton>
+        ) : (
+          <ActionButton onClick={() => setRunning(false)} variant="soft" size="lg">暂停</ActionButton>
+        )}
+        <ActionButton onClick={reset} variant="outline" size="lg" className="gap-1.5"><RotateCcw className="h-4 w-4" />重置</ActionButton>
       </div>
     </div>
   );
@@ -370,29 +537,39 @@ function FeedbackTool() {
 
   return (
     <div>
-      <select
-        value={selectedStudent ?? ""}
-        onChange={(e) => setSelectedStudent(e.target.value)}
-        className="mb-5 h-10 w-full rounded-lg border border-line bg-gradient-to-b from-white to-[#faf9f7] px-3 text-sm shadow-[inset_0_1px_2px_rgba(36,35,31,0.045)] focus-visible:outline-none focus-visible:border-primary/55"
-      >
-        <option value="">选择学生…</option>
-        {students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-      </select>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+      <div className="relative mb-5">
+        <select
+          value={selectedStudent ?? ""}
+          onChange={(e) => setSelectedStudent(e.target.value)}
+          className={cn(DARK_FIELD, "appearance-none pr-9 [&>option]:bg-[#0d1220] [&>option]:text-white/90")}
+        >
+          <option value="">选择学生…</option>
+          {students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <ChevronLeft className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 -rotate-90 text-white/35" />
+      </div>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         {TAGS.map((tag) => {
           const negative = tag.includes("需要") || tag.includes("走神");
           return (
-            <Button
+            <button
               key={tag}
-              variant="outline"
+              type="button"
               disabled={!selectedStudent}
               onClick={() => addFeedbackMut.mutate({ studentId: selectedStudent, tag, classId: currentClass?.id, type: negative ? "negative" : "positive" })}
+              className={cn(
+                "min-h-[52px] rounded-xl border px-3 text-sm transition-all duration-[var(--dur-smooth)] ease-[var(--ease-smooth)] disabled:pointer-events-none disabled:opacity-35",
+                negative
+                  ? "border-[#a64953]/30 bg-[rgba(166,73,83,0.12)] text-[#efb8bd] hover:border-[#a64953]/55 hover:bg-[rgba(166,73,83,0.2)] hover:-translate-y-[1px]"
+                  : "border-[#5e9f7e]/28 bg-[rgba(94,159,126,0.12)] text-[#b9e0c8] hover:border-[#5e9f7e]/55 hover:bg-[rgba(94,159,126,0.2)] hover:-translate-y-[1px]"
+              )}
             >
               {tag}
-            </Button>
+            </button>
           );
         })}
       </div>
+      {!selectedStudent && <p className="mt-3 text-center text-[11px] text-white/30">选择学生后即可点选评价标签</p>}
     </div>
   );
 }
@@ -407,14 +584,22 @@ function PollTool() {
     <div>
       {!started ? (
         <div className="space-y-3">
-          <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="投票问题" />
-          {options.map((opt, i) => <div key={i} className="flex gap-2"><Input value={opt} onChange={(e) => { const o = [...options]; o[i] = e.target.value; setOptions(o); }} placeholder={`选项 ${i + 1}`} /></div>)}
-          <Button variant="outline" size="sm" onClick={() => { setOptions([...options, ""]); setVotes([...votes, 0]); }}><Plus className="h-4 w-4" />添加选项</Button>
-          <Button onClick={() => setStarted(true)} disabled={!question.trim()}>开始投票</Button>
+          <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="投票问题" className={DARK_FIELD} />
+          {options.map((opt, i) => (
+            <div key={i} className="flex gap-2">
+              <input value={opt} onChange={(e) => { const o = [...options]; o[i] = e.target.value; setOptions(o); }} placeholder={`选项 ${i + 1}`} className={DARK_FIELD} />
+            </div>
+          ))}
+          <ActionButton variant="outline" size="md" className="gap-1.5" onClick={() => { setOptions([...options, ""]); setVotes([...votes, 0]); }}>
+            <Plus className="h-4 w-4" />添加选项
+          </ActionButton>
+          <div>
+            <ActionButton onClick={() => setStarted(true)} disabled={!question.trim()} className="mt-1 w-full">开始投票</ActionButton>
+          </div>
         </div>
       ) : (
         <div>
-          <h3 className="mb-4 text-center text-lg font-semibold">{question}</h3>
+          <h3 className="mb-5 text-center font-serif text-[21px] font-semibold text-white/90">{question}</h3>
           <div className="space-y-3">
             {options.filter((o) => o.trim()).map((opt, i) => {
               const total = votes.reduce((a, b) => a + b, 0) || 1;
@@ -422,28 +607,27 @@ function PollTool() {
               return (
                 <div
                   key={i}
-                  className="rounded-xl border border-line/60 bg-gradient-to-b from-white to-[#fcfbf9] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                  className="rounded-2xl border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.06),rgba(255,255,255,0.015))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]"
                 >
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="font-medium">{opt}</span>
-                    <span className="font-serif text-lg font-semibold tabular-nums text-primary">{votes[i]}</span>
+                  <div className="mb-2.5 flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate font-medium text-white/85">{opt}</span>
+                    <span className="shrink-0 font-display text-[22px] font-semibold tabular-nums text-[#f3c8d1]">{votes[i]}</span>
                   </div>
-                  {/* 进度条：梅色渐变，带圆角与内阴影 */}
-                  <div className="h-2 overflow-hidden rounded-full bg-neutral-3/60 shadow-[inset_0_1px_2px_rgba(36,35,31,0.06)]">
+                  <div className="h-2 overflow-hidden rounded-full bg-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#cd6c7a] to-[#a85463] transition-[width] duration-[var(--dur-slow)] ease-[var(--ease-smooth)]"
+                      className="h-full rounded-full bg-[linear-gradient(90deg,#e5a4b1,#c56473)] transition-[width] duration-[var(--dur-slow)] ease-[var(--ease-smooth)] shadow-[0_0_12px_rgba(197,100,115,0.55)]"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <div className="mt-2 flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => { const v = [...votes]; v[i]++; setVotes(v); }}><Plus className="h-3.5 w-3.5" /></Button>
-                    <Button size="sm" variant="outline" onClick={() => { const v = [...votes]; v[i] = Math.max(0, v[i] - 1); setVotes(v); }}><Minus className="h-3.5 w-3.5" /></Button>
+                  <div className="mt-2.5 flex gap-2">
+                    <ActionButton size="icon" variant="soft" ariaLabel={`选项 ${opt} 加 1 票`} onClick={() => { const v = [...votes]; v[i]++; setVotes(v); }}><Plus className="h-3.5 w-3.5" /></ActionButton>
+                    <ActionButton size="icon" variant="soft" ariaLabel={`选项 ${opt} 减 1 票`} onClick={() => { const v = [...votes]; v[i] = Math.max(0, v[i] - 1); setVotes(v); }}><Minus className="h-3.5 w-3.5" /></ActionButton>
                   </div>
                 </div>
               );
             })}
           </div>
-          <Button variant="outline" className="mt-4" onClick={() => { setStarted(false); setVotes(votes.map(() => 0)); }}>重新编辑</Button>
+          <ActionButton variant="outline" className="mt-4" onClick={() => { setStarted(false); setVotes(votes.map(() => 0)); }}>重新编辑</ActionButton>
         </div>
       )}
     </div>
@@ -459,18 +643,18 @@ function AttendanceTool() {
   const STATUS_LABEL: Record<string, string> = { unrecorded: "未记录", present: "到课", absent: "缺勤", late: "迟到", leave: "请假" };
   // 和色：到课=若竹 / 缺勤=蘇芳 / 迟到=朽葉 / 请假=縹
   const STATUS_STYLE: Record<string, string> = {
-    unrecorded: "border-line/60 bg-gradient-to-b from-white to-[#fcfbf9]",
-    present: "border-[#5e9f7e]/35 bg-gradient-to-b from-[#e4f0e8] to-[#d5e8dc]",
-    absent: "border-[#a64953]/30 bg-gradient-to-b from-[#f7dfe0] to-[#f0cfd1]",
-    late: "border-[#a87a3d]/30 bg-gradient-to-b from-[#f7ecda] to-[#f0e0c4]",
-    leave: "border-[#3d6896]/30 bg-gradient-to-b from-[#e3ecf4] to-[#d3e0ec]",
+    unrecorded: "border-white/10 bg-white/[0.035] text-white/70",
+    present: "border-[#5e9f7e]/40 bg-[rgba(94,159,126,0.16)] text-[#b9e0c8]",
+    absent: "border-[#a64953]/40 bg-[rgba(166,73,83,0.18)] text-[#efb8bd]",
+    late: "border-[#a87a3d]/40 bg-[rgba(168,122,61,0.18)] text-[#e6c9a1]",
+    leave: "border-[#3d6896]/45 bg-[rgba(61,104,150,0.18)] text-[#b6cde4]",
   };
   const STATUS_TEXT: Record<string, string> = {
-    unrecorded: "text-neutral-7",
-    present: "text-[#3d7a5e]",
-    absent: "text-[#a64953]",
-    late: "text-[#8a6230]",
-    leave: "text-[#3d6896]",
+    unrecorded: "text-white/35",
+    present: "text-[#8fcfae]",
+    absent: "text-[#e5a4b1]",
+    late: "text-[#e0bd84]",
+    leave: "text-[#9fc3e6]",
   };
   const saveMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/classroom/attendance", { ...d, classId: currentClass?.id, attendanceDate: today }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["attendance"] }); toast.success("已保存"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
 
@@ -478,8 +662,8 @@ function AttendanceTool() {
 
   return (
     <div>
-      <p className="mb-4 text-center text-sm text-muted">{today} · 点击切换状态</p>
-      <div className="grid grid-cols-4 gap-2 md:grid-cols-6">
+      <p className="mb-4 text-center text-[13px] text-white/40">{today} · 点击卡片循环切换状态</p>
+      <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-6">
         {sorted.map((s) => {
           const status = statusMap[s.id] ?? "unrecorded";
           return (
@@ -487,14 +671,14 @@ function AttendanceTool() {
               key={s.id}
               onClick={() => { const idx = STATUSES.indexOf(status); const next = STATUSES[(idx + 1) % STATUSES.length]; setStatusMap({ ...statusMap, [s.id]: next }); saveMut.mutate({ studentId: s.id, status: next }); }}
               className={cn(
-                "rounded-xl border p-3 text-center transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
-                "shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] hover:-translate-y-[2px] hover:shadow-paper-sm",
+                "min-h-[78px] rounded-2xl border p-3 text-center transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+                "shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] hover:-translate-y-[2px] hover:shadow-[0_12px_26px_-18px_rgba(0,0,0,0.9)]",
                 STATUS_STYLE[status]
               )}
             >
               <p className="text-sm font-medium">{s.name}</p>
-              <p className="text-xs text-muted">{s.seatNo ?? "—"}</p>
-              <p className={cn("mt-1 text-xs font-medium", STATUS_TEXT[status])}>{STATUS_LABEL[status]}</p>
+              <p className="mt-0.5 font-display text-[11px] tabular-nums text-white/30">{s.seatNo ?? "—"}</p>
+              <p className={cn("mt-1 text-[11px] font-medium", STATUS_TEXT[status])}>{STATUS_LABEL[status]}</p>
             </button>
           );
         })}
@@ -533,12 +717,15 @@ function WordCardTool() {
     <div className="text-center">
       {!selectedUnit ? (
         <div className="space-y-2">
-          {units.map((u) => <Button key={u.id} variant="outline" className="w-full" onClick={() => { setSelectedUnit(u.id); setIndex(0); }}>{u.name}</Button>)}
+          <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-white/35">Choose a unit</p>
+          {units.map((u) => (
+            <ActionButton key={u.id} variant="soft" size="lg" className="w-full" onClick={() => { setSelectedUnit(u.id); setIndex(0); }}>{u.name}</ActionButton>
+          ))}
         </div>
-      ) : !current ? <p className="text-muted">暂无单词</p> : (
+      ) : !current ? <p className="py-10 text-white/45">暂无单词</p> : (
         <div>
-          <div className="mb-5 flex justify-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => setSelectedUnit(null)}>选择单元</Button>
+          <div className="mb-5 flex flex-wrap items-center justify-center gap-2">
+            <ActionButton size="md" variant="outline" onClick={() => setSelectedUnit(null)}>选择单元</ActionButton>
             <Segmented
               options={[
                 { value: "random", label: "随机顺序" },
@@ -550,28 +737,31 @@ function WordCardTool() {
           </div>
           <div
             onClick={() => setFlipped(!flipped)}
-            className="relative mb-6 flex min-h-[240px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-line/70 bg-gradient-to-b from-white to-[#fcfbf9] px-6 py-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_2px_10px_-3px_rgba(36,35,31,0.10)] transition-transform duration-[var(--dur-quick)] hover:-translate-y-[2px]"
+            className="group relative mb-6 flex min-h-[260px] cursor-pointer items-center justify-center overflow-hidden rounded-3xl border border-white/12 bg-[linear-gradient(170deg,rgba(255,255,255,0.07),rgba(255,255,255,0.015))] px-6 py-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_30px_70px_-45px_rgba(0,0,0,0.95)] transition-transform duration-[var(--dur-quick)] hover:-translate-y-[2px]"
           >
-            <div className="pointer-events-none absolute inset-0 grid-veil opacity-50" />
-            <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-[#7c3aed]/10 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:22px_22px] opacity-50" />
+            <div className="pointer-events-none absolute -left-12 -top-12 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(197,100,115,0.26),transparent_66%)]" />
+            <div className="pointer-events-none absolute -bottom-14 -right-12 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(61,104,150,0.26),transparent_68%)]" />
             <div className="relative">
               {flipped ? (
                 <div className="animate-scale-in">
-                  <p className="text-3xl font-medium">{current.meaning}</p>
-                  {current.phoneticUs && <p className="mt-2.5 text-lg text-muted">/{current.phoneticUs}/</p>}
+                  <p className="font-serif text-[30px] font-medium text-white/90">{current.meaning}</p>
+                  {current.phoneticUs && <p className="mt-2.5 font-display text-[18px] text-[#b6cde4]">/{current.phoneticUs}/</p>}
                 </div>
               ) : (
-                <p className="font-serif text-6xl font-semibold tracking-tight text-primary">{current.word}</p>
+                <p className="bg-[linear-gradient(115deg,#f7e7c8_0%,#f3c8d1_38%,#c9d6ee_75%,#b9e0c8_100%)] bg-clip-text font-display text-[62px] font-semibold tracking-tight text-transparent drop-shadow-[0_0_30px_rgba(229,164,177,0.18)] sm:text-[76px]">{current.word}</p>
               )}
             </div>
+            <span className="absolute bottom-3.5 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.22em] text-white/25">
+              {flipped ? "Meaning" : "Tap to reveal"}
+            </span>
           </div>
-          <div className="flex justify-center gap-2">
-            <Button variant="outline" onClick={() => { setIndex(Math.max(index - 1, 0)); setFlipped(false); }}>上一张</Button>
-            <Button variant="outline" onClick={() => speak(current.word)} className="gap-1.5"><Volume2 className="h-4 w-4" />朗读</Button>
-            <Button variant="outline" onClick={() => { setIndex(Math.min(index + 1, order.length - 1)); setFlipped(false); }}>下一张</Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <ActionButton variant="outline" onClick={() => { setIndex(Math.max(index - 1, 0)); setFlipped(false); }}>上一张</ActionButton>
+            <ActionButton variant="soft" onClick={() => speak(current.word)} className="gap-1.5"><Volume2 className="h-4 w-4" />朗读</ActionButton>
+            <ActionButton variant="outline" onClick={() => { setIndex(Math.min(index + 1, order.length - 1)); setFlipped(false); }}>下一张</ActionButton>
           </div>
-          <p className="mt-4 text-sm text-muted tabular-nums">{index + 1} / {order.length}</p>
+          <p className="mt-4 font-display text-[13px] tabular-nums text-white/40">{index + 1} / {order.length}</p>
         </div>
       )}
     </div>
@@ -597,25 +787,30 @@ function DictationTool() {
   return (
     <div className="text-center">
       {!selectedList ? (
-        <div className="space-y-2">{lists.map((l) => <Button key={l.id} variant="outline" className="w-full" onClick={() => { setSelectedList(l.id); setIndex(0); }}>{l.name}</Button>)}</div>
-      ) : !current ? <p className="text-muted">暂无单词</p> : (
+        <div className="space-y-2">
+          <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-white/35">Choose a word list</p>
+          {lists.map((l) => (
+            <ActionButton key={l.id} variant="soft" size="lg" className="w-full" onClick={() => { setSelectedList(l.id); setIndex(0); }}>{l.name}</ActionButton>
+          ))}
+        </div>
+      ) : !current ? <p className="py-10 text-white/45">暂无单词</p> : (
         <div>
           <Stage>
             {showWord ? (
-              <p key={current.id} className="animate-scale-in font-serif text-4xl font-semibold tracking-tight text-primary">
+              <p key={current.id} className="animate-scale-in bg-[linear-gradient(115deg,#f7e7c8_0%,#f3c8d1_45%,#c9d6ee_100%)] bg-clip-text font-display text-[46px] font-semibold tracking-tight text-transparent sm:text-[56px]">
                 {current.word}
               </p>
             ) : (
-              <p className="text-xl text-muted">点击朗读或显示单词</p>
+              <p className="text-[15px] text-white/40">点击「朗读」听写，或「显示」查看拼写</p>
             )}
           </Stage>
-          <div className="flex justify-center gap-2">
-            <Button variant="outline" onClick={() => speak(current.word)} className="gap-1.5"><Volume2 className="h-4 w-4" />朗读</Button>
-            <Button variant="outline" onClick={() => setShowWord(!showWord)}>{showWord ? "隐藏" : "显示"}</Button>
-            <Button variant="outline" onClick={() => { setResults({ ...results, [current.id]: true }); setIndex(Math.min(index + 1, words.length - 1)); setShowWord(false); }}>正确</Button>
-            <Button variant="outline" onClick={() => { setResults({ ...results, [current.id]: false }); setIndex(Math.min(index + 1, words.length - 1)); setShowWord(false); }}>错误</Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <ActionButton variant="soft" onClick={() => speak(current.word)} className="gap-1.5"><Volume2 className="h-4 w-4" />朗读</ActionButton>
+            <ActionButton variant="outline" onClick={() => setShowWord(!showWord)}>{showWord ? "隐藏" : "显示"}</ActionButton>
+            <ActionButton variant="outline" onClick={() => { setResults({ ...results, [current.id]: true }); setIndex(Math.min(index + 1, words.length - 1)); setShowWord(false); }}>正确</ActionButton>
+            <ActionButton variant="outline" onClick={() => { setResults({ ...results, [current.id]: false }); setIndex(Math.min(index + 1, words.length - 1)); setShowWord(false); }}>错误</ActionButton>
           </div>
-          <p className="mt-4 text-sm text-muted tabular-nums">
+          <p className="mt-4 font-display text-[13px] tabular-nums text-white/40">
             {index + 1} / {words.length} · 正确 {Object.values(results).filter(Boolean).length}
           </p>
         </div>

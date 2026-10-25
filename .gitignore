@@ -42,3 +42,7 @@ yarn-error.log*
 # drizzle
 /drizzle/meta
 .codeartsdoer/
+
+# 本地预览数据（PGlite 数据目录 + Playwright 登录态）与截图产物
+/.data/
+/shots/

@@ -6,16 +6,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useCurrentClass, useClasses } from "@/hooks/use-classes";
 import { PageHeader } from "@/components/common/page-header";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
+import { MetricTile, MetricRing } from "@/components/charts/metric-tile";
 import { downloadExport } from "@/lib/excel/client";
 import {
   Plus, Trash2, Headphones, ChevronRight, Volume2, Upload, Download,
   Check, X, Search, Library, Loader2, GraduationCap, Printer,
+  Users, BookOpen, ClipboardCheck, Gauge, CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
@@ -38,6 +40,20 @@ const cellKey = (studentId: string, wordId: string) => `${studentId}:${wordId}`;
 function accuracyText(correct: number, total: number): string {
   if (!total) return "—";
   return `${((correct / total) * 100).toFixed(0)}%`;
+}
+
+/** 学生头像渐变：按姓名稳定取色，与学情分析页保持一致；深色字保证对比度 */
+const AVATAR_TONES = [
+  { bg: "linear-gradient(160deg,#f3c6cd,#e0a3ac)", fg: "#7c3a44" },
+  { bg: "linear-gradient(160deg,#c9dbeb,#a9c6df)", fg: "#2f5478" },
+  { bg: "linear-gradient(160deg,#cfe6d9,#aad3bf)", fg: "#2f6349" },
+  { bg: "linear-gradient(160deg,#efdcbd,#e3c795)", fg: "#6b4a20" },
+  { bg: "linear-gradient(160deg,#e6d6e8,#d3b7d7)", fg: "#6b4368" },
+];
+function avatarTone(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 997;
+  return AVATAR_TONES[h % AVATAR_TONES.length];
 }
 
 export default function DictationPage() {
@@ -76,6 +92,13 @@ export default function DictationPage() {
     queryFn: () => apiClient.get<{ data: DictList[] }>("/dictation/lists"),
   });
   const lists = listsData?.data ?? [];
+
+  /** 词表列表的轻量统计（纯派生，不额外请求） */
+  const listSummary = useMemo(() => {
+    const classIds = new Set(lists.map((l) => l.classId).filter((id): id is string => !!id));
+    const dated = lists.filter((l) => l.dictationDate).sort((a, b) => (b.dictationDate ?? "").localeCompare(a.dictationDate ?? ""));
+    return { classes: classIds.size, datedCount: dated.length, latest: dated[0]?.dictationDate ?? null };
+  }, [lists]);
 
   const { data: wordsData } = useQuery({
     queryKey: ["dict-words", selectedList?.id],
@@ -344,39 +367,80 @@ export default function DictationPage() {
         } />
 
       {!selectedList ? (
-        <Card><CardContent className="p-0">
-          {isLoading ? <LoadingState /> : lists.length === 0 ? <EmptyState icon={<Headphones className="h-10 w-10" />} title="暂无听写词表" description="新建词表后可导入单词并录入成绩" /> :
-            <div className="divide-y divide-line">
-              {lists.map((l) => (
-                <div key={l.id} className="group flex items-center gap-3.5 p-4 pl-5 transition-[background] duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/55 hover:via-[#f8e4e7]/12 hover:to-transparent">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.5rem] bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] text-primary-d ring-1 ring-inset ring-[#c56473]/22 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-                    <Headphones className="h-[18px] w-[18px]" />
-                  </span>
-                  <button onClick={() => setSelectedList(l)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                    <span className="truncate font-medium tracking-[0.01em]">{l.name}</span>
-                    <Badge variant="muted">{l.classId ? (classes.find((c) => c.id === l.classId)?.name ?? "已删除班级") : "未关联班级"}</Badge>
-                    {l.dictationDate && <Badge variant="muted">{l.dictationDate}</Badge>}
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted transition-transform duration-[var(--dur-quick)] group-hover:translate-x-0.5 group-hover:text-primary" />
-                  </button>
-                  <button onClick={() => deleteListMut.mutate(l.id)} title="删除"
-                    className="rounded-md p-1.5 text-muted opacity-55 transition-all duration-[var(--dur-quick)] hover:bg-[#f8e4e7] hover:text-[#a64953] hover:shadow-[var(--shadow-xs)] group-hover:opacity-100">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>}
-        </CardContent></Card>
+        <>
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-white/70 bg-white/60 px-3.5 py-2.5 shadow-[0_1px_2px_rgba(36,35,31,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[linear-gradient(160deg,#faeef0,#f3dde1)] text-primary-d ring-1 ring-inset ring-primary/15"><Headphones className="h-3 w-3" /></span>
+            <span className="text-[11px] text-muted">共 <b className="tabular-nums text-text">{lists.length}</b> 张词表</span>
+          </span>
+          <span className="h-3 w-px bg-line" />
+          <span className="text-[11px] text-muted">覆盖 <b className="tabular-nums text-text">{listSummary.classes}</b> 个班级</span>
+          <span className="h-3 w-px bg-line" />
+          <span className="text-[11px] text-muted">已排日期 <b className="tabular-nums text-text">{listSummary.datedCount}</b> 张</span>
+          <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2 py-0.5 text-[11px] text-neutral-6 ring-1 ring-inset ring-line/70">
+            <CalendarDays className="h-3 w-3 text-neutral-5" />
+            最近听写 <span className="tabular-nums text-text">{listSummary.latest ?? "—"}</span>
+          </span>
+        </div>
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="eyebrow text-neutral-6">Dictation Lists</p>
+                <CardTitle className="mt-1.5 flex items-center gap-2 text-[15px]">
+                  <span className="icon-slot"><Headphones /></span>
+                  全部词表
+                  <Badge variant="muted">{lists.length} 张</Badge>
+                </CardTitle>
+              </div>
+              <p className="text-[11px] text-muted">选择一张词表开始录入单词，或进入成绩批改</p>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoading ? <LoadingState /> : lists.length === 0 ? <EmptyState icon={<Headphones className="h-10 w-10" />} title="暂无听写词表" description="新建词表后可导入单词并录入成绩" /> :
+              <div className="divide-y divide-line/70">
+                {lists.map((l) => (
+                  <div key={l.id} className="group relative flex items-center gap-3.5 p-4 pl-5 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/55 hover:via-[#f8e4e7]/12 hover:to-transparent">
+                    <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-gradient-to-b from-[#d1707f] to-[#e0a3ac] opacity-0 transition-opacity duration-[var(--dur-quick)] group-hover:opacity-100" />
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.6rem] bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] text-primary-d ring-1 ring-inset ring-[#c56473]/22 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform duration-[var(--dur-smooth)] ease-[var(--ease-spring)] group-hover:scale-105">
+                      <Headphones className="h-[18px] w-[18px]" />
+                    </span>
+                    <button onClick={() => setSelectedList(l)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                      <span className="truncate font-medium tracking-[0.01em] transition-colors duration-[var(--dur-quick)] group-hover:text-primary-d">{l.name}</span>
+                      <Badge variant="muted">{l.classId ? (classes.find((c) => c.id === l.classId)?.name ?? "已删除班级") : "未关联班级"}</Badge>
+                      {l.dictationDate && (
+                        <span className="hidden items-center gap-1 rounded-md bg-white/70 px-1.5 py-[1px] text-[10px] tabular-nums text-neutral-6 ring-1 ring-inset ring-line/70 sm:inline-flex">
+                          {l.dictationDate}
+                        </span>
+                      )}
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted transition-all duration-[var(--dur-quick)] group-hover:translate-x-0.5 group-hover:text-primary" />
+                    </button>
+                    <button onClick={() => deleteListMut.mutate(l.id)} title="删除" aria-label={`删除词表 ${l.name}`}
+                      className="flex h-8 w-8 items-center justify-center rounded-md text-muted opacity-55 transition-all duration-[var(--dur-quick)] hover:bg-[#f8e4e7] hover:text-[#a64953] hover:shadow-[var(--shadow-xs)] group-hover:opacity-100">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>}
+          </CardContent>
+        </Card>
+        </>
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="spotlight relative overflow-hidden rounded-xl border border-white/70 bg-[linear-gradient(115deg,#fff7f7,#fbf8f4_46%,#f5f7fa)] px-3.5 py-2.5 shadow-[0_1px_2px_rgba(36,35,31,0.05),inset_0_1px_0_rgba(255,255,255,0.9)]">
+            <div className="pointer-events-none absolute inset-0 grid-veil opacity-30" />
+            <div className="relative flex flex-wrap items-center justify-between gap-2.5">
             <div className="flex flex-wrap items-center gap-2.5">
               <button onClick={() => setSelectedList(null)}
-                className="group inline-flex items-center gap-1 rounded-full bg-panel px-2.5 py-1 text-xs text-neutral-6 ring-1 ring-inset ring-line shadow-[var(--shadow-xs)] transition-all duration-[var(--dur-quick)] hover:-translate-x-[1px] hover:text-primary-d hover:shadow-[var(--shadow-sm)]">
+                className="group inline-flex items-center gap-1 rounded-full bg-white/80 px-2.5 py-1 text-xs text-neutral-6 ring-1 ring-inset ring-line shadow-[var(--shadow-xs)] transition-all duration-[var(--dur-quick)] hover:-translate-x-[1px] hover:text-primary-d hover:shadow-[var(--shadow-sm)]">
                 <ChevronRight className="h-3.5 w-3.5 rotate-180 transition-transform duration-[var(--dur-quick)] group-hover:-translate-x-0.5" />
                 返回
               </button>
-              <h3 className="font-serif text-[17px] tracking-[0.01em]">{selectedList.name}</h3>
-              <Badge variant="muted">{words.length} 词</Badge>
+              <h3 className="font-serif text-[18px] tracking-[0.01em]">{selectedList.name}</h3>
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[11px] text-neutral-6 ring-1 ring-inset ring-line/70">
+                <Headphones className="h-3 w-3" />
+                {words.length} 词
+              </span>
               {saving && <span className="flex items-center gap-1 text-xs text-muted"><Loader2 className="h-3 w-3 animate-spin" />保存中…</span>}
             </div>
             <div className="flex flex-wrap gap-2">
@@ -419,153 +483,231 @@ export default function DictationPage() {
                 打印听写纸
               </Button>
             </div>
+            </div>
           </div>
 
           {tab === "words" ? (
-            <Card><CardContent className="p-0">
-              {words.length === 0 ? <EmptyState title="暂无单词" description="可手动添加、Excel 导入或从词汇单元一键导入" /> :
-                <div className="divide-y divide-line">
-                  {words.map((w, i) => (
-                    <div key={w.id} className="flex items-center justify-between p-4 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/50 hover:to-transparent">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 text-xs text-muted">{i + 1}</span>
-                        <span className="font-medium">{w.word}</span>
-                        <button onClick={() => speak(w.word)} className="text-primary hover:text-primary-d"><Volume2 className="h-4 w-4" /></button>
-                        {w.meaning && <span className="text-sm text-muted">{w.meaning}</span>}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="eyebrow text-neutral-6">Word List</p>
+                    <CardTitle className="mt-1.5 flex items-center gap-2 text-[15px]">
+                      <span className="icon-slot"><BookOpen /></span>
+                      单词管理
+                      <Badge variant="muted">{words.length} 词</Badge>
+                    </CardTitle>
+                  </div>
+                  <p className="text-[11px] text-muted">点击喇叭试听发音 · 单词将同步用于听写纸与成绩录入</p>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {words.length === 0 ? <EmptyState title="暂无单词" description="可手动添加、Excel 导入或从词汇单元一键导入" /> :
+                  <div className="divide-y divide-line/70">
+                    {words.map((w, i) => (
+                      <div key={w.id} className="group flex items-center justify-between gap-3 px-4 py-2.5 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/50 hover:to-transparent">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span className="num-display w-6 shrink-0 text-right text-[11px] font-semibold tabular-nums text-neutral-4">{String(i + 1).padStart(2, "0")}</span>
+                          <span className="font-display text-[17px] font-medium tracking-[0.01em] transition-colors duration-[var(--dur-quick)] group-hover:text-primary-d">{w.word}</span>
+                          <button
+                            onClick={() => speak(w.word)}
+                            title="播放发音"
+                            aria-label={`播放发音 ${w.word}`}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/70 text-primary ring-1 ring-inset ring-primary/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition-all duration-[var(--dur-quick)] hover:bg-[#f8e4e7] hover:shadow-glow"
+                          >
+                            <Volume2 className="h-3.5 w-3.5" />
+                          </button>
+                          {w.meaning && <span className="truncate text-xs text-muted">{w.meaning}</span>}
+                        </div>
+                        <button onClick={() => deleteWordMut.mutate(w.id)} title="删除单词" aria-label={`删除单词 ${w.word}`} className="flex h-8 w-8 items-center justify-center rounded-md text-muted opacity-0 transition-all duration-[var(--dur-quick)] hover:bg-[#f8e4e7] hover:text-[#a64953] group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
                       </div>
-                      <button onClick={() => deleteWordMut.mutate(w.id)} className="text-muted hover:text-[#a64953]"><Trash2 className="h-4 w-4" /></button>
-                    </div>
-                  ))}
-                </div>}
-              <div className="border-t border-line p-3">
-                <Button size="sm" className="gap-1.5" onClick={() => { setWordForm({ word: "", meaning: "" }); setWordDialog(true); }}><Plus className="h-4 w-4" />添加单词</Button>
-              </div>
-            </CardContent></Card>
+                    ))}
+                  </div>}
+                <div className="flex items-center justify-between border-t border-line/70 p-3">
+                  <Button size="sm" className="gap-1.5" onClick={() => { setWordForm({ word: "", meaning: "" }); setWordDialog(true); }}><Plus className="h-4 w-4" />添加单词</Button>
+                  <span className="text-[11px] text-muted">共 {words.length} 个单词</span>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
             <div className="space-y-3">
-              <Card>
-                <CardContent className="flex flex-wrap items-end gap-3 py-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted">听写班级</Label>
-                    <select
-                      value={effectiveClassId}
-                      onChange={(e) => setScoreClassId(e.target.value)}
-                      className="flex h-9 rounded-md border border-line bg-panel px-3 text-sm"
-                    >
-                      <option value="">选择班级</option>
-                      {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted">搜索学生</Label>
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted" />
-                      <Input
-                        value={studentFilter}
-                        onChange={(e) => setStudentFilter(e.target.value)}
-                        placeholder="姓名 / 学号"
-                        className="h-9 w-40 pl-8"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => fillAll(true)}>全班全对</Button>
-                    <Button size="sm" variant="outline" onClick={() => fillAll(null)}>清空成绩</Button>
-                  </div>
-                  {classSummary.avg != null && (
-                    <div className="ml-auto flex items-center gap-4 text-sm">
-                      <span className="text-muted">已批改 <b className="text-text">{classSummary.recorded}</b> 格</span>
-                      <span className="text-muted">全班正确率 <b className="text-primary">{classSummary.avg}%</b></span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              {/* ══════════ 统计区：KPI + 正确率环 ══════════ */}
+              <div className="stagger grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <MetricTile index={0} label="听写学生" hint="Students" value={students.length} suffix="人" icon={Users} tone="hanada" />
+                <MetricTile index={1} label="听写单词" hint="Words" value={words.length} suffix="词" icon={BookOpen} tone="kuchiba" />
+                <MetricTile index={2} label="已批改格子" hint="Recorded" value={classSummary.recorded} suffix="格" icon={ClipboardCheck} tone="sumi" />
+                <MetricRing index={3} label="全班正确率" hint="Accuracy" value={classSummary.avg ?? 0} icon={Gauge} tone="wakatake" from="#9ccbb2" to="#3d7a5e" />
+              </div>
 
-              <Card><CardContent className="p-0">
-                {words.length === 0 ? <EmptyState title="请先添加听写单词" /> :
-                 students.length === 0 ? <EmptyState title="该班级暂无学生" description="请先在学生管理中添加或导入学生" /> :
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="table-head border-b border-line text-left text-xs text-muted">
-                          <th className="sticky left-0 z-10 bg-panel px-3 py-2 font-medium">学生</th>
-                          {words.map((w) => {
-                            const st = wordStats.get(w.id);
+              {/* 批量操作条：玻璃化 */}
+              <div className="flex flex-wrap items-end gap-3 rounded-xl border border-white/70 bg-[linear-gradient(160deg,rgba(255,255,255,0.85),rgba(249,248,245,0.7))] px-3.5 py-2.5 shadow-[0_1px_2px_rgba(36,35,31,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md">
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted">听写班级</Label>
+                  <select
+                    value={effectiveClassId}
+                    onChange={(e) => setScoreClassId(e.target.value)}
+                    className="flex h-9 rounded-md border border-line bg-panel px-3 text-sm"
+                  >
+                    <option value="">选择班级</option>
+                    {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted">搜索学生</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted" />
+                    <Input
+                      value={studentFilter}
+                      onChange={(e) => setStudentFilter(e.target.value)}
+                      placeholder="姓名 / 学号"
+                      className="h-9 w-40 pl-8 bg-white/70"
+                    />
+                  </div>
+                </div>
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  <span className="hidden text-[11px] text-muted sm:inline">批量标记：</span>
+                  <Button size="sm" variant="outline" className="gap-1.5 bg-white/70 backdrop-blur-md" onClick={() => fillAll(true)}>
+                    <Check className="h-3.5 w-3.5 text-[#3d7a5e]" />全班全对
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5 bg-white/70 backdrop-blur-md" onClick={() => fillAll(null)}>
+                    <X className="h-3.5 w-3.5 text-[#a64953]" />清空成绩
+                  </Button>
+                </div>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="eyebrow text-neutral-6">Score Grid</p>
+                      <CardTitle className="mt-1.5 flex items-center gap-2 text-[15px]">
+                        <span className="icon-slot"><ClipboardCheck /></span>
+                        成绩批改
+                        <Badge variant="muted">{filteredStudents.length} / {students.length} 人</Badge>
+                      </CardTitle>
+                    </div>
+                    <p className="text-[11px] text-muted">点击格子：正确 → 错误 → 未批改，自动保存</p>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {words.length === 0 ? <EmptyState title="请先添加听写单词" description="切换到「单词管理」添加或导入单词" /> :
+                   students.length === 0 ? <EmptyState title="该班级暂无学生" description="请先在学生管理中添加或导入学生" /> :
+                    <div className="overflow-x-auto scrollbar-thin">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="table-head border-b border-line text-left text-xs text-muted">
+                            <th className="sticky left-0 z-10 bg-panel px-3 py-2.5 font-medium">学生</th>
+                            {words.map((w) => {
+                              const st = wordStats.get(w.id);
+                              const ratio = st && st.recorded > 0 ? st.wrong / st.recorded : 0;
+                              const tone = ratio >= 0.4
+                                ? { bg: "linear-gradient(160deg,#f9e3e4,#f2cfd2)", color: "#a64953", ring: "rgba(166,73,83,0.18)" }
+                                : ratio >= 0.2
+                                  ? { bg: "linear-gradient(160deg,#f7efe2,#efe2cd)", color: "#8a6230", ring: "rgba(168,122,61,0.18)" }
+                                  : { bg: "linear-gradient(160deg,#f2f1ed,#eae8e2)", color: "#787670", ring: "rgba(120,118,112,0.14)" };
+                              return (
+                                <th key={w.id} className="min-w-[66px] px-1 py-2.5 text-center font-medium">
+                                  <div className="flex flex-col items-center gap-1">
+                                    <span className="font-display text-[14px] font-medium leading-none text-text">{w.word}</span>
+                                    {st && st.recorded > 0 && (
+                                      <span
+                                        className="rounded-full px-1.5 py-[1px] text-[10px] tabular-nums shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] ring-1 ring-inset"
+                                        style={{ backgroundImage: tone.bg, color: tone.color }}
+                                      >
+                                        错 {st.wrong}/{st.recorded}
+                                      </span>
+                                    )}
+                                  </div>
+                                </th>
+                              );
+                            })}
+                            <th className="px-3 py-2.5 text-center font-medium">正确率</th>
+                            <th className="px-3 py-2.5 text-center font-medium">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredStudents.map((st) => {
+                            const stat = studentStats.get(st.id);
+                            const pct = stat && stat.recorded > 0 ? Math.round((stat.correct / stat.recorded) * 100) : 0;
+                            const barGrad = pct >= 85
+                              ? "linear-gradient(90deg,#9ccbb2,#4a8f74)"
+                              : pct >= 60
+                                ? "linear-gradient(90deg,#e3a5ae,#c56473)"
+                                : "linear-gradient(90deg,#e0a3ac,#a64953)";
+                            const tone = avatarTone(st.name);
                             return (
-                              <th key={w.id} className="min-w-[64px] px-1 py-2 text-center font-medium">
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <span className="font-serif text-[13px] text-text">{w.word}</span>
-                                  {st && st.recorded > 0 && (
-                                    <span className={cn(
-                                      "rounded px-1 text-[10px] tabular-nums",
-                                      st.wrong / st.recorded >= 0.4 ? "bg-[#f7dfe0] text-[#a64953]" : "bg-neutral-2 text-muted",
-                                    )}>
-                                      错 {st.wrong}/{st.recorded}
+                              <tr key={st.id} className="group border-b border-line/50 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/50 hover:to-transparent">
+                                <td className="sticky left-0 z-10 bg-panel px-3 py-1.5">
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-serif text-[11px] ring-1 ring-inset ring-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] transition-transform duration-[var(--dur-smooth)] ease-[var(--ease-spring)] group-hover:scale-105"
+                                      style={{ backgroundImage: tone.bg, color: tone.fg }}
+                                    >
+                                      {st.name.slice(0, 1)}
                                     </span>
-                                  )}
-                                </div>
-                              </th>
+                                    <span className="font-medium">{st.name}</span>
+                                    {st.seatNo != null && <span className="text-[10px] text-muted">{st.seatNo}号</span>}
+                                  </div>
+                                </td>
+                                {words.map((w) => {
+                                  const v = grid[cellKey(st.id, w.id)] ?? null;
+                                  return (
+                                    <td key={w.id} className="px-1 py-1.5 text-center">
+                                      <button
+                                        onClick={() => toggleCell(st.id, w.id)}
+                                        className={cn(
+                                          "group/cell flex h-7 w-11 items-center justify-center rounded-md border text-xs",
+                                          "transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
+                                          "hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.96]",
+                                          v === true && "border-[#5e9f7e]/45 bg-gradient-to-b from-[#e4f0e8] to-[#d5e8dc] text-[#3d7a5e] shadow-[0_1px_2px_rgba(94,159,126,0.28),inset_0_1px_0_rgba(255,255,255,0.9)]",
+                                          v === false && "border-[#a64953]/45 bg-gradient-to-b from-[#f7dfe0] to-[#f0cfd1] text-[#a64953] shadow-[0_1px_2px_rgba(166,73,83,0.24),inset_0_1px_0_rgba(255,255,255,0.85)]",
+                                          v === null && "border-dashed border-line bg-panel text-muted hover:border-[#c56473]/50 hover:bg-[#f8e4e7]/45 hover:text-primary-d",
+                                        )}
+                                        title="点击切换：正确 / 错误 / 未批改"
+                                        aria-label="切换批改状态：正确 / 错误 / 未批改"
+                                      >
+                                        {v === true ? <Check className="h-3.5 w-3.5" /> : v === false ? <X className="h-3.5 w-3.5" /> :
+                                          <span className="h-1 w-1 rounded-full bg-[#dcd9d1] transition-colors duration-[var(--dur-quick)] group-hover/cell:bg-[#c56473]/60" />}
+                                      </button>
+                                    </td>
+                                  );
+                                })}
+                                <td className="px-3 py-1.5 text-center">
+                                  <div className="flex items-baseline justify-center gap-0.5">
+                                    <span className={cn(
+                                      "num-display text-[16px] font-semibold tabular-nums",
+                                      pct >= 85 ? "text-[#3d7a5e]" : pct >= 60 ? "text-primary-d" : "text-[#a64953]",
+                                    )}>
+                                      {stat?.correct ?? 0}
+                                    </span>
+                                    <span className="text-[11px] tabular-nums text-muted">/{stat?.recorded ?? 0}</span>
+                                  </div>
+                                  <div className="mx-auto mt-0.5 flex w-14 items-center gap-1">
+                                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-neutral-3/60">
+                                      <div
+                                        className="h-full rounded-full transition-[width] duration-[var(--dur-slow)] ease-[var(--ease-quick)]"
+                                        style={{ width: `${pct}%`, backgroundImage: barGrad, boxShadow: "0 0 5px rgba(197,100,115,0.25)" }}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] tabular-nums text-muted">{accuracyText(stat?.correct ?? 0, stat?.recorded ?? 0)}</span>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <div className="flex justify-center gap-1">
+                                    <button onClick={() => fillStudent(st.id, true)}
+                                      className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] text-muted ring-1 ring-inset ring-line transition-all duration-[var(--dur-quick)] hover:-translate-y-[1px] hover:bg-[#e4f0e8] hover:text-[#3d7a5e] hover:shadow-[var(--shadow-xs)]">全对</button>
+                                    <button onClick={() => fillStudent(st.id, null)}
+                                      className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] text-muted ring-1 ring-inset ring-line transition-all duration-[var(--dur-quick)] hover:-translate-y-[1px] hover:bg-[#f7dfe0] hover:text-[#a64953] hover:shadow-[var(--shadow-xs)]">清空</button>
+                                  </div>
+                                </td>
+                              </tr>
                             );
                           })}
-                          <th className="px-3 py-2 text-center font-medium">正确</th>
-                          <th className="px-3 py-2 text-center font-medium">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredStudents.map((st) => {
-                          const stat = studentStats.get(st.id);
-                          return (
-                            <tr key={st.id} className="border-b border-line/50 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/50 hover:to-transparent">
-                              <td className="sticky left-0 z-10 bg-panel px-3 py-1.5">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">{st.name}</span>
-                                  {st.seatNo != null && <span className="text-xs text-muted">{st.seatNo}号</span>}
-                                </div>
-                              </td>
-                              {words.map((w) => {
-                                const v = grid[cellKey(st.id, w.id)] ?? null;
-                                return (
-                                  <td key={w.id} className="px-1 py-1.5 text-center">
-                                    <button
-                                      onClick={() => toggleCell(st.id, w.id)}
-                                      className={cn(
-                                        "group/cell flex h-7 w-12 items-center justify-center rounded-md border text-xs",
-                                        "transition-all duration-[var(--dur-quick)] ease-[var(--ease-smooth)]",
-                                        "hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.96]",
-                                        v === true && "border-[#5e9f7e]/45 bg-gradient-to-b from-[#e4f0e8] to-[#d5e8dc] text-[#3d7a5e] shadow-[0_1px_2px_rgba(94,159,126,0.28),inset_0_1px_0_rgba(255,255,255,0.9)]",
-                                        v === false && "border-[#a64953]/45 bg-gradient-to-b from-[#f7dfe0] to-[#f0cfd1] text-[#a64953] shadow-[0_1px_2px_rgba(166,73,83,0.24),inset_0_1px_0_rgba(255,255,255,0.85)]",
-                                        v === null && "border-dashed border-line bg-panel text-muted hover:border-[#c56473]/50 hover:bg-[#f8e4e7]/45 hover:text-primary-d",
-                                      )}
-                                      title="点击切换：正确 / 错误 / 未批改"
-                                    >
-                                      {v === true ? <Check className="h-3.5 w-3.5" /> : v === false ? <X className="h-3.5 w-3.5" /> :
-                                        <span className="h-1 w-1 rounded-full bg-[#dcd9d1] transition-colors duration-[var(--dur-quick)] group-hover/cell:bg-[#c56473]/60" />}
-                                    </button>
-                                  </td>
-                                );
-                              })}
-                              <td className="px-3 py-1.5 text-center">
-                                <div className="flex items-baseline justify-center gap-0.5">
-                                  <span className="font-serif text-[15px] font-semibold tabular-nums text-primary-d">{stat?.correct ?? 0}</span>
-                                  <span className="text-xs tabular-nums text-muted">/{stat?.recorded ?? 0}</span>
-                                </div>
-                                <div className="text-[11px] tabular-nums text-muted">{accuracyText(stat?.correct ?? 0, stat?.recorded ?? 0)}</div>
-                              </td>
-                              <td className="px-3 py-1.5">
-                                <div className="flex gap-1">
-                                  <button onClick={() => fillStudent(st.id, true)}
-                                    className="rounded-md px-1.5 py-0.5 text-[10px] text-muted ring-1 ring-inset ring-line transition-colors duration-[var(--dur-quick)] hover:bg-[#e4f0e8] hover:text-[#3d7a5e]">全对</button>
-                                  <button onClick={() => fillStudent(st.id, null)}
-                                    className="rounded-md px-1.5 py-0.5 text-[10px] text-muted ring-1 ring-inset ring-line transition-colors duration-[var(--dur-quick)] hover:bg-[#f7dfe0] hover:text-[#a64953]">清空</button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>}
-              </CardContent></Card>
+                        </tbody>
+                      </table>
+                    </div>}
+                </CardContent>
+              </Card>
               <p className="text-xs text-muted">点击格子循环切换「正确 → 错误 → 未批改」，改动会自动保存（约 0.4 秒后写入）。</p>
             </div>
           )}

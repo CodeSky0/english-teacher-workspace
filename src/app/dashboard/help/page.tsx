@@ -1,15 +1,23 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { PageHeader } from "@/components/common/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Compass, Monitor, Palette, CloudUpload, ShieldCheck, Wrench, FileSpreadsheet, ArrowRight,
+  Compass, Monitor, Palette, CloudUpload, ShieldCheck, Wrench, FileSpreadsheet,
+  ArrowRight, Users, CalendarDays, BookOpen, BarChart3, Settings, Search, X, Sparkles,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Item = { text: string; swatch?: string };
+type Group = "入门" | "课堂" | "数据" | "安全" | "排障" | "导入";
 
-const sections: { title: string; icon: typeof Compass; items: Item[] }[] = [
+const sections: { slug: string; en: string; title: string; group: Group; icon: typeof Compass; items: Item[] }[] = [
   {
+    slug: "start",
+    en: "Getting Started",
     title: "如何使用英语教师工作台",
+    group: "入门",
     icon: Compass,
     items: [
       { text: "注册账户并登录后，左侧导航栏提供 13 个功能模块。" },
@@ -21,7 +29,10 @@ const sections: { title: string; icon: typeof Compass; items: Item[] }[] = [
     ],
   },
   {
+    slug: "classroom",
+    en: "Classroom Mode",
     title: "课堂互动操作说明",
+    group: "课堂",
     icon: Monitor,
     items: [
       { text: "按快捷键 C 或点击顶栏「课堂互动」按钮进入课堂模式。" },
@@ -33,7 +44,10 @@ const sections: { title: string; icon: typeof Compass; items: Item[] }[] = [
     ],
   },
   {
+    slug: "colors",
+    en: "Subject Colors",
     title: "课表颜色规则",
+    group: "课堂",
     icon: Palette,
     items: [
       { text: "听力 / 听写", swatch: "listen" },
@@ -48,7 +62,10 @@ const sections: { title: string; icon: typeof Compass; items: Item[] }[] = [
     ],
   },
   {
+    slug: "sync",
+    en: "Sync & Devices",
     title: "如何更换电脑及同步数据",
+    group: "数据",
     icon: CloudUpload,
     items: [
       { text: "本系统的所有数据保存在服务器端的 PostgreSQL 数据库中。" },
@@ -58,7 +75,10 @@ const sections: { title: string; icon: typeof Compass; items: Item[] }[] = [
     ],
   },
   {
+    slug: "security",
+    en: "Security",
     title: "数据安全与备份",
+    group: "安全",
     icon: ShieldCheck,
     items: [
       { text: "所有数据通过 HTTPS 加密传输。" },
@@ -70,7 +90,10 @@ const sections: { title: string; icon: typeof Compass; items: Item[] }[] = [
     ],
   },
   {
+    slug: "troubleshoot",
+    en: "Troubleshooting",
     title: "故障排查",
+    group: "排障",
     icon: Wrench,
     items: [
       { text: "无法登录：检查邮箱和密码是否正确，确认网络连接正常。" },
@@ -81,7 +104,10 @@ const sections: { title: string; icon: typeof Compass; items: Item[] }[] = [
     ],
   },
   {
+    slug: "csv",
+    en: "CSV Guide",
     title: "Excel / CSV 导入导出指南",
+    group: "导入",
     icon: FileSpreadsheet,
     items: [
       { text: "支持 9 个核心模块的 CSV 导入导出：学生、课表、备课、教研、作业、成绩、词汇、听写、资源。" },
@@ -95,13 +121,15 @@ const sections: { title: string; icon: typeof Compass; items: Item[] }[] = [
   },
 ];
 
+const GROUPS: Group[] = ["入门", "课堂", "数据", "安全", "排障", "导入"];
+
 const quickLinks = [
-  { href: "/dashboard/students", label: "学生管理" },
-  { href: "/dashboard/schedule", label: "教学课表" },
-  { href: "/dashboard/plans", label: "备课与反思" },
-  { href: "/dashboard/grades", label: "学情分析" },
-  { href: "/classroom", label: "课堂互动" },
-  { href: "/dashboard/settings", label: "设置与备份" },
+  { href: "/dashboard/students", label: "学生管理", en: "Students", icon: Users, tone: "#3d6896" },
+  { href: "/dashboard/schedule", label: "教学课表", en: "Schedule", icon: CalendarDays, tone: "#8a6230" },
+  { href: "/dashboard/plans", label: "备课与反思", en: "Lesson Plans", icon: BookOpen, tone: "#4a8f74" },
+  { href: "/dashboard/grades", label: "学情分析", en: "Analytics", icon: BarChart3, tone: "#b8556a" },
+  { href: "/classroom", label: "课堂互动", en: "Classroom", icon: Monitor, tone: "#3d6896" },
+  { href: "/dashboard/settings", label: "设置与备份", en: "Settings", icon: Settings, tone: "#8a6230" },
 ];
 
 const SWATCH_TEXT: Record<string, string> = {
@@ -114,66 +142,228 @@ const SWATCH_BG: Record<string, string> = {
 };
 
 export default function HelpPage() {
+  const [query, setQuery] = useState("");
+  const [group, setGroup] = useState<Group | "全部">("全部");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return sections.filter((s) => {
+      if (group !== "全部" && s.group !== group) return false;
+      if (!q) return true;
+      const haystack = [s.title, s.en, s.group, ...s.items.map((i) => i.text)].join(" ").toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [query, group]);
+
   return (
     <div>
-      <PageHeader title="帮助" description="使用说明和常见问题解答" />
+      {/* ══════════ 深色搜索 / 分类条 ══════════ */}
+      <section className="spotlight relative mb-4 overflow-hidden rounded-[26px] shadow-[0_2px_4px_rgba(36,35,31,0.06),0_28px_60px_-30px_rgba(58,42,45,0.55)] animate-fade-in-up">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(118deg,#3d2630_0%,#5a3542_20%,#7d4d55_40%,#6b5a72_60%,#3f5878_82%,#2d4761_100%)]" />
+        <div className="pointer-events-none absolute -left-20 -top-28 h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(255,170,150,0.32),transparent_64%)]" />
+        <div className="pointer-events-none absolute -right-20 -top-28 h-[24rem] w-[24rem] rounded-full bg-[radial-gradient(circle,rgba(126,172,255,0.28),transparent_66%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.09] grid-veil" />
+        <svg
+          className="pointer-events-none absolute -right-10 top-1/2 hidden h-[16rem] w-[16rem] -translate-y-1/2 text-white/15 lg:block animate-drift"
+          viewBox="0 0 200 200"
+          fill="none"
+          aria-hidden
+        >
+          <circle cx="100" cy="100" r="92" stroke="currentColor" strokeWidth="0.5" />
+          <circle cx="100" cy="100" r="72" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 6" />
+          <circle cx="100" cy="100" r="52" stroke="currentColor" strokeWidth="0.5" />
+          <circle cx="100" cy="100" r="30" stroke="currentColor" strokeWidth="0.5" strokeDasharray="1 5" />
+        </svg>
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -bottom-7 right-3 hidden select-none font-display text-[7.5rem] font-semibold leading-none tracking-tight text-white/[0.07] lg:block"
+        >
+          Handbook
+        </span>
 
-      {/* 快速入口 */}
-      <div className="relative mb-5 overflow-hidden rounded-xl bg-gradient-to-br from-[#fdf6f2] via-[#fbf7f2] to-[#f4f1ea] p-5 edge-lit shadow-paper-sm">
-        <div className="grid-veil pointer-events-none absolute inset-0 opacity-[0.5]" />
-        <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-[#c56473]/10 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-14 left-1/3 h-36 w-36 rounded-full bg-[#3d6896]/10 blur-2xl" />
-        <div className="relative">
-          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#c56473]">Quick Start</p>
-          <h2 className="mt-1 font-serif text-[19px] leading-snug">从这里开始</h2>
-          <p className="mt-1 text-[13px] text-muted">按「学生管理 → 课表 → 备课 → 成绩」的顺序配置，即可完整运转整套教学流程。</p>
-          <div className="mt-3.5 flex flex-wrap gap-2">
-            {quickLinks.map((l) => (
-              <Link key={l.href} href={l.href}
-                className="group inline-flex items-center gap-1 rounded-full bg-panel px-3 py-1.5 text-xs text-neutral-6 shadow-[var(--shadow-xs)] ring-1 ring-inset ring-line transition-all duration-[var(--dur-quick)] hover:-translate-y-[1px] hover:text-primary-d hover:shadow-[var(--shadow-sm)]">
-                {l.label}
-                <ArrowRight className="h-3 w-3 -translate-x-0.5 opacity-0 transition-all duration-[var(--dur-quick)] group-hover:translate-x-0 group-hover:opacity-70" />
-              </Link>
-            ))}
+        <div className="relative p-6 sm:p-7">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="eyebrow text-white/55">Handbook</span>
+            <span className="h-3 w-px bg-white/25" />
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-[11px] text-white/85 backdrop-blur-sm">
+              <Sparkles className="h-3 w-3" />
+              {sections.length} 个主题 · 约 10 分钟读完
+            </span>
+          </div>
+          <h2 className="mt-2.5 font-serif text-[30px] font-semibold leading-[1.16] tracking-tight text-white sm:text-[36px]">
+            帮助与使用手册
+          </h2>
+          <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-white/70">
+            搜索关键词，或按分类直达说明。从「学生管理 → 课表 → 备课」开始即可跑通整套流程。
+          </p>
+
+          <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative w-full lg:max-w-md">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="搜索：点名、备份、CSV、考勤…"
+                aria-label="搜索帮助内容"
+                className="h-11 w-full rounded-xl border border-white/20 bg-white/[0.10] pl-10 pr-10 text-sm text-white placeholder:text-white/40 shadow-[inset_0_1px_2px_rgba(0,0,0,0.25)] backdrop-blur-sm transition-all duration-[var(--dur-quick)] hover:border-white/30 focus-visible:border-white/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+              />
+              {query && (
+                <button
+                  type="button"
+                  aria-label="清空搜索"
+                  onClick={() => setQuery("")}
+                  className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(["全部", ...GROUPS] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setGroup(g)}
+                  aria-pressed={group === g}
+                  className={cn(
+                    "min-h-[36px] rounded-full px-3 text-[12px] transition-all duration-[var(--dur-quick)]",
+                    group === g
+                      ? "bg-white font-medium text-[#4a2231] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.6)]"
+                      : "border border-white/18 bg-white/[0.06] text-white/70 hover:border-white/35 hover:bg-white/[0.12] hover:text-white"
+                  )}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {sections.map((s, si) => {
-          const Icon = s.icon;
-          return (
-            <Card key={s.title} className="self-start">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2.5 text-[15px]">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] font-serif text-[13px] font-semibold text-primary-d ring-1 ring-inset ring-[#c56473]/22 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
-                    {si + 1}
-                  </span>
-                  <Icon className="h-4 w-4 text-primary" />
-                  <span className="tracking-[0.01em]">{s.title}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ul className="space-y-2">
-                  {s.items.map((it, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-[13px] leading-[1.7] text-neutral-7">
-                      {it.swatch ? (
-                        <span className={`mt-[3px] inline-flex shrink-0 items-center rounded-md px-2 py-[1px] text-[11px] font-medium ring-1 ring-inset ring-black/[0.06] ${SWATCH_BG[it.swatch]} ${SWATCH_TEXT[it.swatch]}`}>
-                          {it.text}
-                        </span>
-                      ) : (
-                        <>
-                          <span className="mt-[7px] h-1 w-1 shrink-0 rotate-45 rounded-[1px] bg-[#c56473]/55" />
-                          <span>{it.text}</span>
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
+        {/* ══════════ 左栏：目录 + 快速入口（sticky） ══════════ */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-20 space-y-3">
+            <div className="overflow-hidden rounded-2xl edge-lit bg-[linear-gradient(170deg,rgba(255,255,255,0.72),rgba(250,248,244,0.52))] p-3 shadow-[0_1px_2px_rgba(36,35,31,0.04),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-md">
+              <div className="flex items-center justify-between px-1.5 pb-2">
+                <p className="eyebrow">Contents</p>
+                <span className="font-display text-[10px] tabular-nums text-neutral-5">{filtered.length} / {sections.length}</span>
+              </div>
+              <nav className="space-y-0.5">
+                {filtered.map((s, i) => (
+                  <a
+                    key={s.slug}
+                    href={`#${s.slug}`}
+                    className="group flex items-center gap-2 rounded-lg px-1.5 py-1.5 transition-all duration-[var(--dur-quick)] hover:bg-white/70"
+                  >
+                    <span className="flex h-5 w-6 shrink-0 items-center justify-center rounded-md bg-[linear-gradient(180deg,#f2f1ed,#eae8e2)] font-display text-[10px] font-semibold tabular-nums text-neutral-6 ring-1 ring-inset ring-line/60 transition-colors group-hover:bg-[linear-gradient(180deg,#f8e4e7,#f2d6da)] group-hover:text-primary-d">
+                      {String(sections.indexOf(s) + 1).padStart(2, "0")}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[12px] text-neutral-7 transition-colors group-hover:text-text">{s.title}</span>
+                    <ArrowRight className="h-3 w-3 shrink-0 -translate-x-1 text-neutral-4 opacity-0 transition-all duration-[var(--dur-quick)] group-hover:translate-x-0 group-hover:opacity-60" />
+                  </a>
+                ))}
+                {filtered.length === 0 && <p className="px-1.5 py-2 text-[11px] text-muted">没有匹配的条目</p>}
+              </nav>
+              <p className="mt-2 border-t border-line/60 px-1.5 pt-2 text-[10px] leading-relaxed text-neutral-5">
+                共 {sections.length} 个主题 · 点击直达
+              </p>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl edge-lit bg-[linear-gradient(170deg,rgba(255,255,255,0.7),rgba(250,248,244,0.5))] p-3 shadow-[0_1px_2px_rgba(36,35,31,0.04),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-md">
+              <p className="eyebrow px-1.5 pb-2">Quick Links</p>
+              <nav className="space-y-0.5">
+                {quickLinks.map((l) => {
+                  const Icon = l.icon;
+                  return (
+                    <Link
+                      key={l.href}
+                      href={l.href}
+                      className="group flex items-center gap-2 rounded-lg px-1.5 py-1.5 transition-all duration-[var(--dur-quick)] hover:bg-white/70"
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/80 ring-1 ring-inset ring-line/60 transition-transform group-hover:scale-105" style={{ color: l.tone }}>
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[12px] text-neutral-7 transition-colors group-hover:text-text">{l.label}</span>
+                      <ArrowRight className="h-3 w-3 shrink-0 -translate-x-1 text-neutral-4 opacity-0 transition-all duration-[var(--dur-quick)] group-hover:translate-x-0 group-hover:opacity-60" />
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+        </aside>
+
+        {/* ══════════ 分区卡片 ══════════ */}
+        <div>
+          {filtered.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] text-[#a64953] ring-1 ring-inset ring-[#c56473]/20">
+                  <Search className="h-5 w-5" />
+                </div>
+                <p className="text-sm font-medium text-text">没有找到「{query || group}」相关内容</p>
+                <p className="mt-1 text-xs text-muted">试试更短的关键词，或切换到「全部」分类</p>
+                <button
+                  type="button"
+                  onClick={() => { setQuery(""); setGroup("全部"); }}
+                  className="mt-4 rounded-lg border border-line bg-gradient-to-b from-white to-[#faf9f7] px-3 py-1.5 text-xs text-primary-d shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition-all hover:-translate-y-[1px] hover:border-primary/40"
+                >
+                  重置筛选
+                </button>
               </CardContent>
             </Card>
-          );
-        })}
+          ) : (
+            <div className="grid gap-4 xl:grid-cols-2">
+              {filtered.map((s) => {
+                const Icon = s.icon;
+                const index = sections.indexOf(s) + 1;
+                return (
+                  <Card key={s.slug} id={s.slug} className="reveal scroll-mt-24 self-start">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="eyebrow truncate">{s.en}</span>
+                          <span className="rounded-full bg-white/75 px-1.5 py-[1px] text-[9px] text-neutral-6 ring-1 ring-inset ring-line/70">{s.group}</span>
+                        </div>
+                        <span className="font-display text-[11px] tabular-nums text-neutral-4">{String(index).padStart(2, "0")}</span>
+                      </div>
+                      <CardTitle className="mt-1.5 flex items-start gap-2.5 text-[15px]">
+                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-[#f8e4e7] to-[#f2d6da] text-primary-d ring-1 ring-inset ring-[#c56473]/22 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 pt-0.5 leading-snug tracking-[0.01em]">{s.title}</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {s.items.map((it, i) => (
+                          <li key={i} className="flex items-start gap-2.5 text-[13px] leading-[1.7] text-neutral-7">
+                            {it.swatch ? (
+                              <span className={`mt-[3px] inline-flex shrink-0 items-center rounded-md px-2 py-[1px] text-[11px] font-medium ring-1 ring-inset ring-black/[0.06] ${SWATCH_BG[it.swatch]} ${SWATCH_TEXT[it.swatch]}`}>
+                                {it.text}
+                              </span>
+                            ) : (
+                              <>
+                                <span className="mt-[7px] h-1 w-1 shrink-0 rotate-45 rounded-[1px] bg-[#c56473]/55" />
+                                <span>{it.text}</span>
+                              </>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-muted">
+            <Compass className="h-3 w-3" />
+            找不到答案？在「设置」中导出日志并联系管理员。
+          </p>
+        </div>
       </div>
     </div>
   );

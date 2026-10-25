@@ -5,15 +5,14 @@ import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import Link from "next/link";
-import { User, Mail, Lock } from "lucide-react";
+import { User, Mail, Lock, ArrowRight } from "lucide-react";
 
-/** 输入框左侧的图标槽：小色块容器，比裸图标更整齐 */
+/** 输入框左侧的图标槽：玻璃小方块，比裸图标更整齐 */
 function FieldIcon({ children }: { children: React.ReactNode }) {
   return (
-    <span className="pointer-events-none absolute left-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-neutral-3/55 text-neutral-6">
+    <span className="pointer-events-none absolute left-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg border border-white/70 bg-white/70 text-neutral-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
       {children}
     </span>
   );
@@ -45,21 +44,20 @@ export default function RegisterForm() {
   }
 
   return (
-    <Card className="w-full shadow-paper-lg">
-      <CardHeader className="gap-2 pb-5">
-        <div className="mb-1 flex items-center gap-2.5 lg:hidden">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#cd6c7a] to-[#a64953] text-sm font-medium text-white shadow-[0_2px_6px_-1px_rgba(168,84,99,0.5),inset_0_1px_0_rgba(255,255,255,0.35)]">
-            英
-          </span>
-          <span className="font-serif text-base font-normal tracking-wide text-neutral-9">
-            英语教师工作台
-          </span>
-        </div>
-        <CardTitle className="font-serif text-2xl font-semibold tracking-tight">创建账户</CardTitle>
-        <CardDescription className="text-copy-14">开始使用英语教师工作台</CardDescription>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="spotlight relative overflow-hidden rounded-[26px] border border-[#ddd7ca]/80 bg-[linear-gradient(158deg,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.88)_52%,rgba(253,251,247,0.82)_100%)] p-6 shadow-paper-float backdrop-blur-xl sm:p-8">
+      {/* 顶部三色极细光带：玻璃卡的品牌端点 */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,rgba(197,100,115,0)_0%,rgba(197,100,115,0.55)_28%,rgba(61,104,150,0.32)_62%,rgba(94,159,126,0.18)_100%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(120%_100%_at_28%_0%,rgba(255,255,255,0.95),transparent)]" />
+      <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(197,100,115,0.16),transparent_70%)]" />
+      <div className="pointer-events-none absolute -bottom-24 -left-24 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(61,104,150,0.10),transparent_72%)]" />
+      <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.95),transparent)]" />
+
+      <div className="relative">
+<p className="eyebrow text-[9px] text-neutral-5">Create Account</p>
+        <h1 className="mt-1.5 font-serif text-[27px] font-semibold tracking-tight text-text">创建账户</h1>
+        <p className="mt-1.5 text-[13px] text-muted">开始使用英语教师工作台，把教学事务安放妥当。</p>
+
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">姓名</Label>
             <div className="relative">
@@ -72,7 +70,7 @@ export default function RegisterForm() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="你的姓名"
                 required
-                className="pl-10"
+                className="h-10 rounded-xl pl-11"
               />
             </div>
           </div>
@@ -89,7 +87,7 @@ export default function RegisterForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="teacher@example.com"
                 required
-                className="pl-10"
+                className="h-10 rounded-xl pl-11"
               />
             </div>
           </div>
@@ -107,29 +105,38 @@ export default function RegisterForm() {
                 placeholder="至少 6 位"
                 minLength={6}
                 required
-                className="pl-10"
+                className="h-10 rounded-xl pl-11"
               />
             </div>
           </div>
           <Button
             type="submit"
-            className="relative mt-1 h-10 w-full overflow-hidden text-[15px]"
+            className="group relative mt-1 h-11 w-full overflow-hidden text-[15px] shadow-glow"
             disabled={loading}
           >
             <span className="btn-glow-sweep absolute inset-0" />
-            <span className="relative">{loading ? "注册中…" : "注册"}</span>
+            <span className="relative flex items-center gap-2">
+              {loading ? "注册中…" : "注册"}
+              {!loading && (
+                <ArrowRight className="h-4 w-4 transition-transform duration-[var(--dur-quick)] group-hover:translate-x-0.5" />
+              )}
+            </span>
           </Button>
         </form>
+
         <div className="mt-6">
           <div className="divider-ink mb-4" />
           <p className="text-center text-sm text-muted">
             已有账户？{" "}
-            <Link href="/login" className="font-medium text-neutral-7 underline-offset-4 hover:text-primary hover:underline transition-colors duration-[var(--dur-quick)]">
+            <Link
+              href="/login"
+              className="font-medium text-neutral-7 underline-offset-4 transition-colors duration-[var(--dur-quick)] hover:text-primary hover:underline"
+            >
               去登录
             </Link>
           </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

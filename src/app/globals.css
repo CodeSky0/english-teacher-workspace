@@ -3,16 +3,18 @@
 @config "../../tailwind.config.ts";
 
 /*
- * Yohaku 设计语言（应用层映射）· 视觉精修版 v3
+ * Yohaku 设计语言（应用层映射）· Washi Aurora v4
  *
- * 在原 Yohaku 暖羊皮纸 + 暗玫瑰 + 和色基础上，注入：
- *   1. 多层背景（暖光晕 + 和纸噪点），滚动视差
- *   2. 五级光影体系（xs/sm/md/lg/xl）+ 内高光 + 梅色光晕
- *   3. 微动效曲线变量（spring/smooth/quick/expo）
- *   4. 玻璃拟态工具类（.glass / .glass-strong / .glass-sidebar）
- *   5. 渐变描边（.edge-lit）—— 1px 高光描边，质感核心
- *   6. 和风装饰元素（淡墨分隔线、梅色光晕、朱印、和纸纹理、淡网格）
- *   7. 精致排版（字距、行高、渲染优化、数字对齐）
+ * 相比 v3「视觉精修版」，v4 引入了完整的六层视觉体系：
+ *   1. 氛围层 Ambient —— 极光光斑 + 天光 + 暗角，页面会「呼吸」
+ *   2. 材质层 Material —— 纸 / 玻璃 / 釉面三层材质
+ *   3. 光效层 Light —— 鼠标聚光、渐变描边、光晕、数字光泽
+ *   4. 动效层 Motion —— 入场错峰、滚动驱动显现、悬浮抬升
+ *   5. 排版层 Type —— 更大字阶对比 + 英文展示衬线
+ *   6. 数据层 Data —— 渐变填充、发光描边、环形进度
+ *
+ * 性能约束：持续动效只使用 transform / opacity（合成层）；
+ * 大面光影不使用 filter: blur，而用径向渐变原生柔化。
  */
 
 @layer base {
@@ -26,14 +28,14 @@
     --accent: #c56473;
 
     /* 表面：Yohaku 暖羊皮纸系 */
-    --bg: #f9f8f5;        /* neutral-1 页面背景，温暖白 */
-    --panel: #ffffff;     /* 白卡片（与 n-1 背景有明显层次） */
-    --line: #e3e1db;      /* neutral-3 暖灰边线 */
+    --bg: #ebe7dd;        /* 页面背景：更深一档的暖纸色，让白卡真正浮起来 */
+    --panel: #fffefc;     /* 卡片：微暖白（纯白在高饱和暖底上会发灰） */
+    --line: #dcd8ce;      /* 暖灰边线：加深一档，强化分隔与描边 */
     --text: #24231f;      /* neutral-9 暖深褐正文 */
-    --muted: #787670;     /* neutral-6 次要文字 / 图标 */
+    --muted: #5f5e58;     /* 次要文字：在暖纸底上仍满足 4.5:1（原 #787670 只有 3.68:1） */
 
     /* 侧边栏：Yohaku「n-2 carries surface」 */
-    --side-bg: #f0efeb;     /* neutral-2 */
+    --side-bg: #eeece5;     /* neutral-2 */
     --side-active: #c56473; /* accent 梅 */
 
     /* 学科 / 状态色：和色 */
@@ -50,14 +52,22 @@
     --radius: 0.625rem;
 
     /* ── 五级光影体系 ── */
-    --shadow-xs: 0 1px 2px 0 rgba(36, 35, 31, 0.05);
-    --shadow-sm: 0 1px 3px -1px rgba(36, 35, 31, 0.09), 0 1px 2px -1px rgba(36, 35, 31, 0.05);
-    --shadow-md: 0 4px 10px -3px rgba(36, 35, 31, 0.11), 0 2px 5px -2px rgba(36, 35, 31, 0.06);
-    --shadow-lg: 0 14px 28px -8px rgba(36, 35, 31, 0.15), 0 5px 10px -5px rgba(36, 35, 31, 0.08);
-    --shadow-xl: 0 26px 52px -12px rgba(36, 35, 31, 0.19), 0 10px 20px -8px rgba(36, 35, 31, 0.10);
+    --shadow-xs: 0 1px 2px 0 rgba(36, 35, 31, 0.07);
+    --shadow-sm: 0 1px 2px rgba(36, 35, 31, 0.07), 0 3px 8px -3px rgba(36, 35, 31, 0.10);
+    --shadow-md: 0 2px 4px -1px rgba(36, 35, 31, 0.07), 0 8px 20px -6px rgba(36, 35, 31, 0.15);
+    --shadow-lg: 0 18px 40px -12px rgba(36, 35, 31, 0.20), 0 6px 14px -6px rgba(36, 35, 31, 0.10);
+    --shadow-xl: 0 32px 64px -16px rgba(36, 35, 31, 0.24), 0 12px 24px -10px rgba(36, 35, 31, 0.12);
+    --shadow-float: 0 40px 84px -20px rgba(58, 42, 45, 0.30), 0 16px 30px -14px rgba(36, 35, 31, 0.14);
     /* 梅色光晕（用于 CTA / 焦点元素） */
     --shadow-glow: 0 0 0 3px rgba(197, 100, 115, 0.15), 0 4px 12px -2px rgba(197, 100, 115, 0.2);
     --shadow-glow-strong: 0 0 24px -2px rgba(197, 100, 115, 0.4), 0 0 0 3px rgba(197, 100, 115, 0.12);
+
+    /* ── 极光色（氛围层 / 光效层共用，RGB 便于拼 alpha） ── */
+    --aurora-ume: 197 100 115;     /* 梅 */
+    --aurora-hanada: 61 104 150;   /* 縹蓝 */
+    --aurora-wakatake: 94 159 126; /* 若竹 */
+    --aurora-kuchiba: 168 122 61;  /* 朽葉 */
+    --aurora-sumi: 120 118 112;    /* 墨灰 */
 
     /* ── 内高光：卡片顶部 1px 高光，模拟纸面受光 ── */
     --inner-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
@@ -76,7 +86,15 @@
     --paper-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.91 0 0 0 0 0.89 0 0 0 0 0.85 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 
     /* ── 焦点环 ── */
-    --ring: 0 0 0 2px var(--bg), 0 0 0 4px rgba(197, 100, 115, 0.45);
+    --ring: 0 0 0 3px rgba(168, 84, 99, 0.55);
+
+    /* ── 展示字体（英文衬线，呼应「英语」主题） ── */
+    --font-display: var(--app-font-display, "Cormorant Garamond", Georgia, "Times New Roman", serif);
+
+    /* ── 玻璃拟态参数 ── */
+    --glass-bg: rgba(255, 255, 255, 0.68);
+    --glass-bg-strong: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.7);
   }
 
   html {
@@ -84,6 +102,7 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-optical-sizing: auto;
     scroll-behavior: smooth;
     scroll-padding-top: 5rem;
   }
@@ -93,33 +112,16 @@
   }
 
   body {
-    /* 噪点纹理随内容滚动；暖光晕移到 body::before 伪元素作独立合成层，避免 fixed 背景每帧重绘 */
+    /* 噪点纹理随内容滚动；极光光晕由 <Ambient /> 的固定层独立合成 */
     background-color: var(--bg);
     background-image: var(--paper-texture);
     background-repeat: repeat;
     background-size: 160px 160px;
     color: var(--text);
     font-family: var(--font-sans);
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
-  }
-
-  /* 暖光晕视差层：position:fixed 独立合成，滚动时只移动内容层，光晕不重绘。
-     视觉与原 background-attachment:fixed 完全一致，但性能大幅提升。 */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-image:
-      radial-gradient(1200px 620px at 6% -10%, rgba(197, 100, 115, 0.075), transparent 62%),
-      radial-gradient(980px 520px at 102% 2%, rgba(61, 104, 150, 0.065), transparent 60%),
-      radial-gradient(900px 680px at 46% 112%, rgba(94, 159, 126, 0.055), transparent 62%);
-    background-repeat: no-repeat, no-repeat, no-repeat;
-    background-size: auto, auto, auto;
-    background-attachment: fixed, fixed, fixed;
-    transform: translateZ(0);
   }
 
   ::selection {
@@ -134,9 +136,10 @@
   }
 
   /* 统一焦点环：键盘可见、鼠标不打扰 */
+  /* 焦点环：实色描边 + 外扩，任何底色上都清晰可见（≥3:1） */
   :focus-visible {
-    outline: none;
-    box-shadow: var(--ring);
+    outline: 2px solid #a85463;
+    outline-offset: 2px;
     border-radius: 0.375rem;
   }
 
@@ -171,22 +174,123 @@
   }
 }
 
+/* ==========================================================================
+   氛围层 Ambient：固定定位的极光光斑 + 天光 + 暗角
+   使用纯径向渐变（不用 filter: blur），只动画 transform，代价极低。
+   ========================================================================== */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.ambient__blob {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  transform: translateZ(0);
+  will-change: transform;
+}
+/* 梅色光斑：左上 */
+.ambient__blob--1 {
+  width: 86vmax;
+  height: 86vmax;
+  left: -26vmax;
+  top: -34vmax;
+  background: radial-gradient(circle at 50% 50%,
+    rgb(var(--aurora-ume) / 0.26) 0%,
+    rgb(var(--aurora-ume) / 0.13) 38%,
+    rgb(var(--aurora-ume) / 0) 72%);
+  animation: aurora-drift-a 52s var(--ease-smooth) infinite alternate;
+}
+/* 縹蓝光斑：右上 */
+.ambient__blob--2 {
+  width: 78vmax;
+  height: 78vmax;
+  right: -26vmax;
+  top: -26vmax;
+  background: radial-gradient(circle at 50% 50%,
+    rgb(var(--aurora-hanada) / 0.22) 0%,
+    rgb(var(--aurora-hanada) / 0.10) 40%,
+    rgb(var(--aurora-hanada) / 0) 74%);
+  animation: aurora-drift-b 64s var(--ease-smooth) infinite alternate;
+}
+/* 若竹光斑：左下 */
+.ambient__blob--3 {
+  width: 72vmax;
+  height: 60vmax;
+  left: 8vmax;
+  bottom: -34vmax;
+  background: radial-gradient(circle at 50% 50%,
+    rgb(var(--aurora-wakatake) / 0.12) 0%,
+    rgb(var(--aurora-wakatake) / 0.055) 42%,
+    rgb(var(--aurora-wakatake) / 0) 76%);
+  animation: aurora-drift-c 72s var(--ease-smooth) infinite alternate;
+}
+/* 朽葉暖光：右下 */
+.ambient__blob--4 {
+  width: 60vmax;
+  height: 54vmax;
+  right: -6vmax;
+  bottom: -20vmax;
+  background: radial-gradient(circle at 50% 50%,
+    rgb(var(--aurora-kuchiba) / 0.13) 0%,
+    rgb(var(--aurora-kuchiba) / 0.06) 44%,
+    rgb(var(--aurora-kuchiba) / 0) 78%);
+  animation: aurora-drift-d 80s var(--ease-smooth) infinite alternate;
+}
+/* 顶部天光：从上向下柔化的白光锥 */
+.ambient__beam {
+  position: absolute;
+  left: 50%;
+  top: -30vh;
+  width: 110vw;
+  height: 44vh;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse 46% 100% at 50% 0%,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.55) 32%,
+    rgba(255, 255, 255, 0) 72%);
+  mix-blend-mode: soft-light;
+  opacity: 0.22;
+}
+/* 边缘暗角：把视觉焦点收回内容区 */
+.ambient__vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(130% 105% at 50% 36%, rgba(120, 110, 100, 0) 46%, rgba(104, 94, 86, 0.10) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 12%);
+}
+
 @layer utilities {
   /* ── 玻璃拟态 ── */
   .glass {
-    background-color: rgba(255, 255, 255, 0.72);
-    backdrop-filter: blur(12px) saturate(1.4);
-    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(14px) saturate(1.5);
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
   }
   .glass-strong {
-    background-color: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(20px) saturate(1.6);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    background-color: var(--glass-bg-strong);
+    backdrop-filter: blur(22px) saturate(1.7);
+    -webkit-backdrop-filter: blur(22px) saturate(1.7);
   }
   .glass-sidebar {
-    background-color: rgba(240, 239, 235, 0.82);
-    backdrop-filter: blur(16px) saturate(1.3);
-    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    background-color: rgba(243, 242, 238, 0.82);
+    backdrop-filter: blur(18px) saturate(1.35);
+    -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  }
+  /* 导航专用玻璃：顶部更亮、底边一道高光 */
+  .glass-nav {
+    background-color: rgba(252, 251, 249, 0.72);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 0 -1px 0 rgba(227, 225, 219, 0.9),
+      0 1px 4px -1px rgba(36, 35, 31, 0.05);
   }
 
   /* ── 光影工具类 ── */
@@ -195,6 +299,7 @@
   .shadow-paper-md { box-shadow: var(--shadow-md); }
   .shadow-paper-lg { box-shadow: var(--shadow-lg); }
   .shadow-paper-xl { box-shadow: var(--shadow-xl); }
+  .shadow-paper-float { box-shadow: var(--shadow-float); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .shadow-glow-strong { box-shadow: var(--shadow-glow-strong); }
 
@@ -215,11 +320,12 @@
     border-radius: inherit;
     padding: 1px;
     background: linear-gradient(
-      150deg,
-      rgba(255, 255, 255, 0.95) 0%,
-      rgba(227, 225, 219, 0.35) 38%,
-      rgba(197, 100, 115, 0.22) 78%,
-      rgba(61, 104, 150, 0.16) 100%
+      152deg,
+      rgba(255, 255, 255, 0.98) 0%,
+      rgba(255, 255, 255, 0.55) 18%,
+      rgba(227, 225, 219, 0.35) 42%,
+      rgba(197, 100, 115, 0.40) 74%,
+      rgba(61, 104, 150, 0.28) 100%
     );
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
@@ -230,7 +336,7 @@
       linear-gradient(#000 0 0);
     mask-composite: exclude;
     pointer-events: none;
-    z-index: 1;
+    z-index: 2;
   }
   .edge-lit-hover::before {
     opacity: 0.55;
@@ -238,6 +344,62 @@
   }
   .edge-lit-hover:hover::before {
     opacity: 1;
+  }
+
+  /*
+   * 鼠标聚光 spotlight：全局单监听写入 --mx/--my，元素只需加类名。
+   * ::after 承载柔光，不占用 children 的层级。
+   */
+  .spotlight {
+    position: relative;
+  }
+  .spotlight::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(
+      340px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(197, 100, 115, 0.10) 0%,
+      rgba(197, 100, 115, 0.05) 38%,
+      rgba(197, 100, 115, 0) 68%
+    );
+    opacity: 0;
+    transition: opacity var(--dur-smooth) var(--ease-smooth);
+  }
+  .spotlight:hover::after {
+    opacity: 1;
+  }
+  /* 冷色变体：用于数据 / 信息类卡片 */
+  .spotlight-cool::after {
+    background: radial-gradient(
+      340px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(61, 104, 150, 0.11) 0%,
+      rgba(61, 104, 150, 0.05) 38%,
+      rgba(61, 104, 150, 0) 68%
+    );
+  }
+
+  /* ── 釉面材质：强调卡的「上釉」感 ── */
+  .glaze {
+    background-image:
+      radial-gradient(120% 80% at 12% 0%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 55%),
+      linear-gradient(160deg, rgba(255, 255, 255, 0.9) 0%, rgba(249, 248, 245, 0.55) 100%);
+  }
+  /* 光晕底座：在元素背后投一团主题色柔光 */
+  .halo {
+    position: relative;
+  }
+  .halo::before {
+    content: "";
+    position: absolute;
+    inset: -30% -10%;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(closest-side, rgba(197, 100, 115, 0.22), transparent 72%);
+    pointer-events: none;
   }
 
   /* ── 和风装饰 ── */
@@ -251,6 +413,23 @@
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
+  }
+  /* 极光渐变字：梅 → 縹 → 若竹，用于 Hero 关键词 */
+  .text-gradient-aurora {
+    background-image: linear-gradient(
+      112deg,
+      #b8556a 0%,
+      #c56473 22%,
+      #9c6a8f 44%,
+      #3d6896 70%,
+      #4a8f74 100%
+    );
+    background-size: 180% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: aurora-text-shift 14s var(--ease-smooth) infinite alternate;
   }
   .bg-warm-glow {
     background: radial-gradient(ellipse at top left, rgba(245, 221, 224, 0.5) 0%, transparent 50%),
@@ -277,6 +456,12 @@
       linear-gradient(to bottom, rgba(120, 118, 112, 0.055) 1px, transparent 1px);
     background-size: 28px 28px;
   }
+  /* 点阵底纹 — 比网格更轻，用于展示型区块 */
+  .dot-veil {
+    background-image: radial-gradient(rgba(120, 118, 112, 0.16) 1px, transparent 1px);
+    background-size: 18px 18px;
+    background-position: 0 0;
+  }
   /* 朱印（红色印章）效果 */
   .stamp-shu {
     display: inline-flex;
@@ -294,6 +479,36 @@
     transform: rotate(-4deg);
     opacity: 0.85;
     box-shadow: inset 0 0 0 1px rgba(166, 73, 83, 0.2);
+  }
+
+  /* ── 排版 ── */
+  /* 英文展示衬线：用于大数字 / 英文标题 / 拉丁点缀 */
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+  .num-display {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    font-feature-settings: "lnum" 1, "kern" 1;
+  }
+  /* 大号数字的金属釉光 */
+  .num-glaze {
+    background-image: linear-gradient(168deg, #3a3330 0%, #24231f 42%, #5a4a44 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  /* 英文小标（eyebrow） */
+  .eyebrow {
+    font-size: 10px;
+    line-height: 1.4;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-neutral-6);
   }
 
   /* ── 滚动条 ── */
@@ -321,49 +536,10 @@
 
   /* ── 入场 / 循环动画 ── */
   /* 柱状图自底部生长：配合 style="--i: n" 错峰 */
-  @keyframes bar-grow {
-    from { transform: scaleY(0); opacity: 0.2; }
-    to { transform: scaleY(1); opacity: 1; }
-  }
   .bar-grow {
     transform-origin: bottom;
     animation: bar-grow var(--dur-slow) var(--ease-spring) both;
     animation-delay: calc(var(--i, 0) * 40ms);
-  }
-
-  @keyframes fade-in-up {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes scale-in {
-    from { opacity: 0; transform: scale(0.96); }
-    to { opacity: 1; transform: scale(1); }
-  }
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-  @keyframes breathe {
-    0%, 100% { opacity: 0.6; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.08); }
-  }
-  @keyframes glow-sweep {
-    0% { background-position: -200% center; }
-    100% { background-position: 200% center; }
-  }
-  @keyframes drift {
-    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-    33% { transform: translate3d(2.5%, -3%, 0) scale(1.05); }
-    66% { transform: translate3d(-2%, 2.5%, 0) scale(0.97); }
-  }
-  @keyframes ring-pulse {
-    0% { box-shadow: 0 0 0 0 rgba(197, 100, 115, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(197, 100, 115, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(197, 100, 115, 0); }
   }
 
   .animate-fade-in-up { animation: fade-in-up var(--dur-slow) var(--ease-quick) both; }
@@ -372,6 +548,8 @@
   .animate-breathe { animation: breathe 6s var(--ease-smooth) infinite; }
   .animate-drift { animation: drift 22s var(--ease-smooth) infinite; }
   .animate-ring-pulse { animation: ring-pulse 2s var(--ease-smooth) infinite; }
+  .animate-float { animation: float-y 7s var(--ease-smooth) infinite; }
+  .animate-sheen { animation: sheen 5.5s var(--ease-smooth) infinite; }
 
   /* 按钮光泽流动 */
   .btn-glow-sweep {
@@ -392,6 +570,26 @@
     animation: fade-in-up var(--dur-slow) var(--ease-quick) both;
     animation-delay: calc(var(--i, 0) * 45ms);
   }
+
+  /*
+   * 滚动驱动显现（Chromium 原生，零 JS）：
+   * 元素进入视口下缘时淡入上浮，只在支持 animation-timeline 的浏览器启用。
+   */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        animation: reveal-in 1ms linear both;
+        animation-timeline: view();
+        animation-range: entry 6% entry 46%;
+      }
+      /* 更晚触发，用于页面下半部分的次要区块 */
+      .reveal-late {
+        animation: reveal-in 1ms linear both;
+        animation-timeline: view();
+        animation-range: entry 18% entry 62%;
+      }
+    }
+  }
 }
 
 @layer components {
@@ -404,6 +602,7 @@
     position: relative;
     border-radius: 0.75rem;
     background-color: var(--panel);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 254, 252, 0) 42%, rgba(250, 247, 241, 0.55) 100%);
     box-shadow: var(--inner-highlight), var(--shadow-sm);
     transition:
       box-shadow var(--dur-smooth) var(--ease-smooth),
@@ -445,6 +644,92 @@
   }
 }
 
+/* ==========================================================================
+   关键帧（顶层声明，避免被 @layer 作用域干扰）
+   ========================================================================== */
+@keyframes aurora-drift-a {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(7vmax, 4vmax, 0) scale(1.12); }
+  100% { transform: translate3d(-3vmax, 8vmax, 0) scale(0.95); }
+}
+@keyframes aurora-drift-b {
+  0%   { transform: translate3d(0, 0, 0) scale(1.05); }
+  50%  { transform: translate3d(-8vmax, 6vmax, 0) scale(0.92); }
+  100% { transform: translate3d(3vmax, -5vmax, 0) scale(1.14); }
+}
+@keyframes aurora-drift-c {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-6vmax, -7vmax, 0) scale(1.16); }
+  100% { transform: translate3d(6vmax, 2vmax, 0) scale(0.94); }
+}
+@keyframes aurora-drift-d {
+  0%   { transform: translate3d(0, 0, 0) scale(1.1); }
+  50%  { transform: translate3d(4vmax, -6vmax, 0) scale(0.96); }
+  100% { transform: translate3d(-5vmax, -2vmax, 0) scale(1.2); }
+}
+@keyframes aurora-text-shift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+@keyframes bar-grow {
+  from { transform: scaleY(0); opacity: 0.2; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+@keyframes glow-sweep {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(2.5%, -3%, 0) scale(1.05); }
+  66% { transform: translate3d(-2%, 2.5%, 0) scale(0.97); }
+}
+@keyframes ring-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(197, 100, 115, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(197, 100, 115, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(197, 100, 115, 0); }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes sheen {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.7; }
+}
+@keyframes reveal-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes draw-line {
+  from { stroke-dashoffset: var(--dash, 1000); }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes spark-rise {
+  from { transform: scaleY(0); opacity: 0; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
 /* 尊重系统「减少动态效果」设置 */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -455,12 +740,28 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* 滚动显现的动画被禁用时必须保证内容可见 */
+  .reveal,
+  .reveal-late {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .ambient__blob {
+    animation: none !important;
+  }
+  .text-gradient-aurora {
+    animation: none !important;
+  }
 }
 
 /* 打印 */
 @media print {
   body * {
     visibility: hidden !important;
+  }
+  .ambient {
+    display: none !important;
   }
   #print-root,
   #print-root * {

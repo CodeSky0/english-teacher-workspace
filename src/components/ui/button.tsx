@@ -16,8 +16,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          // 顶部内高光 + 底部内暗边：模拟受光的实体按钮
-          "bg-gradient-to-b from-[#cd6c7a] to-[#b2586a] text-white",
+          // 顶部内高光 + 底部内暗边：模拟受光的实体按钮；梅色釉面渐变
+          "bg-[linear-gradient(180deg,#b85c6c_0%,#ad5566_48%,#9c4a5a_100%)] text-white",
         outline:
           "border border-line bg-gradient-to-b from-white to-[#fdfcfa] text-text",
         ghost:
@@ -30,10 +30,10 @@ const buttonVariants = cva(
           "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4",
-        sm: "h-8 px-3 text-xs",
+        default: "h-10 px-4",
+        sm: "h-9 px-3 text-xs",
         lg: "h-11 px-6 text-base",
-        icon: "h-9 w-9",
+        icon: "h-10 w-10",
       },
     },
     defaultVariants: { variant: "default", size: "default" },
@@ -43,8 +43,8 @@ const buttonVariants = cva(
 /** 立体感阴影：默认 / 悬浮 / 按下三态，与 variant 无关，故单独拼装 */
 const depthByVariant: Record<string, string> = {
   default:
-    "shadow-[0_1px_2px_rgba(36,35,31,0.14),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(0,0,0,0.08)] " +
-    "hover:shadow-[0_4px_12px_-2px_rgba(168,84,99,0.42),inset_0_1px_0_rgba(255,255,255,0.32),inset_0_-1px_0_rgba(0,0,0,0.10)] hover:-translate-y-[2px]",
+    "shadow-[0_1px_2px_rgba(36,35,31,0.18),0_6px_16px_-6px_rgba(140,60,76,0.6),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(0,0,0,0.12)] " +
+    "hover:shadow-[0_6px_18px_-4px_rgba(140,60,76,0.55),0_1px_2px_rgba(36,35,31,0.16),inset_0_1px_0_rgba(255,255,255,0.32),inset_0_-1px_0_rgba(0,0,0,0.12)] hover:-translate-y-[2px] hover:brightness-[1.05]",
   destructive:
     "shadow-[0_1px_2px_rgba(36,35,31,0.14),inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(0,0,0,0.10)] " +
     "hover:shadow-[0_4px_12px_-2px_rgba(166,73,83,0.42),inset_0_1px_0_rgba(255,255,255,0.28)] hover:-translate-y-[2px]",

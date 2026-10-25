@@ -1,111 +1,161 @@
-import { BookOpen, Headphones, GraduationCap, Sparkles, TrendingUp, Quote } from "lucide-react";
+import { BookOpen, Headphones, GraduationCap, Shuffle } from "lucide-react";
+import { AuthAtmosphere } from "./auth-atmosphere";
 
+/**
+ * 浮动词云：低透明度白色英文单字，像散落在墨色纸面上的字迹
+ */
+const WORD_CLOUD = [
+  { word: "curious", left: "4%", top: "15%", size: 26, opacity: 0.18, float: true, delay: "0s" },
+  { word: "remarkable", left: "46%", top: "7%", size: 44, opacity: 0.10, float: true, delay: "1.2s" },
+  { word: "imagine", left: "77%", top: "24%", size: 30, opacity: 0.12, float: false, delay: "0s" },
+  { word: "articulate", left: "63%", top: "50%", size: 22, opacity: 0.13, float: false, delay: "0s" },
+  { word: "eloquence", left: "70%", top: "58%", size: 36, opacity: 0.09, float: true, delay: "2.2s" },
+  { word: "wonder", left: "28%", top: "77%", size: 54, opacity: 0.08, float: false, delay: "0s" },
+  { word: "journey", left: "5%", top: "60%", size: 20, opacity: 0.18, float: false, delay: "0s" },
+  { word: "nuance", left: "82%", top: "82%", size: 24, opacity: 0.12, float: false, delay: "0s" },
+];
+
+/** 功能标签：替代原先编造的数据条（不做任何假数字） */
 const FEATURES = [
-  { icon: BookOpen, label: "词汇中心", desc: "单元管理", color: "#5c5a55", bg: "#e3e1db" },
-  { icon: Headphones, label: "听写批改", desc: "自动统计", color: "#3d6896", bg: "#dde7f0" },
-  { icon: GraduationCap, label: "学情分析", desc: "可视化", color: "#5e9f7e", bg: "#dcebe2" },
-  { icon: Sparkles, label: "AI 助手", desc: "智能辅助", color: "#c56473", bg: "#f5dde0" },
+  { icon: BookOpen, label: "词汇管理", en: "Vocabulary", color: "#e8cfa8", bg: "rgba(168,122,61,0.26)" },
+  { icon: Headphones, label: "听写批改", en: "Dictation", color: "#aecbe8", bg: "rgba(61,104,150,0.32)" },
+  { icon: GraduationCap, label: "学情分析", en: "Analytics", color: "#a8d5bd", bg: "rgba(94,159,126,0.26)" },
+  { icon: Shuffle, label: "课堂互动", en: "Classroom", color: "#f0b8c1", bg: "rgba(197,100,115,0.30)" },
 ];
 
 export function AuthBrandPanel() {
   return (
-    <div className="relative hidden overflow-hidden lg:flex lg:w-[46%] lg:shrink-0 lg:flex-col lg:justify-between texture-washi">
-      {/* ① 墨流渐变底：三色光晕缓慢漂移，制造「活」的背景 */}
-      <div className="pointer-events-none absolute inset-0 animate-drift opacity-90">
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 62% 52% at 22% 22%, rgba(245, 221, 224, 0.65) 0%, transparent 100%)," +
-              "radial-gradient(ellipse 52% 42% at 78% 72%, rgba(221, 231, 240, 0.55) 0%, transparent 100%)," +
-              "radial-gradient(ellipse 46% 38% at 62% 18%, rgba(220, 235, 226, 0.45) 0%, transparent 100%)",
-          }}
-        />
+    <div className="relative hidden min-h-screen overflow-hidden lg:flex lg:w-[52%] lg:shrink-0 lg:flex-col lg:justify-between">
+      {/* 墨色极光 */}
+      <AuthAtmosphere />
+
+      {/* 右侧接缝：向内收的墨色渐变 + 一道细金线（与右侧暖纸面衔接） */}
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-[5] w-32 bg-[linear-gradient(90deg,transparent,rgba(16,10,18,0.5))]" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-[6] w-px bg-[linear-gradient(180deg,transparent,rgba(233,196,160,0.6)_26%,rgba(233,196,160,0.38)_74%,transparent)]" />
+
+      {/* 浮动词云 */}
+      <div className="pointer-events-none absolute inset-0 select-none" aria-hidden="true">
+        {WORD_CLOUD.map((w) => (
+          <span
+            key={w.word}
+            className={`absolute font-display italic text-white ${w.float ? "animate-float" : ""}`}
+            style={{
+              left: w.left,
+              top: w.top,
+              fontSize: w.size,
+              opacity: w.opacity,
+              animationDelay: w.float ? w.delay : undefined,
+            }}
+          >
+            {w.word}
+          </span>
+        ))}
       </div>
 
-      {/* ② 稿纸网格：压在渐变之上，增加质感层次 */}
-      <div className="pointer-events-none absolute inset-0 grid-veil opacity-60" />
-
-      {/* ③ 呼吸光斑 */}
-      <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-primary/12 blur-3xl animate-breathe" />
-      <div
-        className="pointer-events-none absolute -left-12 bottom-1/4 h-40 w-40 rounded-full bg-[#3d6896]/12 blur-3xl animate-breathe"
-        style={{ animationDelay: "2s" }}
-      />
-
-      {/* ④ 和风几何：同心圆 + 十字准线 */}
+      {/* 同心圆轨道：右上（漂移） */}
       <svg
-        className="pointer-events-none absolute right-10 top-24 h-36 w-36 text-primary/[0.14]"
-        viewBox="0 0 100 100"
+        className="animate-drift pointer-events-none absolute -right-24 -top-20 h-[30rem] w-[30rem] text-white/[0.10]"
+        viewBox="0 0 200 200"
         fill="none"
-        aria-hidden
+        aria-hidden="true"
       >
-        <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="0.5" />
-        <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="0.5" />
-        <circle cx="50" cy="50" r="20" stroke="currentColor" strokeWidth="0.5" />
-        <line x1="8" y1="50" x2="92" y2="50" stroke="currentColor" strokeWidth="0.3" />
-        <line x1="50" y1="8" x2="50" y2="92" stroke="currentColor" strokeWidth="0.3" />
+        <circle cx="100" cy="100" r="96" stroke="currentColor" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="80" stroke="currentColor" strokeWidth="0.4" strokeDasharray="2 7" />
+        <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="38" stroke="currentColor" strokeWidth="0.4" strokeDasharray="1 6" />
+        <circle cx="100" cy="100" r="18" stroke="currentColor" strokeWidth="0.4" />
+        <line x1="2" y1="100" x2="198" y2="100" stroke="currentColor" strokeWidth="0.25" />
+        <line x1="100" y1="2" x2="100" y2="198" stroke="currentColor" strokeWidth="0.25" />
       </svg>
-      {/* ⑤ 右下角斜线组，呼应「一笔笺」 */}
+
+      {/* 同心圆轨道：左下（更淡） */}
+      <svg
+        className="pointer-events-none absolute -left-16 bottom-[-6rem] h-80 w-80 text-[#aecbe8]/[0.12]"
+        viewBox="0 0 200 200"
+        fill="none"
+        aria-hidden="true"
+      >
+        <circle cx="100" cy="100" r="92" stroke="currentColor" strokeWidth="0.5" />
+        <circle cx="100" cy="100" r="66" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 8" />
+        <circle cx="100" cy="100" r="42" stroke="currentColor" strokeWidth="0.5" />
+      </svg>
+
+      {/* 右下角斜线组：呼应「一笔笺」 */}
       <div
-        className="pointer-events-none absolute -right-8 bottom-24 h-40 w-40 opacity-[0.07]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(135deg, #5c5a55 0 1px, transparent 1px 9px)",
-        }}
+        className="pointer-events-none absolute -right-10 bottom-24 h-40 w-40 opacity-[0.08]"
+        style={{ backgroundImage: "repeating-linear-gradient(135deg, #ffffff 0 1px, transparent 1px 10px)" }}
       />
+
+      {/* 英文水印：与总览 Hero 同一手法 */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-10 right-2 select-none font-display text-[9rem] font-semibold leading-none tracking-tight text-white/[0.06]"
+      >
+        English
+      </span>
 
       {/* ── 内容 ── */}
-      <div className="relative z-10 flex h-full flex-col justify-between p-12">
-        {/* 顶部品牌 */}
+      <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-14">
+        {/* 品牌 */}
         <div className="flex items-center gap-3">
-          <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#cd6c7a] to-[#a64953] text-lg font-medium text-white shadow-[0_4px_10px_-2px_rgba(168,84,99,0.5),inset_0_1px_0_rgba(255,255,255,0.35)]">
-            英
-            <span className="absolute inset-[3px] rounded-[0.7rem] border border-white/25" />
+          <span className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(145deg,#e08a96_0%,#c56473_46%,#a64953_100%)] shadow-[0_6px_20px_-4px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.45)] ring-1 ring-white/30">
+            <span className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_30%_16%,rgba(255,255,255,0.68),transparent_58%)] opacity-70" />
+            <span className="relative font-serif text-lg font-medium text-white">英</span>
+            <span className="pointer-events-none absolute inset-[3px] rounded-[0.85rem] border border-white/25" />
           </span>
           <div>
-            <span className="block font-serif text-xl font-normal tracking-wide text-neutral-9">
-              英语教师工作台
-            </span>
-            <span className="mt-0.5 block text-[11px] tracking-[0.18em] text-neutral-5 uppercase">
-              English Teacher Workspace
-            </span>
+            <span className="block font-serif text-[19px] tracking-wide text-white/95">英语教师工作台</span>
+            <span className="eyebrow mt-1 block text-[9px] text-white/50">Yohaku · English Atelier</span>
           </div>
         </div>
 
-        {/* 中部标语 */}
-        <div className="max-w-md">
-          {/* 引言符号 */}
-          <Quote className="mb-4 h-6 w-6 -scale-y-100 text-primary/35" />
+        {/* 主标语 */}
+        <div className="max-w-[31rem]">
+          <p className="eyebrow flex items-center gap-2 text-white/50">
+            English · Teaching · Atelier
+            <span className="h-px w-10 bg-[linear-gradient(90deg,rgba(255,255,255,0.4),transparent)]" />
+          </p>
 
-          <h2 className="font-serif text-[40px] font-normal leading-[1.2] tracking-tight text-neutral-9">
-            备课 · 教学 · 教研
+          <h1 className="mt-4 font-display text-[84px] font-medium leading-[0.9] tracking-[-0.025em] text-white xl:text-[96px]">
+            Teach
             <br />
-            <span className="text-gradient-ume">一体化工作台</span>
-          </h2>
-          <p className="mt-5 text-copy-15 leading-relaxed text-neutral-7">
-            为中小学英语教师打造。词汇管理、听写批改、学情分析、课堂互动——
+            <span className="bg-[linear-gradient(112deg,#f9d3d8_0%,#e9bbc9_32%,#ccb9e8_66%,#a9cae6_100%)] bg-clip-text italic text-transparent">
+              beautifully.
+            </span>
+          </h1>
+
+          <p className="mt-6 font-serif text-[21px] leading-snug tracking-wide text-white/90 xl:text-[24px]">
+            把每一堂英语课，
+            <span className="relative inline-block">
+              教成一束光
+              <span className="absolute -bottom-0.5 left-0 h-[2px] w-full rounded-full bg-[linear-gradient(90deg,#e9a0ad,rgba(169,202,230,0.55),transparent)]" />
+            </span>
+            。
+          </p>
+
+          <p className="mt-4 max-w-sm text-[13.5px] leading-relaxed text-white/65">
+            词汇管理、听写批改、学情分析、课堂互动与 AI 备课——
             让繁琐的日常教学事务，在一处优雅完成。
           </p>
 
-          {/* 功能亮点：玻璃卡 + 悬浮抬升 */}
-          <div className="mt-8 grid grid-cols-2 gap-3">
+          {/* 功能标签（不含任何数字） */}
+          <div className="mt-8 grid max-w-md grid-cols-2 gap-2.5">
             {FEATURES.map((f) => {
               const Icon = f.icon;
               return (
                 <div
                   key={f.label}
-                  className="group flex items-center gap-3 rounded-xl border border-line/60 bg-white/65 px-4 py-3 backdrop-blur-md transition-all duration-[var(--dur-smooth)] ease-[var(--ease-smooth)] hover:-translate-y-[2px] hover:border-primary/30 hover:bg-white/85 hover:shadow-paper-md"
+                  className="group flex items-center gap-2.5 rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2.5 transition-colors duration-[var(--dur-smooth)] hover:border-white/25 hover:bg-white/[0.10]"
                 >
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-[var(--dur-quick)] ease-[var(--ease-spring)] group-hover:scale-110"
+                  <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-transform duration-[var(--dur-quick)] ease-[var(--ease-spring)] group-hover:scale-105"
                     style={{ backgroundColor: f.bg, color: f.color }}
                   >
                     <Icon className="h-4 w-4" />
-                  </div>
+                  </span>
                   <div className="min-w-0">
-                    <span className="block text-sm font-medium text-neutral-8">{f.label}</span>
-                    <span className="block text-caption-10 text-neutral-5">{f.desc}</span>
+                    <p className="text-[12.5px] font-medium leading-tight text-white/90">{f.label}</p>
+                    <p className="eyebrow mt-0.5 text-[8px] text-white/45">{f.en}</p>
                   </div>
                 </div>
               );
@@ -113,26 +163,13 @@ export function AuthBrandPanel() {
           </div>
         </div>
 
-        {/* 底部：数据条 + 朱印签名 */}
-        <div>
-          <div className="mb-6 flex items-center gap-4 rounded-xl border border-line/50 bg-white/55 px-4 py-3 backdrop-blur-md">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#dcebe2] text-[#3d7a5e]">
-              <TrendingUp className="h-4 w-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-neutral-8">班级平均正确率</p>
-              <p className="text-caption-10 text-neutral-5">最近一次听写 · 全年级</p>
-            </div>
-            <span className="font-serif text-2xl font-normal tabular-nums text-[#3d7a5e]">92%</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="stamp-shu">英</span>
-            <div className="divider-ink w-20" />
-            <span className="font-serif text-sm tracking-wider text-neutral-6">
-              Yohaku · 和風設計
-            </span>
-          </div>
+        {/* 底部：朱印 + 落款 */}
+        <div className="flex items-center gap-4">
+          <span className="flex h-12 w-12 rotate-[-6deg] items-center justify-center rounded-lg border-2 border-[#e9a8a1]/70 bg-[#a64953]/25 font-serif text-lg font-semibold text-[#f4c9c4] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]">
+            英
+          </span>
+          <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(255,255,255,0.22),transparent)]" />
+          <span className="font-serif text-[12px] tracking-[0.18em] text-white/50">YOHAKU · 和風設計</span>
         </div>
       </div>
     </div>

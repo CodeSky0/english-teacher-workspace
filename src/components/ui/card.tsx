@@ -6,8 +6,8 @@ export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
     <div
       ref={ref}
       className={cn(
-        // 渐变描边 + 内高光：让卡片有「厚度」，而非扁平白块
-        "relative overflow-hidden rounded-xl bg-panel edge-lit edge-lit-hover",
+        // 渐变描边 + 内高光 + 鼠标聚光：让卡片有「厚度」与「釉面反光」，而非扁平白块
+        "relative overflow-hidden rounded-xl bg-panel bg-[linear-gradient(180deg,#ffffff_0%,#fefdfa_46%,#faf7f0_100%)] edge-lit edge-lit-hover spotlight",
         "shadow-paper-sm inner-lit",
         "transition-[box-shadow,transform] duration-[var(--dur-smooth)] ease-[var(--ease-smooth)]",
         "hover:shadow-paper-md hover:-translate-y-[2px]",

@@ -41,7 +41,7 @@ const TAU = Math.PI * 2;
 const COLLAPSE_MS = 480;
 const SERIF_FALLBACK = '"Noto Serif SC", "Songti SC", Georgia, serif';
 const SANS_FALLBACK = 'system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
-const PALETTE = ["255, 236, 190", "166, 234, 255", "255, 180, 214", "198, 186, 255"] as const;
+const PALETTE = ["255, 226, 206", "168, 210, 240", "236, 168, 186", "176, 222, 198"] as const;
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
@@ -125,10 +125,10 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
     };
 
     const nebula = [
-      { x: 0.18, y: 0.32, r: 0.55, color: "58, 82, 190", a: 0.16, sx: 0.000021, sy: 0.000034 },
-      { x: 0.78, y: 0.22, r: 0.48, color: "120, 62, 168", a: 0.13, sx: -0.000017, sy: 0.000026 },
-      { x: 0.62, y: 0.7, r: 0.5, color: "22, 118, 138", a: 0.1, sx: 0.000013, sy: -0.000019 },
-      { x: 0.28, y: 0.78, r: 0.46, color: "150, 60, 98", a: 0.08, sx: -0.000011, sy: -0.000024 },
+      { x: 0.18, y: 0.32, r: 0.55, color: "70, 104, 170", a: 0.17, sx: 0.000021, sy: 0.000034 },
+      { x: 0.78, y: 0.22, r: 0.48, color: "150, 70, 118", a: 0.13, sx: -0.000017, sy: 0.000026 },
+      { x: 0.62, y: 0.7, r: 0.5, color: "40, 122, 112", a: 0.11, sx: 0.000013, sy: -0.000019 },
+      { x: 0.28, y: 0.78, r: 0.46, color: "176, 82, 104", a: 0.09, sx: -0.000011, sy: -0.000024 },
     ];
 
     function readFonts() {
@@ -182,9 +182,10 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       maxR = Math.hypot(W, H) * 0.62;
 
       bgGradient = ctx.createLinearGradient(0, 0, 0, H);
-      bgGradient.addColorStop(0, "#080b1b");
-      bgGradient.addColorStop(0.52, "#05060f");
-      bgGradient.addColorStop(1, "#02030a");
+      bgGradient.addColorStop(0, "#0b0e1d");
+      bgGradient.addColorStop(0.48, "#080a15");
+      bgGradient.addColorStop(0.82, "#05060e");
+      bgGradient.addColorStop(1, "#03040a");
 
       vignette = ctx.createRadialGradient(cx, cy, Math.min(W, H) * 0.18, cx, cy, Math.max(W, H) * 0.78);
       vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
@@ -228,17 +229,19 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
 
     function enterCollapse(now: number) {
       flashAt = now;
-      makeBurst(cx, cy, reduced ? 120 : 280, 620);
-      makeWave(0, "255, 224, 168", 3.4);
-      makeWave(110, "150, 234, 255", 2.2);
-      makeWave(230, "255, 168, 210", 1.6);
+      makeBurst(cx, cy, reduced ? 140 : 320, 660);
+      makeWave(0, "255, 220, 190", 3.6);
+      makeWave(100, "168, 210, 240", 2.4);
+      makeWave(210, "240, 168, 186", 1.8);
+      makeWave(320, "176, 222, 198", 1.1);
     }
 
     function enterReveal(now: number) {
       revealAt = now;
       buildNameDust(0);
-      makeWave(0, "255, 228, 178", 2.6);
-      makeWave(160, "150, 234, 255", 1.8);
+      makeWave(0, "255, 226, 204", 2.8);
+      makeWave(150, "168, 210, 240", 2.0);
+      makeWave(290, "236, 168, 186", 1.4);
       for (let i = 0; i < 40; i++) {
         const angle = rand(0, TAU);
         const radius = rand(baseR, Math.min(W, H) * 0.42);
@@ -365,9 +368,9 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
 
     function drawAurora(time: number, intensity: number) {
       const bands = [
-        { base: H * 0.2, amp: H * 0.055, freq: 2.1, speed: 0.00019, width: H * 0.15, color: "68, 230, 205", alpha: 0.1 },
-        { base: H * 0.31, amp: H * 0.075, freq: 1.5, speed: -0.00014, width: H * 0.13, color: "146, 122, 255", alpha: 0.085 },
-        { base: H * 0.11, amp: H * 0.04, freq: 3, speed: 0.00025, width: H * 0.09, color: "255, 118, 176", alpha: 0.06 },
+        { base: H * 0.2, amp: H * 0.055, freq: 2.1, speed: 0.00019, width: H * 0.15, color: "120, 205, 180", alpha: 0.11 },
+        { base: H * 0.31, amp: H * 0.075, freq: 1.5, speed: -0.00014, width: H * 0.13, color: "122, 158, 226", alpha: 0.1 },
+        { base: H * 0.11, amp: H * 0.04, freq: 3, speed: 0.00025, width: H * 0.09, color: "236, 140, 168", alpha: 0.07 },
       ];
 
       ctx.save();
@@ -487,10 +490,10 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       const radius = baseR * pulse * (1 - easeInCubic(collapse) * 0.92);
       const glowRadius = radius * 4.4;
       const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
-      glow.addColorStop(0, `rgba(255, 236, 194, ${0.1 + energy * 0.2})`);
-      glow.addColorStop(0.24, `rgba(255, 190, 126, ${0.08 + energy * 0.12})`);
-      glow.addColorStop(0.55, `rgba(118, 178, 255, ${0.03 + energy * 0.05})`);
-      glow.addColorStop(1, "rgba(60, 60, 140, 0)");
+      glow.addColorStop(0, `rgba(255, 238, 210, ${0.1 + energy * 0.2})`);
+      glow.addColorStop(0.24, `rgba(244, 172, 158, ${0.09 + energy * 0.13})`);
+      glow.addColorStop(0.55, `rgba(140, 178, 240, ${0.04 + energy * 0.06})`);
+      glow.addColorStop(1, "rgba(74, 84, 150, 0)");
 
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
@@ -504,12 +507,12 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       ctx.translate(cx, cy);
       ctx.rotate(tilt + Math.sin(time * 0.0004) * 0.08);
       ctx.scale(1, 0.34);
-      ctx.strokeStyle = `rgba(255, 206, 144, ${0.18 + energy * 0.2})`;
+      ctx.strokeStyle = `rgba(244, 190, 176, ${0.2 + energy * 0.2})`;
       ctx.lineWidth = 1.4;
       ctx.beginPath();
       ctx.arc(0, 0, radius * 1.42, 0, TAU);
       ctx.stroke();
-      ctx.strokeStyle = `rgba(132, 236, 255, ${0.14 + energy * 0.18})`;
+      ctx.strokeStyle = `rgba(150, 206, 246, ${0.16 + energy * 0.18})`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(0, 0, radius * 1.74, 0, TAU);
@@ -520,7 +523,7 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       ctx.translate(cx, cy);
       ctx.rotate(-tilt - Math.sin(time * 0.0005) * 0.06);
       ctx.scale(1, 0.42);
-      ctx.strokeStyle = `rgba(190, 160, 255, ${0.12 + energy * 0.16})`;
+      ctx.strokeStyle = `rgba(186, 168, 236, ${0.13 + energy * 0.16})`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(0, 0, radius * 1.15, 0, TAU);
@@ -530,7 +533,7 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       for (let i = 0; i < 7; i++) {
         const start = time * (0.0006 + i * 0.00004) + (i / 7) * TAU;
         const sweep = 0.34 + (i % 3) * 0.18;
-        ctx.strokeStyle = i % 2 === 0 ? `rgba(255, 231, 180, ${0.5 + energy * 0.3})` : `rgba(146, 238, 255, ${0.4 + energy * 0.3})`;
+        ctx.strokeStyle = i % 2 === 0 ? `rgba(252, 214, 176, ${0.55 + energy * 0.3})` : `rgba(160, 208, 246, ${0.45 + energy * 0.3})`;
         ctx.lineWidth = i % 2 === 0 ? 1.7 : 1;
         ctx.beginPath();
         ctx.arc(cx, cy, radius, start, start + sweep);
@@ -544,12 +547,12 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
           const orbitY = cy + Math.sin(angle) * radius * 1.55 * 0.5;
           const alpha = 0.35 + energy * 0.4;
           ctx.globalAlpha = alpha;
-          ctx.fillStyle = "rgb(255, 240, 205)";
+          ctx.fillStyle = "rgb(255, 234, 210)";
           ctx.beginPath();
           ctx.arc(orbitX, orbitY, 1.6 + energy * 0.7, 0, TAU);
           ctx.fill();
           ctx.globalAlpha = alpha * 0.35;
-          ctx.strokeStyle = "rgb(255, 214, 150)";
+          ctx.strokeStyle = "rgb(240, 190, 168)";
           ctx.lineWidth = 1;
           ctx.save();
           ctx.translate(cx, cy);
@@ -563,8 +566,8 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
 
       const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(6, radius * 0.55));
       coreGrad.addColorStop(0, "rgba(255, 255, 250, 0.95)");
-      coreGrad.addColorStop(0.45, `rgba(255, 226, 170, ${0.5 + energy * 0.35})`);
-      coreGrad.addColorStop(1, "rgba(255, 190, 120, 0)");
+      coreGrad.addColorStop(0.45, `rgba(255, 226, 196, ${0.5 + energy * 0.35})`);
+      coreGrad.addColorStop(1, "rgba(244, 168, 158, 0)");
       ctx.fillStyle = coreGrad;
       ctx.beginPath();
       ctx.arc(cx, cy, Math.max(6, radius * 0.55), 0, TAU);
@@ -573,8 +576,9 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       if (collapse > 0) {
         const singularity = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 2.2 + 4);
         singularity.addColorStop(0, `rgba(255, 255, 245, ${collapse})`);
-        singularity.addColorStop(0.3, `rgba(255, 224, 170, ${collapse * 0.65})`);
-        singularity.addColorStop(1, "rgba(255, 180, 120, 0)");
+        singularity.addColorStop(0.3, `rgba(255, 222, 186, ${collapse * 0.68})`);
+        singularity.addColorStop(0.62, `rgba(240, 160, 170, ${collapse * 0.3})`);
+        singularity.addColorStop(1, "rgba(200, 120, 140, 0)");
         ctx.fillStyle = singularity;
         ctx.beginPath();
         ctx.arc(cx, cy, baseR * 2.2 + 4, 0, TAU);
@@ -606,7 +610,7 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       }
 
       const scale = 1 - easeInCubic(collapse) * 0.72;
-      const jitter = collapse > 0 ? 0 : 1.6;
+      const jitter = collapse > 0 || reduced ? 0 : 1.6;
 
       ctx.translate(cx + rand(-jitter, jitter), cy + rand(-jitter, jitter));
       ctx.scale(scale, scale);
@@ -615,13 +619,13 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       ctx.textBaseline = "middle";
       ctx.font = `700 ${size}px ${fonts.serif}`;
       ctx.globalAlpha = alpha * 0.75;
-      ctx.fillStyle = "rgba(96, 236, 255, 0.75)";
+      ctx.fillStyle = "rgba(150, 210, 246, 0.75)";
       ctx.fillText(student.name, -2.2, 0);
-      ctx.fillStyle = "rgba(255, 120, 190, 0.7)";
+      ctx.fillStyle = "rgba(240, 150, 178, 0.72)";
       ctx.fillText(student.name, 2.2, 0);
       ctx.globalAlpha = alpha;
-      ctx.shadowColor = "rgba(255, 206, 140, 0.85)";
-      ctx.shadowBlur = 22 + energy * 18;
+      ctx.shadowColor = "rgba(255, 214, 186, 0.9)";
+      ctx.shadowBlur = 24 + energy * 20;
       ctx.fillStyle = "#fff6de";
       ctx.fillText(student.name, 0, 0);
       ctx.shadowBlur = 0;
@@ -716,7 +720,7 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
         const angle = (i / rayCount) * TAU + Math.sin(time * 0.0002 + i) * 0.08;
         const length = Math.max(W, H) * 0.62;
         const spread = 0.018 + (i % 3) * 0.008;
-        ctx.fillStyle = `rgba(255, 228, 178, ${0.015 * intensity})`;
+        ctx.fillStyle = `rgba(255, 222, 196, ${0.017 * intensity})`;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(Math.cos(angle - spread) * length, Math.sin(angle - spread) * length);
@@ -737,14 +741,14 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       ctx.rotate(tilt);
       ctx.scale(1, 0.38);
       ctx.globalCompositeOperation = "lighter";
-      ctx.globalAlpha = intensity * 0.55;
-      ctx.strokeStyle = "rgba(150, 232, 255, 0.5)";
+      ctx.globalAlpha = intensity * 0.6;
+      ctx.strokeStyle = "rgba(160, 210, 246, 0.55)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, TAU);
       ctx.stroke();
-      ctx.globalAlpha = intensity * 0.35;
-      ctx.strokeStyle = "rgba(255, 206, 152, 0.6)";
+      ctx.globalAlpha = intensity * 0.38;
+      ctx.strokeStyle = "rgba(250, 198, 178, 0.62)";
       ctx.lineWidth = 0.8;
       ctx.beginPath();
       ctx.arc(0, 0, radius * 1.13, 0, TAU);
@@ -753,7 +757,7 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       for (let i = 0; i < 4; i++) {
         const start = time * 0.0005 + (i / 4) * TAU;
         ctx.globalAlpha = intensity * 0.6;
-        ctx.strokeStyle = i % 2 === 0 ? "rgba(255, 236, 190, 0.85)" : "rgba(150, 232, 255, 0.8)";
+        ctx.strokeStyle = i % 2 === 0 ? "rgba(255, 228, 200, 0.9)" : "rgba(160, 210, 246, 0.85)";
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(0, 0, radius, start, start + 0.42);
@@ -765,8 +769,8 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
         const glow = ctx.createRadialGradient(x, y, 0, x, y, 16);
-        glow.addColorStop(0, `rgba(255, 244, 210, ${0.9 * intensity})`);
-        glow.addColorStop(1, "rgba(255, 200, 130, 0)");
+        glow.addColorStop(0, `rgba(255, 240, 220, ${0.92 * intensity})`);
+        glow.addColorStop(1, "rgba(246, 180, 170, 0)");
         ctx.globalAlpha = 1;
         ctx.fillStyle = glow;
         ctx.beginPath();
@@ -823,18 +827,18 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       ctx.font = `700 ${size}px ${fonts.serif}`;
 
       ctx.globalAlpha = form * 0.42;
-      ctx.fillStyle = "rgba(120, 240, 255, 0.9)";
+      ctx.fillStyle = "rgba(150, 210, 246, 0.9)";
       ctx.fillText(nameInfo.text, cx - 2.5, y);
-      ctx.fillStyle = "rgba(255, 116, 186, 0.85)";
+      ctx.fillStyle = "rgba(240, 150, 178, 0.85)";
       ctx.fillText(nameInfo.text, cx + 2.5, y);
 
       const gradient = ctx.createLinearGradient(0, y - size * 0.62, 0, y + size * 0.62);
-      gradient.addColorStop(0, "#fffdf6");
-      gradient.addColorStop(0.48, "#ffeec8");
-      gradient.addColorStop(1, "#ffc98a");
+      gradient.addColorStop(0, "#fffdf8");
+      gradient.addColorStop(0.46, "#ffeacf");
+      gradient.addColorStop(1, "#f3c1b4");
       ctx.globalAlpha = form;
-      ctx.shadowColor = "rgba(255, 208, 140, 0.9)";
-      ctx.shadowBlur = 24 + Math.sin(elapsed * 0.002) * 6;
+      ctx.shadowColor = "rgba(255, 214, 186, 0.92)";
+      ctx.shadowBlur = 26 + Math.sin(elapsed * 0.002) * 6;
       ctx.fillStyle = gradient;
       ctx.fillText(nameInfo.text, cx, y);
       ctx.shadowBlur = 0;
@@ -908,8 +912,8 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       const intensity = clamp(elapsed / 720, 0, 1);
 
       const halo = ctx.createRadialGradient(cx, nameInfo.baseY, 0, cx, nameInfo.baseY, Math.max(nameInfo.width, baseR * 2) * 0.78);
-      halo.addColorStop(0, `rgba(255, 218, 158, ${0.1 * intensity})`);
-      halo.addColorStop(0.5, `rgba(150, 190, 255, ${0.04 * intensity})`);
+      halo.addColorStop(0, `rgba(255, 216, 190, ${0.11 * intensity})`);
+      halo.addColorStop(0.5, `rgba(150, 185, 240, ${0.045 * intensity})`);
       halo.addColorStop(1, "rgba(80, 90, 180, 0)");
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
@@ -934,8 +938,9 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       const power = Math.pow(k, 2.4);
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.62);
       grad.addColorStop(0, `rgba(255, 255, 248, ${0.92 * power})`);
-      grad.addColorStop(0.28, `rgba(255, 240, 208, ${0.55 * power})`);
-      grad.addColorStop(0.7, `rgba(190, 214, 255, ${0.18 * power})`);
+      grad.addColorStop(0.26, `rgba(255, 236, 214, ${0.58 * power})`);
+      grad.addColorStop(0.62, `rgba(240, 172, 180, ${0.24 * power})`);
+      grad.addColorStop(0.82, `rgba(180, 206, 246, ${0.16 * power})`);
       grad.addColorStop(1, "rgba(120, 150, 255, 0)");
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
@@ -1012,23 +1017,26 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
       warpAmount += (targetWarp - warpAmount) * Math.min(1, dt / 220);
 
       const collapseProgress = currentPhase === "collapse" ? clamp((now - phaseStart) / COLLAPSE_MS, 0, 1) : currentPhase === "reveal" ? 1 : 0;
-      const shakeBase = currentPhase === "collapse" ? 9 * (1 - collapseProgress) : currentPhase === "warp" ? 0.8 : 0;
+      const shakeBase = reduced ? 0 : currentPhase === "collapse" ? 9 * (1 - collapseProgress) : currentPhase === "warp" ? 0.8 : 0;
       const shakeX = shakeBase > 0 ? rand(-shakeBase, shakeBase) : 0;
       const shakeY = shakeBase > 0 ? rand(-shakeBase, shakeBase) : 0;
 
-      drawBackground(now);
+      // 尊重系统「减少动态」：环境层时间放慢到 18%，交互反馈仍即时呈现
+      const ambientTime = reduced ? now * 0.18 : now;
+
+      drawBackground(ambientTime);
       ctx.save();
       ctx.translate(shakeX, shakeY);
 
-      drawAurora(now, currentPhase === "collapse" ? 1.55 : currentPhase === "warp" ? 1.15 : currentPhase === "reveal" ? 1.05 : 0.6);
-      drawStars(now, warpAmount);
-      if (currentPhase === "warp" || currentPhase === "collapse") drawVortex(now, Math.max(energy, warpAmount));
+      drawAurora(ambientTime, currentPhase === "collapse" ? 1.55 : currentPhase === "warp" ? 1.15 : currentPhase === "reveal" ? 1.05 : 0.6);
+      drawStars(ambientTime, warpAmount);
+      if (currentPhase === "warp" || currentPhase === "collapse") drawVortex(ambientTime, Math.max(energy, warpAmount));
 
       if (currentPhase === "reveal") {
         drawReveal(now);
       } else {
-        drawCore(now, energy, collapseProgress);
-        if (currentPhase === "warp" || currentPhase === "collapse") drawCandidate(now, energy, collapseProgress);
+        drawCore(ambientTime, energy, collapseProgress);
+        if (currentPhase === "warp" || currentPhase === "collapse") drawCandidate(ambientTime, energy, collapseProgress);
       }
 
       drawWaves();
@@ -1057,6 +1065,14 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
     };
   }, []);
 
+  const phaseMeta: Record<Phase, { label: string; dot: string }> = {
+    idle: { label: "Standby · 待机", dot: "#8fa8c8" },
+    warp: { label: "Charging · 聚能", dot: "#e5a4b1" },
+    collapse: { label: "Locking · 锁定", dot: "#f3d7ad" },
+    reveal: { label: "Revealed · 揭晓", dot: "#a5d3b6" },
+  };
+  const meta = phaseMeta[phase];
+
   return (
     <div
       className={cn("relative flex min-h-[400px] flex-col items-center justify-center overflow-hidden", className)}
@@ -1064,9 +1080,44 @@ export function NebulaRollCall({ picked, rolling, className }: NebulaRollCallPro
     >
       <canvas ref={canvasRef} aria-hidden className="absolute inset-0 h-full w-full" />
 
+      {/* 内圈渐变描边：让投影区像一块嵌在纸面上的黑曜石屏幕 */}
+      <div className="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] ring-1 ring-inset ring-white/[0.08]" />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] shadow-[inset_0_1px_0_rgba(255,255,255,0.10),inset_0_-24px_48px_-24px_rgba(0,0,0,0.75)]"
+      />
+
+      {/* 四角刻线：仪表盘般的精密感 */}
+      <span aria-hidden className="pointer-events-none absolute left-3 top-3 z-10 h-4 w-4 rounded-tl-md border-l border-t border-white/15" />
+      <span aria-hidden className="pointer-events-none absolute right-3 top-3 z-10 h-4 w-4 rounded-tr-md border-r border-t border-white/15" />
+      <span aria-hidden className="pointer-events-none absolute bottom-3 left-3 z-10 h-4 w-4 rounded-bl-md border-b border-l border-white/15" />
+      <span aria-hidden className="pointer-events-none absolute bottom-3 right-3 z-10 h-4 w-4 rounded-br-md border-b border-r border-white/15" />
+
+      {/* 状态胶囊 */}
+      <div className="pointer-events-none absolute left-5 top-5 z-10 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/25 px-2.5 py-1 backdrop-blur-sm">
+        <span
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: meta.dot, boxShadow: `0 0 8px ${meta.dot}` }}
+        />
+        <span className="text-[9px] font-medium uppercase tracking-[0.18em] text-white/45">{meta.label}</span>
+      </div>
+
+      {/* 英文微标 */}
+      <span aria-hidden className="pointer-events-none absolute right-5 top-5 z-10 hidden text-[9px] uppercase tracking-[0.22em] text-white/25 sm:block">
+        Nebula · Roll Call
+      </span>
+
       {phase === "idle" && (
-        <div className="pointer-events-none absolute bottom-7 z-10 text-xs tracking-[0.28em] text-white/35">
+        <div className="pointer-events-none absolute bottom-7 z-10 text-[11px] tracking-[0.28em] text-white/40">
           点击按钮 · 唤醒星核
+        </div>
+      )}
+
+      {phase === "reveal" && picked && (
+        <div className="pointer-events-none absolute bottom-6 z-10 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-white/30">
+          <span className="h-px w-6 bg-[linear-gradient(90deg,transparent,rgba(229,164,177,0.7))]" />
+          Selected
+          <span className="h-px w-6 bg-[linear-gradient(90deg,rgba(229,164,177,0.7),transparent)]" />
         </div>
       )}
 

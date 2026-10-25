@@ -24,37 +24,41 @@ export function Dialog({ open, onClose, title, description, children, className 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* 遮罩：墨色径向渐变 + 毛玻璃，聚焦对话内容 */}
       <div
         className="absolute inset-0 animate-fade-in"
         style={{
           background:
-            "radial-gradient(ellipse 70% 60% at 50% 40%, rgba(36,35,31,0.26) 0%, rgba(36,35,31,0.44) 100%)",
-          backdropFilter: "blur(3px)",
-          WebkitBackdropFilter: "blur(3px)",
+            "radial-gradient(ellipse 70% 60% at 50% 38%, rgba(36,35,31,0.22) 0%, rgba(36,35,31,0.46) 100%)",
+          backdropFilter: "blur(6px) saturate(1.1)",
+          WebkitBackdropFilter: "blur(6px) saturate(1.1)",
         }}
         onClick={onClose}
       />
       <div
         className={cn(
-          "relative z-10 w-full max-w-lg rounded-2xl bg-panel edge-lit",
-          "shadow-paper-xl inner-lit animate-scale-in",
-          "max-h-[90vh] overflow-y-auto scrollbar-thin p-6",
+          "relative z-10 w-full max-w-lg overflow-y-auto rounded-2xl border border-white/70 bg-panel scrollbar-thin",
+          "shadow-paper-float edge-lit",
+          "max-h-[90vh] p-6",
           className
         )}
       >
+        {/* 顶部釉面高光 + 极淡网格 */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-2xl bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(255,255,255,0))]" />
+        <div className="pointer-events-none absolute inset-0 rounded-2xl grid-veil opacity-30" />
         {title && (
-          <h2 className="mb-1 font-serif text-lg font-semibold text-text tracking-tight">{title}</h2>
+          <h2 className="relative mb-1 font-serif text-xl font-semibold tracking-tight text-text">{title}</h2>
         )}
-        {description && <p className="mb-4 text-sm text-muted">{description}</p>}
+        {description && <p className="relative mb-4 text-sm text-muted">{description}</p>}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors duration-[var(--dur-quick)] hover:bg-neutral-3/60 hover:text-text"
+          className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors duration-[var(--dur-quick)] hover:bg-neutral-3/60 hover:text-text"
           aria-label="关闭"
         >
           <X className="h-4 w-4" />
         </button>
-        {children}
+        <div className="relative">{children}</div>
       </div>
     </div>
   );

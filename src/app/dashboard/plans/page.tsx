@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useCurrentClass, useClasses } from "@/hooks/use-classes";
@@ -11,6 +11,12 @@ import { Input, Label, Textarea } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui/states";
+import { CountUp } from "@/components/common/count-up";
+import { StatBar } from "@/components/common/stat-bar";
+import { SegmentedBar } from "@/components/common/breakdown";
+import { SectionHeader } from "@/components/common/section-header";
+import { IconButton } from "@/components/common/icon-button";
+import { NextStepCard } from "@/components/common/next-step";
 import { Plus, Pencil, Trash2, ClipboardList, CalendarDays, Layers, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
@@ -35,6 +41,12 @@ export default function PlansPage() {
   const { currentClass, isLoading: classesLoading } = useCurrentClass();
   const { classes } = useClasses();
   const qc = useQueryClient();
+  /** 挂载标记：SSR 与首次水合都先渲染骨架，避免 provider 数据差异导致水合不匹配 */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Plan | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -47,6 +59,7 @@ export default function PlansPage() {
   });
 
   const plans = data?.data ?? [];
+  const loading = !mounted || isLoading || classesLoading;
 
   const createMut = useMutation({
     mutationFn: (d: Record<string, unknown>) => apiClient.post("/plans", d),
@@ -82,45 +95,134 @@ export default function PlansPage() {
     setDialogOpen(false);
   }
 
+  /* ── 纯展示派生：状态分布与完成度 ── */
+  const countOf = (s: Plan["status"]) => plans.filter((p) => p.status === s).length;
+  const pendingCount = countOf("pending");
+  const planningCount = countOf("planning");
+  const completedCount = countOf("completed");
+  const taughtCount = countOf("taught");
+  const finished = completedCount + taughtCount;
+  const completion = plans.length ? Math.round((finished / plans.length) * 100) : 0;
+  const statusItems = [
+    { label: "待开始", value: pendingCount, color: "#a8a69f" },
+    { label: "备课中", value: planningCount, color: "#c56473" },
+    { label: "已完成", value: completedCount, color: "#5e9f7e" },
+    { label: "已授课", value: taughtCount, color: "#3d6896" },
+  ];
+
   return (
     <div>
-      <PageHeader title="备课与反思" description={`共 ${plans.length} 条记录`}
-        action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" />新建备课</Button>} />
-      <Card><CardContent className="p-0">
-        {isLoading || classesLoading ? <LoadingState /> : plans.length === 0 ? <EmptyState icon={<ClipboardList className="h-10 w-10" />} title="暂无备课记录" /> :
-          <div className="divide-y divide-line">
-            {plans.map((p) => {
-              const accent = STATUS_ACCENT[p.status] ?? STATUS_ACCENT.pending;
-              return (
-                <div key={p.id} className="group relative flex items-center gap-3.5 p-4 pl-5 transition-[background] duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/55 hover:via-[#f8e4e7]/12 hover:to-transparent">
-                  <span className={`absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-gradient-to-b ${accent.bar} opacity-45 transition-opacity duration-[var(--dur-quick)] group-hover:opacity-100`} />
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.5rem] ring-1 ring-inset ${accent.tile} shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]`}>
-                    <ClipboardList className="h-[18px] w-[18px]" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-medium tracking-[0.01em]">{p.title}</span>
-                      <Badge variant={STATUS_COLOR[p.status]}>{STATUS_MAP[p.status]}</Badge>
+      <PageHeader title="备课与反思" description={`共 ${plans.length} 条记录`} />
+
+      {/* ══════════ 概览条 ══════════ */}
+      {!loading && plans.length > 0 && (
+        <StatBar
+          items={[
+            { label: "备课总数", hint: "Lesson Plans", value: plans.length, suffix: "份" },
+            { label: "待开始", hint: "To Do", value: pendingCount, suffix: "份" },
+            { label: "已完成", hint: "Finished", value: completedCount, suffix: "份" },
+            { label: "完成率", hint: "Completion", value: completion, suffix: "%" },
+          ]}
+          action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" />新建备课</Button>}
+        />
+      )}
+
+      {/* ══════════ 备课流程分布 ══════════ */}
+      {!loading && plans.length > 0 && (
+        <section className="reveal mb-4 relative overflow-hidden rounded-2xl edge-lit spotlight shadow-[0_2px_14px_-4px_rgba(36,35,31,0.10)]">
+          <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(112deg,#fdf7f7_0%,#fbf8f4_42%,#f5f7fa_76%,#f2f8f5_100%)]" />
+          <span className="pointer-events-none absolute inset-0 dot-veil opacity-[0.26]" />
+          <span className="pointer-events-none absolute -right-10 -top-16 h-52 w-52 rounded-full bg-[radial-gradient(circle,rgba(197,100,115,0.16),transparent_68%)]" />
+          <div className="relative flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="eyebrow">Lesson Workflow</p>
+              <p className="mt-1 font-serif text-[17px] font-semibold text-text">备课流程分布</p>
+              <div className="mt-3 max-w-xl">
+                <SegmentedBar items={statusItems} height={10} unit=" 份" />
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-5 sm:border-l sm:border-line/70 sm:pl-6">
+              <div className="text-center">
+                <p className="num-display num-glaze text-[34px] font-semibold leading-none">
+                  <CountUp value={finished} />
+                  <span className="text-[18px] text-neutral-4">/{plans.length}</span>
+                </p>
+                <p className="eyebrow mt-1.5">Completed</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ══════════ 备课记录 ══════════ */}
+      <Card>
+        <SectionHeader icon={ClipboardList} title="备课记录" en="Lesson Plans" tone="ume"
+          right={<span className="tabular-nums">共 {plans.length} 份</span>} />
+        <CardContent className="p-0">
+          {loading ? <LoadingState /> : plans.length === 0 ? (
+            <EmptyState
+              icon={<ClipboardList className="h-10 w-10" />}
+              title="暂无备课记录"
+              description="新建一份教案，或用 AI 生成教学过程草稿"
+              action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" />新建备课</Button>}
+            />
+          ) : (
+            <div className="divide-y divide-line/60">
+              {plans.map((p) => {
+                const accent = STATUS_ACCENT[p.status] ?? STATUS_ACCENT.pending;
+                return (
+                  <div key={p.id} className="group relative flex min-h-[60px] items-center gap-3.5 p-4 pl-5 transition-[background] duration-[var(--dur-quick)] hover:bg-[linear-gradient(90deg,rgba(197,100,115,0.06),rgba(197,100,115,0.02)_58%,transparent)]">
+                    <span className={`absolute inset-y-2 left-0 w-[2px] rounded-full bg-gradient-to-b ${accent.bar} opacity-60 transition-opacity duration-[var(--dur-quick)] group-hover:opacity-100`} />
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.6rem] ring-1 ring-inset shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform duration-[var(--dur-smooth)] ease-[var(--ease-spring)] group-hover:scale-105 ${accent.tile}`}>
+                      <ClipboardList className="h-[18px] w-[18px]" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-medium tracking-[0.01em] transition-colors duration-[var(--dur-quick)] group-hover:text-primary-d">{p.title}</span>
+                        <Badge variant={STATUS_COLOR[p.status]}>{STATUS_MAP[p.status]}</Badge>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-neutral-6">
+                        <CalendarDays className="h-3.5 w-3.5 opacity-70" />
+                        <span className="tabular-nums">{p.teachDate || "未定日期"}</span>
+                        <span className="text-[#c9c6bd]">·</span>
+                        <Layers className="h-3.5 w-3.5 opacity-70" />
+                        <span>{p.lessonType || "未分类"}</span>
+                        <span className="text-[#c9c6bd]">·</span>
+                        <span className="font-display text-[13px] tracking-wide text-neutral-7">{p.unit || "未指定单元"}</span>
+                      </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted">
-                      <CalendarDays className="h-3.5 w-3.5 opacity-70" />
-                      <span className="tabular-nums">{p.teachDate || "未定日期"}</span>
-                      <span className="text-[#c9c6bd]">·</span>
-                      <Layers className="h-3.5 w-3.5 opacity-70" />
-                      <span>{p.lessonType || "未分类"}</span>
-                      <span className="text-[#c9c6bd]">·</span>
-                      <span>{p.unit || "未指定单元"}</span>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <IconButton label={`编辑「${p.title}」`} onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></IconButton>
+                      <IconButton label={`删除「${p.title}」`} tone="danger" onClick={() => setDeleteId(p.id)}><Trash2 className="h-4 w-4" /></IconButton>
                     </div>
                   </div>
-                  <div className="flex gap-1 opacity-55 transition-opacity duration-[var(--dur-quick)] group-hover:opacity-100">
-                    <button onClick={() => openEdit(p)} title="编辑" className="rounded-md p-1.5 text-muted transition-colors hover:bg-panel hover:text-primary hover:shadow-[var(--shadow-xs)]"><Pencil className="h-4 w-4" /></button>
-                    <button onClick={() => setDeleteId(p.id)} title="删除" className="rounded-md p-1.5 text-muted transition-colors hover:bg-[#f8e4e7] hover:text-[#a64953] hover:shadow-[var(--shadow-xs)]"><Trash2 className="h-4 w-4" /></button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>}
-      </CardContent></Card>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ══════════ 下一步动作 ══════════ */}
+      {!loading && (
+        <NextStepCard
+          icon={Sparkles}
+          title="把备课推到「已授课」"
+          description={`当前 ${pendingCount + planningCount} 份教案还在流程中。上完课后标记状态并补一句教学反思，学期末就是一份完整的教学档案。`}
+          actions={
+            <>
+              <Button variant="outline" onClick={() => { if (plans[0]) openEdit(plans[0]); else openCreate(); }} className="gap-1.5">
+                <Pencil className="h-4 w-4" />
+                {plans[0] ? "继续最近一份" : "新建备课"}
+              </Button>
+              <Button onClick={openCreate} className="gap-1.5">
+                <Plus className="h-4 w-4" />
+                新建备课
+              </Button>
+            </>
+          }
+        />
+      )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} title={editing ? "编辑备课" : "新建备课"} className="max-w-2xl">
         <div className="space-y-3">
