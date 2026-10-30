@@ -17,18 +17,33 @@ import { downloadExport } from "@/lib/excel/client";
 import {
   Plus, Trash2, Headphones, ChevronRight, Volume2, Upload, Download,
   Check, X, Search, Library, Loader2, GraduationCap, Printer,
-  Users, BookOpen, ClipboardCheck, Gauge, CalendarDays,
+  Users, BookOpen, ClipboardCheck, Gauge, CalendarDays, Monitor, Pencil, Keyboard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error";
+import {
+  computeStudentScore,
+  computeClassSummary,
+  normalizePassRule,
+  passRuleLabel,
+  type PassType,
+  type CellValue as ScoringCell,
+} from "@/lib/dictation/scoring";
 
 const ImportDialog = dynamic(() => import("@/components/common/import-dialog").then((m) => m.ImportDialog), {
   ssr: false,
 });
 import { cn } from "@/lib/utils";
 
-type DictList = { id: string; name: string; classId: string | null; dictationDate: string | null };
-type DictWord = { id: string; word: string; meaning: string | null };
+type DictList = {
+  id: string;
+  name: string;
+  classId: string | null;
+  dictationDate: string | null;
+  passType: PassType;
+  passValue: number | null;
+};
+type DictWord = { id: string; word: string; meaning: string | null; scoreWeight: number };
 type Student = { id: string; name: string; studentNo: string | null; seatNo: number | null };
 type DictResult = { id: string; listId: string; studentId: string; wordId: string; isCorrect: boolean | null };
 type VocabUnitOption = { id: string; name: string };
@@ -36,11 +51,6 @@ type VocabUnitOption = { id: string; name: string };
 type CellValue = boolean | null;
 
 const cellKey = (studentId: string, wordId: string) => `${studentId}:${wordId}`;
-
-function accuracyText(correct: number, total: number): string {
-  if (!total) return "—";
-  return `${((correct / total) * 100).toFixed(0)}%`;
-}
 
 /** 学生头像渐变：按姓名稳定取色，与学情分析页保持一致；深色字保证对比度 */
 const AVATAR_TONES = [
@@ -65,8 +75,16 @@ export default function DictationPage() {
   const [tab, setTab] = useState<"words" | "scores">("words");
   const [listDialog, setListDialog] = useState(false);
   const [wordDialog, setWordDialog] = useState(false);
-  const [listForm, setListForm] = useState({ name: "", classId: "", dictationDate: "" });
-  const [wordForm, setWordForm] = useState({ word: "", meaning: "" });
+  const [editingListId, setEditingListId] = useState<string | null>(null);
+  const [editingWordId, setEditingWordId] = useState<string | null>(null);
+  const [listForm, setListForm] = useState({
+    name: "",
+    classId: "",
+    dictationDate: "",
+    passType: "none" as PassType,
+    passValue: "",
+  });
+  const [wordForm, setWordForm] = useState({ word: "", meaning: "", scoreWeight: "1" });
 
   // 导入
   const [importOpen, setImportOpen] = useState(false);
@@ -86,6 +104,12 @@ export default function DictationPage() {
   const [saving, setSaving] = useState(false);
   const pendingRef = useRef<Record<string, { studentId: string; wordId: string; isCorrect: CellValue }>>({});
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 键盘极速录入
+  const [keyboardMode, setKeyboardMode] = useState(false);
+  const [activeCell, setActiveCell] = useState<{ r: number; c: number }>({ r: 0, c: 0 });
+  const wrongInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const cellBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const { data: listsData, isLoading } = useQuery({
     queryKey: ["dict-lists"],
@@ -219,17 +243,6 @@ export default function DictationPage() {
     toast.success(value === true ? "已标记全班全对" : "已清空本次成绩");
   }
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  const createListMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/dictation/lists", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已创建"); setListDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
-  const deleteListMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/dictation/lists/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已删除"); setSelectedList(null); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
-  const createWordMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/dictation/words", { ...d, listId: selectedList?.id }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-words"] }); toast.success("已添加"); setWordDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
-  const deleteWordMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/dictation/words/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-words"] }); toast.success("已删除"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
-
   const filteredStudents = useMemo(() => {
     if (!studentFilter.trim()) return students;
     const kw = studentFilter.toLowerCase();
@@ -238,20 +251,135 @@ export default function DictationPage() {
     );
   }, [students, studentFilter]);
 
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  /** 错词序号框：输入 "3 5 7" → 第 3/5/7 词标错，其余标对 */
+  function applyWrongIndices(studentId: string, input: string) {
+    const tokens = input.split(/[\s,，、]+/).map((t) => t.trim()).filter(Boolean);
+    const wrongSet = new Set<number>();
+    for (const t of tokens) {
+      const n = Number(t);
+      if (Number.isFinite(n) && n >= 1) wrongSet.add(Math.trunc(n));
+    }
+    const next = { ...grid };
+    words.forEach((w, i) => {
+      const isWrong = wrongSet.has(i + 1);
+      const key = cellKey(studentId, w.id);
+      next[key] = isWrong ? false : true;
+      pendingRef.current[key] = { studentId, wordId: w.id, isCorrect: next[key] };
+    });
+    setGrid(next);
+    scheduleFlush();
+  }
+
+  /** 把活动格滚动到可视区 */
+  function scrollActiveIntoView(r: number, c: number) {
+    const st = filteredStudents[r];
+    const w = words[c];
+    if (!st || !w) return;
+    const btn = cellBtnRefs.current[cellKey(st.id, w.id)];
+    btn?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+
+  // 键盘极速录入：方向键移动活动格 + 数字键标记
+  useEffect(() => {
+    if (!keyboardMode || tab !== "scores") return;
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const inEditable =
+        target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable);
+      if (inEditable) return;
+      if (filteredStudents.length === 0 || words.length === 0) return;
+
+      const { r, c } = activeCell;
+      const maxR = filteredStudents.length - 1;
+      const maxC = words.length - 1;
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const nr = Math.max(0, r - 1);
+        setActiveCell({ r: nr, c });
+        scrollActiveIntoView(nr, c);
+      } else if (e.key === "ArrowDown" || e.key === "Enter") {
+        e.preventDefault();
+        const nr = Math.min(maxR, r + 1);
+        setActiveCell({ r: nr, c });
+        scrollActiveIntoView(nr, c);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        const nc = Math.max(0, c - 1);
+        setActiveCell({ r, c: nc });
+        scrollActiveIntoView(r, nc);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        const nc = Math.min(maxC, c + 1);
+        setActiveCell({ r, c: nc });
+        scrollActiveIntoView(r, nc);
+      } else if (e.key === "1" || e.key === "y" || e.key === "Y") {
+        e.preventDefault();
+        const st = filteredStudents[r];
+        const w = words[c];
+        if (st && w) setCell(st.id, w.id, true);
+      } else if (e.key === "0" || e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        const st = filteredStudents[r];
+        const w = words[c];
+        if (st && w) setCell(st.id, w.id, false);
+      } else if (e.key === "." || e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        const st = filteredStudents[r];
+        const w = words[c];
+        if (st && w) setCell(st.id, w.id, null);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [keyboardMode, tab, activeCell, filteredStudents, words]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 切换班级/筛选时把活动格 clamp 回有效范围
+  useEffect(() => {
+    setActiveCell((prev) => ({
+      r: Math.min(prev.r, Math.max(0, filteredStudents.length - 1)),
+      c: Math.min(prev.c, Math.max(0, words.length - 1)),
+    }));
+  }, [filteredStudents.length, words.length]);
+
+  const createListMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/dictation/lists", d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已创建"); setListDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const editListMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiClient.patch(`/dictation/lists/${id}`, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已更新"); setListDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const deleteListMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/dictation/lists/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-lists"] }); toast.success("已删除"); setSelectedList(null); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const createWordMut = useMutation({ mutationFn: (d: Record<string, unknown>) => apiClient.post("/dictation/words", { ...d, listId: selectedList?.id }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-words"] }); toast.success("已添加"); setWordDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const updateWordMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiClient.patch(`/dictation/words/${id}`, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-words"] }); toast.success("已更新"); setWordDialog(false); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+  const deleteWordMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/dictation/words/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["dict-words"] }); toast.success("已删除"); }, onError: (e: unknown) => toast.error(getErrorMessage(e)) });
+
+  const passRule = useMemo(
+    () => normalizePassRule(selectedList?.passType ?? "none", selectedList?.passValue ?? null),
+    [selectedList?.passType, selectedList?.passValue]
+  );
+
   const studentStats = useMemo(() => {
     return new Map(
       students.map((s) => {
-        let correct = 0;
-        let recorded = 0;
-        for (const w of words) {
-          const v = grid[cellKey(s.id, w.id)] ?? null;
-          if (v === true) { correct++; recorded++; }
-          else if (v === false) recorded++;
-        }
-        return [s.id, { correct, recorded, total: words.length }];
+        const studentResults: Record<string, ScoringCell> = {};
+        for (const w of words) studentResults[w.id] = grid[cellKey(s.id, w.id)] ?? null;
+        const score = computeStudentScore(
+          words.map((w) => ({ id: w.id, scoreWeight: w.scoreWeight })),
+          studentResults,
+          passRule
+        );
+        const correct = score.recordedCount - score.wrongCount;
+        return [s.id, {
+          correct,
+          recorded: score.recordedCount,
+          total: words.length,
+          score,
+        }] as const;
       })
     );
-  }, [students, words, grid]);
+  }, [students, words, grid, passRule]);
 
   const wordStats = useMemo(() => {
     return new Map(
@@ -269,16 +397,18 @@ export default function DictationPage() {
   }, [words, students, grid]);
 
   const classSummary = useMemo(() => {
-    let correct = 0;
-    let recorded = 0;
-    for (const s of students) {
-      const st = studentStats.get(s.id);
-      if (!st) continue;
-      correct += st.correct;
-      recorded += st.recorded;
-    }
-    return { correct, recorded, avg: recorded ? Math.round((correct / recorded) * 1000) / 10 : null };
-  }, [students, studentStats]);
+    const cs = computeClassSummary(
+      words.map((w) => ({ id: w.id, scoreWeight: w.scoreWeight })),
+      students,
+      grid,
+      cellKey
+    );
+    return {
+      correct: cs.correctWeight,
+      recorded: cs.recordedCount,
+      avg: cs.avgPct != null ? Math.round(cs.avgPct * 10) / 10 : null,
+    };
+  }, [students, words, grid]);
 
   function speak(text: string) {
     if (!("speechSynthesis" in window)) { toast.error("浏览器不支持语音合成"); return; }
@@ -353,6 +483,66 @@ export default function DictationPage() {
     }
   }
 
+  function openEditList(l: DictList) {
+    setEditingListId(l.id);
+    setListForm({
+      name: l.name,
+      classId: l.classId ?? "",
+      dictationDate: l.dictationDate ?? "",
+      passType: l.passType ?? "none",
+      passValue: l.passValue != null ? String(l.passValue) : "",
+    });
+    setListDialog(true);
+  }
+
+  function openNewList() {
+    setEditingListId(null);
+    setListForm({ name: "", classId: currentClass?.id ?? "", dictationDate: "", passType: "none", passValue: "" });
+    setListDialog(true);
+  }
+
+  function openEditWord(w: DictWord) {
+    setEditingWordId(w.id);
+    setWordForm({ word: w.word, meaning: w.meaning ?? "", scoreWeight: String(w.scoreWeight ?? 1) });
+    setWordDialog(true);
+  }
+
+  function openNewWord() {
+    setEditingWordId(null);
+    setWordForm({ word: "", meaning: "", scoreWeight: "1" });
+    setWordDialog(true);
+  }
+
+  async function submitListForm() {
+    if (!listForm.name.trim()) { toast.error("名称不能为空"); return; }
+    const payload = {
+      name: listForm.name.trim(),
+      classId: listForm.classId || null,
+      dictationDate: listForm.dictationDate || null,
+      passType: listForm.passType,
+      passValue: listForm.passType === "none" ? null : (Number(listForm.passValue) || 0),
+    };
+    if (editingListId) {
+      await editListMut.mutateAsync({ id: editingListId, data: payload });
+    } else {
+      await createListMut.mutateAsync(payload);
+    }
+  }
+
+  async function submitWordForm() {
+    if (!wordForm.word.trim()) { toast.error("单词不能为空"); return; }
+    const payload = {
+      word: wordForm.word.trim(),
+      meaning: wordForm.meaning.trim() || null,
+      scoreWeight: Math.max(0, Math.trunc(Number(wordForm.scoreWeight)) || 1),
+    };
+    if (editingWordId) {
+      await updateWordMut.mutateAsync({ id: editingWordId, data: payload });
+    } else {
+      await createWordMut.mutateAsync(payload);
+    }
+  }
+
   return (
     <div>
       <PageHeader title="听写词表" description={`共 ${lists.length} 张词表`}
@@ -362,7 +552,7 @@ export default function DictationPage() {
               <Download className="h-4 w-4" />
               {wrongExporting ? "导出中…" : "错词本"}
             </Button>
-            <Button onClick={() => { setListForm({ name: "", classId: currentClass?.id ?? "", dictationDate: "" }); setListDialog(true); }} className="gap-1.5"><Plus className="h-4 w-4" />新建词表</Button>
+            <Button onClick={openNewList} className="gap-1.5"><Plus className="h-4 w-4" />新建词表</Button>
           </div>
         } />
 
@@ -408,12 +598,21 @@ export default function DictationPage() {
                     <button onClick={() => setSelectedList(l)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                       <span className="truncate font-medium tracking-[0.01em] transition-colors duration-[var(--dur-quick)] group-hover:text-primary-d">{l.name}</span>
                       <Badge variant="muted">{l.classId ? (classes.find((c) => c.id === l.classId)?.name ?? "已删除班级") : "未关联班级"}</Badge>
+                      {l.passType && l.passType !== "none" && (
+                        <span className="hidden items-center gap-1 rounded-md bg-[#f0ede4]/70 px-1.5 py-[1px] text-[10px] text-[#6b4a20] ring-1 ring-inset ring-[#c9a96a]/30 sm:inline-flex">
+                          {passRuleLabel(normalizePassRule(l.passType, l.passValue))}
+                        </span>
+                      )}
                       {l.dictationDate && (
                         <span className="hidden items-center gap-1 rounded-md bg-white/70 px-1.5 py-[1px] text-[10px] tabular-nums text-neutral-6 ring-1 ring-inset ring-line/70 sm:inline-flex">
                           {l.dictationDate}
                         </span>
                       )}
                       <ChevronRight className="h-4 w-4 shrink-0 text-muted transition-all duration-[var(--dur-quick)] group-hover:translate-x-0.5 group-hover:text-primary" />
+                    </button>
+                    <button onClick={() => openEditList(l)} title="编辑词表" aria-label={`编辑词表 ${l.name}`}
+                      className="flex h-8 w-8 items-center justify-center rounded-md text-muted opacity-55 transition-all duration-[var(--dur-quick)] hover:bg-[#f8e4e7] hover:text-primary-d hover:shadow-[var(--shadow-xs)] group-hover:opacity-100">
+                      <Pencil className="h-4 w-4" />
                     </button>
                     <button onClick={() => deleteListMut.mutate(l.id)} title="删除" aria-label={`删除词表 ${l.name}`}
                       className="flex h-8 w-8 items-center justify-center rounded-md text-muted opacity-55 transition-all duration-[var(--dur-quick)] hover:bg-[#f8e4e7] hover:text-[#a64953] hover:shadow-[var(--shadow-xs)] group-hover:opacity-100">
@@ -441,6 +640,11 @@ export default function DictationPage() {
                 <Headphones className="h-3 w-3" />
                 {words.length} 词
               </span>
+              {selectedList.passType && selectedList.passType !== "none" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#f0ede4]/80 px-2 py-0.5 text-[11px] text-[#6b4a20] ring-1 ring-inset ring-[#c9a96a]/30">
+                  {passRuleLabel(passRule)}
+                </span>
+              )}
               {saving && <span className="flex items-center gap-1 text-xs text-muted"><Loader2 className="h-3 w-3 animate-spin" />保存中…</span>}
             </div>
             <div className="flex flex-wrap gap-2">
@@ -482,6 +686,14 @@ export default function DictationPage() {
                 <Printer className="h-4 w-4" />
                 打印听写纸
               </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.open(`/dictation/${selectedList.id}/present`, "_blank")} disabled={words.length === 0}>
+                <Monitor className="h-4 w-4" />
+                大屏展示
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={openEditList ? () => openEditList(selectedList) : undefined}>
+                <Pencil className="h-4 w-4" />
+                编辑
+              </Button>
             </div>
             </div>
           </div>
@@ -518,13 +730,19 @@ export default function DictationPage() {
                             <Volume2 className="h-3.5 w-3.5" />
                           </button>
                           {w.meaning && <span className="truncate text-xs text-muted">{w.meaning}</span>}
+                          <span className="inline-flex items-center rounded-md bg-[#f0ede4]/70 px-1.5 py-[1px] text-[10px] font-medium tabular-nums text-[#6b4a20] ring-1 ring-inset ring-[#c9a96a]/25">
+                            {w.scoreWeight ?? 1} 分
+                          </span>
                         </div>
-                        <button onClick={() => deleteWordMut.mutate(w.id)} title="删除单词" aria-label={`删除单词 ${w.word}`} className="flex h-8 w-8 items-center justify-center rounded-md text-muted opacity-0 transition-all duration-[var(--dur-quick)] hover:bg-[#f8e4e7] hover:text-[#a64953] group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => openEditWord(w)} title="编辑单词" aria-label={`编辑单词 ${w.word}`} className="flex h-8 w-8 items-center justify-center rounded-md text-muted opacity-0 transition-all duration-[var(--dur-quick)] hover:bg-[#f8e4e7] hover:text-primary-d group-hover:opacity-100"><Pencil className="h-4 w-4" /></button>
+                          <button onClick={() => deleteWordMut.mutate(w.id)} title="删除单词" aria-label={`删除单词 ${w.word}`} className="flex h-8 w-8 items-center justify-center rounded-md text-muted opacity-0 transition-all duration-[var(--dur-quick)] hover:bg-[#f8e4e7] hover:text-[#a64953] group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+                        </div>
                       </div>
                     ))}
                   </div>}
                 <div className="flex items-center justify-between border-t border-line/70 p-3">
-                  <Button size="sm" className="gap-1.5" onClick={() => { setWordForm({ word: "", meaning: "" }); setWordDialog(true); }}><Plus className="h-4 w-4" />添加单词</Button>
+                  <Button size="sm" className="gap-1.5" onClick={openNewWord}><Plus className="h-4 w-4" />添加单词</Button>
                   <span className="text-[11px] text-muted">共 {words.length} 个单词</span>
                 </div>
               </CardContent>
@@ -564,6 +782,21 @@ export default function DictationPage() {
                     />
                   </div>
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted">键盘录入</Label>
+                  <button
+                    onClick={() => setKeyboardMode((v) => !v)}
+                    className={cn(
+                      "inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm transition-all duration-[var(--dur-quick)]",
+                      keyboardMode
+                        ? "border-[#c56473]/40 bg-[#f8e4e7] text-primary-d shadow-[0_1px_2px_rgba(197,100,115,0.18),inset_0_1px_0_rgba(255,255,255,0.9)]"
+                        : "border-line bg-white/70 text-muted hover:border-[#c56473]/30 hover:text-primary-d"
+                    )}
+                  >
+                    <Keyboard className="h-3.5 w-3.5" />
+                    {keyboardMode ? "已开启" : "关闭"}
+                  </button>
+                </div>
                 <div className="ml-auto flex flex-wrap items-center gap-2">
                   <span className="hidden text-[11px] text-muted sm:inline">批量标记：</span>
                   <Button size="sm" variant="outline" className="gap-1.5 bg-white/70 backdrop-blur-md" onClick={() => fillAll(true)}>
@@ -586,7 +819,7 @@ export default function DictationPage() {
                         <Badge variant="muted">{filteredStudents.length} / {students.length} 人</Badge>
                       </CardTitle>
                     </div>
-                    <p className="text-[11px] text-muted">点击格子：正确 → 错误 → 未批改，自动保存</p>
+                    <p className="text-[11px] text-muted">{keyboardMode ? "键盘：方向键移动 · 1=对 · 0=错 · .=清除 · Enter=下一行" : "点击格子：正确 → 错误 → 未批改，自动保存"}</p>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -621,20 +854,25 @@ export default function DictationPage() {
                                 </th>
                               );
                             })}
-                            <th className="px-3 py-2.5 text-center font-medium">正确率</th>
+                            <th className="px-3 py-2.5 text-center font-medium">得分</th>
                             <th className="px-3 py-2.5 text-center font-medium">操作</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredStudents.map((st) => {
+                          {filteredStudents.map((st, rowIdx) => {
                             const stat = studentStats.get(st.id);
-                            const pct = stat && stat.recorded > 0 ? Math.round((stat.correct / stat.recorded) * 100) : 0;
+                            const score = stat?.score;
+                            const pct = score?.scorePct != null ? Math.round(score.scorePct) : 0;
                             const barGrad = pct >= 85
                               ? "linear-gradient(90deg,#9ccbb2,#4a8f74)"
                               : pct >= 60
                                 ? "linear-gradient(90deg,#e3a5ae,#c56473)"
                                 : "linear-gradient(90deg,#e0a3ac,#a64953)";
                             const tone = avatarTone(st.name);
+                            const statusBadge =
+                              score?.status === "pass" ? { text: "及格", cls: "bg-[#e4f0e8] text-[#3d7a5e] ring-[#5e9f7e]/25" } :
+                              score?.status === "fail" ? { text: "不及格", cls: "bg-[#f7dfe0] text-[#a64953] ring-[#a64953]/25" } :
+                              score?.status === "pending" ? { text: "待完成", cls: "bg-white/70 text-muted ring-line" } : null;
                             return (
                               <tr key={st.id} className="group border-b border-line/50 transition-colors duration-[var(--dur-quick)] hover:bg-gradient-to-r hover:from-[#f8e4e7]/50 hover:to-transparent">
                                 <td className="sticky left-0 z-10 bg-panel px-3 py-1.5">
@@ -649,11 +887,13 @@ export default function DictationPage() {
                                     {st.seatNo != null && <span className="text-[10px] text-muted">{st.seatNo}号</span>}
                                   </div>
                                 </td>
-                                {words.map((w) => {
+                                {words.map((w, colIdx) => {
                                   const v = grid[cellKey(st.id, w.id)] ?? null;
+                                  const isActive = keyboardMode && activeCell.r === rowIdx && activeCell.c === colIdx;
                                   return (
                                     <td key={w.id} className="px-1 py-1.5 text-center">
                                       <button
+                                        ref={(el) => { cellBtnRefs.current[cellKey(st.id, w.id)] = el; }}
                                         onClick={() => toggleCell(st.id, w.id)}
                                         className={cn(
                                           "group/cell flex h-7 w-11 items-center justify-center rounded-md border text-xs",
@@ -662,6 +902,7 @@ export default function DictationPage() {
                                           v === true && "border-[#5e9f7e]/45 bg-gradient-to-b from-[#e4f0e8] to-[#d5e8dc] text-[#3d7a5e] shadow-[0_1px_2px_rgba(94,159,126,0.28),inset_0_1px_0_rgba(255,255,255,0.9)]",
                                           v === false && "border-[#a64953]/45 bg-gradient-to-b from-[#f7dfe0] to-[#f0cfd1] text-[#a64953] shadow-[0_1px_2px_rgba(166,73,83,0.24),inset_0_1px_0_rgba(255,255,255,0.85)]",
                                           v === null && "border-dashed border-line bg-panel text-muted hover:border-[#c56473]/50 hover:bg-[#f8e4e7]/45 hover:text-primary-d",
+                                          isActive && "ring-2 ring-[#c56473] ring-offset-1 ring-offset-panel",
                                         )}
                                         title="点击切换：正确 / 错误 / 未批改"
                                         aria-label="切换批改状态：正确 / 错误 / 未批改"
@@ -675,12 +916,12 @@ export default function DictationPage() {
                                 <td className="px-3 py-1.5 text-center">
                                   <div className="flex items-baseline justify-center gap-0.5">
                                     <span className={cn(
-                                      "num-display text-[16px] font-semibold tabular-nums",
+                                      "num-display text-[15px] font-semibold tabular-nums",
                                       pct >= 85 ? "text-[#3d7a5e]" : pct >= 60 ? "text-primary-d" : "text-[#a64953]",
                                     )}>
-                                      {stat?.correct ?? 0}
+                                      {score?.correctWeight ?? 0}
                                     </span>
-                                    <span className="text-[11px] tabular-nums text-muted">/{stat?.recorded ?? 0}</span>
+                                    <span className="text-[11px] tabular-nums text-muted">/{score?.totalWeight ?? 0}</span>
                                   </div>
                                   <div className="mx-auto mt-0.5 flex w-14 items-center gap-1">
                                     <div className="h-1 flex-1 overflow-hidden rounded-full bg-neutral-3/60">
@@ -689,15 +930,39 @@ export default function DictationPage() {
                                         style={{ width: `${pct}%`, backgroundImage: barGrad, boxShadow: "0 0 5px rgba(197,100,115,0.25)" }}
                                       />
                                     </div>
-                                    <span className="text-[10px] tabular-nums text-muted">{accuracyText(stat?.correct ?? 0, stat?.recorded ?? 0)}</span>
+                                    <span className="text-[10px] tabular-nums text-muted">{score?.scorePct != null ? `${Math.round(score.scorePct)}%` : "—"}</span>
                                   </div>
+                                  {statusBadge && (
+                                    <span className={cn("mt-0.5 inline-flex rounded-full px-1.5 py-[1px] text-[10px] font-medium ring-1 ring-inset", statusBadge.cls)}>
+                                      {statusBadge.text}
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="px-3 py-1.5">
-                                  <div className="flex justify-center gap-1">
-                                    <button onClick={() => fillStudent(st.id, true)}
-                                      className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] text-muted ring-1 ring-inset ring-line transition-all duration-[var(--dur-quick)] hover:-translate-y-[1px] hover:bg-[#e4f0e8] hover:text-[#3d7a5e] hover:shadow-[var(--shadow-xs)]">全对</button>
-                                    <button onClick={() => fillStudent(st.id, null)}
-                                      className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] text-muted ring-1 ring-inset ring-line transition-all duration-[var(--dur-quick)] hover:-translate-y-[1px] hover:bg-[#f7dfe0] hover:text-[#a64953] hover:shadow-[var(--shadow-xs)]">清空</button>
+                                  <div className="flex flex-col items-center gap-1">
+                                    <div className="flex justify-center gap-1">
+                                      <button onClick={() => fillStudent(st.id, true)}
+                                        className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] text-muted ring-1 ring-inset ring-line transition-all duration-[var(--dur-quick)] hover:-translate-y-[1px] hover:bg-[#e4f0e8] hover:text-[#3d7a5e] hover:shadow-[var(--shadow-xs)]">全对</button>
+                                      <button onClick={() => fillStudent(st.id, null)}
+                                        className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] text-muted ring-1 ring-inset ring-line transition-all duration-[var(--dur-quick)] hover:-translate-y-[1px] hover:bg-[#f7dfe0] hover:text-[#a64953] hover:shadow-[var(--shadow-xs)]">清空</button>
+                                    </div>
+                                    <input
+                                      ref={(el) => { wrongInputRefs.current[st.id] = el; }}
+                                      placeholder="错词序号"
+                                      title="输入错词序号（如 3 5 7）回车：命中标错、其余标对，并跳到下一学生"
+                                      className="h-7 w-24 rounded-md border border-line bg-panel px-2 text-xs tabular-nums placeholder:text-[10px] focus:border-[#c56473]/40 focus:outline-none"
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const input = e.target as HTMLInputElement;
+                                          const val = input.value;
+                                          if (val.trim()) applyWrongIndices(st.id, val);
+                                          input.value = "";
+                                          const next = filteredStudents[rowIdx + 1];
+                                          if (next) wrongInputRefs.current[next.id]?.focus();
+                                        }
+                                      }}
+                                    />
                                   </div>
                                 </td>
                               </tr>
@@ -785,7 +1050,7 @@ export default function DictationPage() {
         </div>
       </Dialog>
 
-      <Dialog open={listDialog} onClose={() => setListDialog(false)} title="新建听写词表">
+      <Dialog open={listDialog} onClose={() => setListDialog(false)} title={editingListId ? "编辑听写词表" : "新建听写词表"}>
         <div className="space-y-4">
           <div className="space-y-1.5"><Label>名称 *</Label><Input value={listForm.name} onChange={(e) => setListForm({ ...listForm, name: e.target.value })} placeholder="如 Unit 1 听写" /></div>
           <div className="space-y-1.5"><Label>班级</Label>
@@ -794,15 +1059,56 @@ export default function DictationPage() {
             </select>
           </div>
           <div className="space-y-1.5"><Label>听写日期</Label><Input type="date" value={listForm.dictationDate} onChange={(e) => setListForm({ ...listForm, dictationDate: e.target.value })} /></div>
-          <Button onClick={async () => { if (!listForm.name.trim()) { toast.error("名称不能为空"); return; } await createListMut.mutateAsync({ ...listForm, classId: listForm.classId || null, dictationDate: listForm.dictationDate || null }); }} disabled={createListMut.isPending} className="w-full">创建</Button>
+          <div className="space-y-1.5">
+            <Label>过不过规则</Label>
+            <div className="flex gap-2">
+              <select
+                value={listForm.passType}
+                onChange={(e) => setListForm({ ...listForm, passType: e.target.value as PassType })}
+                className="flex h-9 flex-1 rounded-md border border-line bg-panel px-3 text-sm"
+              >
+                <option value="none">不评定</option>
+                <option value="wrong">错词上限</option>
+                <option value="score">分数下限</option>
+              </select>
+              {listForm.passType !== "none" && (
+                <Input
+                  type="number"
+                  min={0}
+                  value={listForm.passValue}
+                  onChange={(e) => setListForm({ ...listForm, passValue: e.target.value })}
+                  placeholder={listForm.passType === "wrong" ? "允许错的个数" : "及格线（0-100）"}
+                  className="h-9 w-36"
+                />
+              )}
+            </div>
+            <p className="text-[11px] text-muted">
+              {listForm.passType === "wrong" ? "错词数 ≤ 阈值 → 及格" : listForm.passType === "score" ? "得分率 ≥ 阈值 → 及格" : "不判定及格/不及格"}
+            </p>
+          </div>
+          <Button onClick={submitListForm} disabled={createListMut.isPending || editListMut.isPending} className="w-full">
+            {editingListId ? "保存" : "创建"}
+          </Button>
         </div>
       </Dialog>
 
-      <Dialog open={wordDialog} onClose={() => setWordDialog(false)} title="添加单词">
+      <Dialog open={wordDialog} onClose={() => setWordDialog(false)} title={editingWordId ? "编辑单词" : "添加单词"}>
         <div className="space-y-4">
           <div className="space-y-1.5"><Label>单词 *</Label><Input value={wordForm.word} onChange={(e) => setWordForm({ ...wordForm, word: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>释义</Label><Input value={wordForm.meaning} onChange={(e) => setWordForm({ ...wordForm, meaning: e.target.value })} /></div>
-          <Button onClick={async () => { if (!wordForm.word.trim()) { toast.error("单词不能为空"); return; } await createWordMut.mutateAsync(wordForm); }} disabled={createWordMut.isPending} className="w-full">添加</Button>
+          <div className="space-y-1.5"><Label>分值权重</Label>
+            <Input
+              type="number"
+              min={0}
+              value={wordForm.scoreWeight}
+              onChange={(e) => setWordForm({ ...wordForm, scoreWeight: e.target.value })}
+              className="h-9 w-24"
+            />
+            <p className="text-[11px] text-muted">加权得分时该词贡献的分数，默认 1。</p>
+          </div>
+          <Button onClick={submitWordForm} disabled={createWordMut.isPending || updateWordMut.isPending} className="w-full">
+            {editingWordId ? "保存" : "添加"}
+          </Button>
         </div>
       </Dialog>
 

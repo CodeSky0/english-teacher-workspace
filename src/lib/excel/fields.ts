@@ -35,6 +35,7 @@ export const VOCAB_WORD_FIELDS: FieldSpec[] = [
 export const DICTATION_WORD_FIELDS: FieldSpec[] = [
   { key: "word", label: "单词", aliases: ["单词", "词语", "词汇", "word", "term"], required: true, example: "apple" },
   { key: "meaning", label: "释义", aliases: ["释义", "中文释义", "中文", "意思", "翻译", "meaning", "translation"], example: "苹果" },
+  { key: "scoreWeight", label: "分值", aliases: ["分值", "权重", "score", "weight", "points"], example: "1" },
 ];
 
 export type ImportKind = "students" | "vocab" | "dictation-words";

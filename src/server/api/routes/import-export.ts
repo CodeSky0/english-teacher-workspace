@@ -7,6 +7,7 @@ import { dictationLists, dictationWords, dictationResults } from "@/db/schema/di
 import { classroomPoints, attendanceRecords, studentFeedback } from "@/db/schema/classroom";
 import { buildXlsx, xlsxResponse, type SheetSpec } from "@/server/excel/workbook";
 import { normalizeGender, genderLabel } from "@/lib/excel/fields";
+import { computeStudentScore, normalizePassRule } from "@/lib/dictation/scoring";
 import { badRequest, notFound, unprocessable } from "../errors";
 import { audit, createImportJob, finishImportJob } from "@/server/audit";
 import type { RouteEnv } from "../env";
@@ -36,15 +37,6 @@ function toSeatNo(value: unknown): number | null {
 function rate(correct: number, total: number): string {
   if (!total) return "—";
   return `${((correct / total) * 100).toFixed(1)}%`;
-}
-
-function level(correct: number, total: number): string {
-  if (!total) return "—";
-  const pct = (correct / total) * 100;
-  if (pct >= 90) return "优秀";
-  if (pct >= 80) return "良好";
-  if (pct >= 60) return "合格";
-  return "待加强";
 }
 
 function today(): string {
@@ -302,6 +294,7 @@ routes.post("/import/dictation-words", async (c) => {
     listId,
     word: str(raw.word),
     meaning: str(raw.meaning) || null,
+    scoreWeight: Math.max(0, Math.trunc(Number(raw.scoreWeight)) || 1),
   }));
 
   if (inserts.length) await db.insert(dictationWords).values(inserts as (typeof dictationWords.$inferInsert)[]);
@@ -444,36 +437,46 @@ routes.get("/export/dictation/:listId", async (c) => {
   const resultMap = new Map<string, boolean | null>();
   for (const r of results) resultMap.set(`${r.studentId}:${r.wordId}`, r.isCorrect);
 
+  const passRule = normalizePassRule(list.passType, list.passValue);
   const summaryRows: (string | number)[][] = [];
   const detailRows: (string | number)[][] = [];
 
   for (const st of studentRows) {
     let correct = 0;
-    let recorded = 0;
     const wrong: string[] = [];
     const cells: (string | number)[] = [];
+    const studentResults: Record<string, boolean | null> = {};
     for (const w of words) {
       const v = resultMap.get(`${st.id}:${w.id}`);
+      studentResults[w.id] = v ?? null;
       if (v === true) {
         correct++;
-        recorded++;
         cells.push("✓");
       } else if (v === false) {
-        recorded++;
         cells.push("✗");
         wrong.push(w.word);
       } else {
         cells.push("");
       }
     }
+    const score = computeStudentScore(
+      words.map((w) => ({ id: w.id, scoreWeight: w.scoreWeight })),
+      studentResults,
+      passRule
+    );
+    const passLabel =
+      score.status === "none" ? "—" :
+      score.status === "pending" ? "待完成" :
+      score.status === "pass" ? "及格" : "不及格";
     // 未批改的学生不按 0% 计算，避免拉低班级统计
     summaryRows.push([
       st.name,
       st.studentNo ?? "",
       correct,
       words.length,
-      recorded ? rate(correct, recorded) : "未批改",
-      recorded ? level(correct, recorded) : "未批改",
+      `${score.correctWeight}/${score.totalWeight}`,
+      score.scorePct != null ? `${score.scorePct.toFixed(1)}%` : "未批改",
+      passLabel,
       wrong.join("、"),
     ]);
     detailRows.push([st.name, st.studentNo ?? "", ...cells]);
@@ -482,9 +485,9 @@ routes.get("/export/dictation/:listId", async (c) => {
   const buffer = await buildXlsx([
     {
       name: "成绩汇总",
-      headers: ["姓名", "学号", "正确数", "总词数", "正确率", "等级", "错误单词"],
+      headers: ["姓名", "学号", "正确数", "总词数", "得分", "得分率", "是否及格", "错误单词"],
       rows: summaryRows,
-      widths: [14, 16, 10, 10, 10, 10, 40],
+      widths: [14, 16, 10, 10, 12, 12, 12, 40],
     },
     {
       name: "明细",
